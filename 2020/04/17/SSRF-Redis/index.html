@@ -20,28 +20,32 @@
     var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
   </script>
 
-  <meta property="og:type" content="website">
-<meta property="og:title" content="Ananaskr&#39;s Blog">
-<meta property="og:url" content="http://yoursite.com/index.html">
+  <meta name="description" content="Redis是常见的内网服务，因其默认配置未授权访问或使用弱口令认证，可以导致getshell。经过总结，目前网上对于Redis常见的getshell方式有以下几种:    绝对路径写Webshell 写入ssh公钥 写crontab计划任务反弹shell(针对CentOS) 主从复制(4.0 &lt; Redis &lt; 5.0.5)   接下来依次介绍几种方法的细节以及用上的一些脚本，脚本以及">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SSRF-内网Redis Getshell">
+<meta property="og:url" content="http://yoursite.com/2020/04/17/SSRF-Redis/index.html">
 <meta property="og:site_name" content="Ananaskr&#39;s Blog">
+<meta property="og:description" content="Redis是常见的内网服务，因其默认配置未授权访问或使用弱口令认证，可以导致getshell。经过总结，目前网上对于Redis常见的getshell方式有以下几种:    绝对路径写Webshell 写入ssh公钥 写crontab计划任务反弹shell(针对CentOS) 主从复制(4.0 &lt; Redis &lt; 5.0.5)   接下来依次介绍几种方法的细节以及用上的一些脚本，脚本以及">
 <meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2020-04-17T12:20:24.000Z">
+<meta property="article:modified_time" content="2020-04-17T13:08:59.222Z">
 <meta property="article:author" content="ananaskr">
 <meta name="twitter:card" content="summary">
 
-<link rel="canonical" href="http://yoursite.com/">
+<link rel="canonical" href="http://yoursite.com/2020/04/17/SSRF-Redis/">
 
 
 <script id="page-configurations">
   // https://hexo.io/docs/variables.html
   CONFIG.page = {
     sidebar: "",
-    isHome : true,
-    isPost : false,
+    isHome : false,
+    isPost : true,
     lang   : 'en'
   };
 </script>
 
-  <title>Ananaskr's Blog</title>
+  <title>SSRF-内网Redis Getshell | Ananaskr's Blog</title>
   
 
 
@@ -139,9 +143,10 @@
         <div class="content-wrap">
           
 
-          <div class="content index posts-expand">
+          <div class="content post posts-expand">
             
-      
+
+    
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
@@ -157,10 +162,9 @@
       <meta itemprop="name" content="Ananaskr's Blog">
     </span>
       <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/04/17/SSRF-Redis/" class="post-title-link" itemprop="url">SSRF-内网Redis Getshell</a>
-        </h2>
+        <h1 class="post-title" itemprop="name headline">
+          SSRF-内网Redis Getshell
+        </h1>
 
         <div class="post-meta">
             <span class="post-meta-item">
@@ -193,7 +197,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <p>Redis是常见的内网服务，因其默认配置未授权访问或使用弱口令认证，可以导致getshell。经过总结，目前网上对于Redis常见的getshell方式有以下几种:  </p>
+        <p>Redis是常见的内网服务，因其默认配置未授权访问或使用弱口令认证，可以导致getshell。经过总结，目前网上对于Redis常见的getshell方式有以下几种:  </p>
 <ul>
 <li>绝对路径写Webshell</li>
 <li>写入ssh公钥</li>
@@ -225,21 +229,23 @@
 
 
 
-      
     </div>
 
     
     
     
+
       <footer class="post-footer">
-        <div class="post-eof"></div>
+
+        
+
+
+        
       </footer>
+    
   </article>
   
   
-  
-
-
   
 
 
@@ -292,6 +298,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#0x00-环境配置"><span class="nav-number">1.</span> <span class="nav-text">0x00 环境配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#0x01-绝对路径写webshell"><span class="nav-number">2.</span> <span class="nav-text">0x01 绝对路径写webshell</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
