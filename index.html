@@ -176,7 +176,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-04-18 11:49:49" itemprop="dateModified" datetime="2020-04-18T11:49:49+08:00">2020-04-18</time>
+                <time title="Modified: 2020-04-18 12:03:08" itemprop="dateModified" datetime="2020-04-18T12:03:08+08:00">2020-04-18</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -201,21 +201,26 @@
       
           <p>Redis是常见的内网服务，因其默认配置未授权访问或使用弱口令认证，可以导致getshell。经过总结，目前网上对于Redis常见的getshell方式有以下几种:  </p>
 <ul>
-<li>绝对路径写Webshell</li>
-<li>写入ssh公钥</li>
-<li>写crontab计划任务反弹shell(针对CentOS)</li>
-<li>主从复制(4.0 &lt; Redis &lt; 5.0.5) </li>
+<li><strong>绝对路径写Webshell</strong></li>
+<li><strong>写入ssh公钥</strong></li>
+<li><strong>写crontab计划任务反弹shell(针对CentOS)</strong></li>
+<li><strong>主从复制(4.0 &lt; Redis &lt; 5.0.5)</strong> </li>
 </ul>
-<p>接下来依次介绍几种方法的细节以及用上的一些脚本，脚本以及此次实验的环境都放在了<a href="https://github.com/ananaskr/Escalation_Database/tree/master/Redis" target="_blank" rel="noopener">github</a>。</p>
-<p>Redis常用命令有以下几个:</p>
+<p>这篇文章通过实验依次介绍几种方法的使用以及一些脚本，脚本以及此次实验的环境都放在了<a href="https://github.com/ananaskr/Escalation_Database/tree/master/Redis" target="_blank" rel="noopener">github</a>。</p>
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>首先介绍一下Redis以及此次实验的相关配置。</p>
+<h3 id="Redis介绍"><a href="#Redis介绍" class="headerlink" title="Redis介绍"></a>Redis介绍</h3><p>Redis常用命令有以下几个:</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">info                    查看信息  </span><br><span class="line">flushall                删除数据库所有内容  </span><br><span class="line">flushdb                 刷新数据库  </span><br><span class="line">keys *                  查看所有键  </span><br><span class="line">set key value           设置变量  </span><br><span class="line">config set dir dirpath  设置路径  </span><br><span class="line">config set dbfilename   设置文件名  </span><br><span class="line">save                    保存</span><br></pre></td></tr></table></figure>
 
 <h3 id="环境配置"><a href="#环境配置" class="headerlink" title="环境配置"></a>环境配置</h3><ul>
+<li>docker</li>
 <li>centos7.0 + Redis5.0</li>
 <li>Python3.6.0</li>
 </ul>
-<p>由于具有SSRF的php代码放置在docker启动的web服务器上，Redis在另一个镜像中，将Redis绑定在<code>0.0.0.0</code>。因此，在宿主机访问<code>curl -v dict://127.0.0.1:6379/info</code>可以成功，但对于docker里的web服务器，<code>docker.for.mac.host.internal</code>为能访问宿主机的地址。</p>
-<h3 id="绝对路径写webshell"><a href="#绝对路径写webshell" class="headerlink" title="绝对路径写webshell"></a>绝对路径写webshell</h3><p>绝对路径写webshell的方法适用于以下场景:</p>
+<p>php代码放置在docker启动的web服务器上，是一个未经任何防御的SSRF的php代码。如下所示:</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line">	<span class="keyword">if</span>(<span class="keyword">isset</span>($_GET[<span class="string">'url'</span>]))&#123;</span><br><span class="line">		$link = $_GET[<span class="string">'url'</span>];</span><br><span class="line">		$curlobj = curl_init();</span><br><span class="line">		curl_setopt($curlobj, CURLOPT_POST,<span class="number">0</span>);</span><br><span class="line">		curl_setopt($curlobj, CURLOPT_URL,$link);</span><br><span class="line">		curl_setopt($curlobj, CURLOPT_RETURNTRANSFER, <span class="number">1</span>);</span><br><span class="line">		curl_setopt($curlobj, CURLOPT_FOLLOWLOCATION, <span class="number">1</span>);</span><br><span class="line">		$result=curl_exec($curlobj);</span><br><span class="line">		<span class="keyword">echo</span> $result;</span><br><span class="line">		curl_close($curlobj);</span><br><span class="line">	&#125;</span><br><span class="line"><span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>Redis在另一个镜像中，将Redis绑定在<code>0.0.0.0</code>，因此在宿主机访问<code>curl -v dict://127.0.0.1:6379/info</code>可以成功。但对于docker里的web服务器，<code>docker.for.mac.host.internal</code>为能访问宿主机的地址。即<code>docker.for.mac.host.internal:6379</code>来表示访问内网中的Redis。</p>
+<h2 id="实验"><a href="#实验" class="headerlink" title="实验"></a>实验</h2><h3 id="绝对路径写webshell"><a href="#绝对路径写webshell" class="headerlink" title="绝对路径写webshell"></a>绝对路径写webshell</h3><p>绝对路径写webshell的方法适用于以下场景:</p>
 <ol>
 <li>开启了web服务</li>
 <li>Redis具有对web路径的写权限</li>
