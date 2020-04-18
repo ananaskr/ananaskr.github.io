@@ -17,7 +17,7 @@
 
 <script id="hexo-configurations">
     var NexT = window.NexT || {};
-    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
   <meta name="description" content="Redis是常见的内网服务，因其默认配置未授权访问或使用弱口令认证，可以导致getshell。经过总结，目前网上对于Redis常见的getshell方式有以下几种:    绝对路径写Webshell 写入ssh公钥 写crontab计划任务反弹shell(针对CentOS) 主从复制(4.0 &lt; Redis &lt; 5.0.5)   接下来依次介绍几种方法的细节以及用上的一些脚本，脚本以及">
@@ -30,7 +30,7 @@
 <meta property="og:image" content="http://yoursite.com/2020/04/17/img/SSRF-Redis-1.png">
 <meta property="og:image" content="http://yoursite.com/2020/04/17/img/SSRF-Redis-2.png">
 <meta property="article:published_time" content="2020-04-17T12:20:24.000Z">
-<meta property="article:modified_time" content="2020-04-18T03:28:15.329Z">
+<meta property="article:modified_time" content="2020-04-18T03:49:49.259Z">
 <meta property="article:author" content="ananaskr">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http://yoursite.com/2020/04/17/img/SSRF-Redis-1.png">
@@ -140,8 +140,6 @@
     <span>0%</span>
   </div>
 
-  <a href="https://github.com/ananaskr" class="github-corner" title="Follow me on GitHub" aria-label="Follow me on GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a>
-
 
     <main class="main">
       <div class="main-inner">
@@ -185,7 +183,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-04-18 11:28:15" itemprop="dateModified" datetime="2020-04-18T11:28:15+08:00">2020-04-18</time>
+                <time title="Modified: 2020-04-18 11:49:49" itemprop="dateModified" datetime="2020-04-18T11:49:49+08:00">2020-04-18</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -219,12 +217,12 @@
 <p>Redis常用命令有以下几个:</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">info                    查看信息  </span><br><span class="line">flushall                删除数据库所有内容  </span><br><span class="line">flushdb                 刷新数据库  </span><br><span class="line">keys *                  查看所有键  </span><br><span class="line">set key value           设置变量  </span><br><span class="line">config set dir dirpath  设置路径  </span><br><span class="line">config set dbfilename   设置文件名  </span><br><span class="line">save                    保存</span><br></pre></td></tr></table></figure>
 
-<h3 id="0x00-环境配置"><a href="#0x00-环境配置" class="headerlink" title="0x00 环境配置"></a>0x00 环境配置</h3><ul>
+<h3 id="环境配置"><a href="#环境配置" class="headerlink" title="环境配置"></a>环境配置</h3><ul>
 <li>centos7.0 + Redis5.0</li>
 <li>Python3.6.0</li>
 </ul>
 <p>由于具有SSRF的php代码放置在docker启动的web服务器上，Redis在另一个镜像中，将Redis绑定在<code>0.0.0.0</code>。因此，在宿主机访问<code>curl -v dict://127.0.0.1:6379/info</code>可以成功，但对于docker里的web服务器，<code>docker.for.mac.host.internal</code>为能访问宿主机的地址。</p>
-<h3 id="0x01-绝对路径写webshell"><a href="#0x01-绝对路径写webshell" class="headerlink" title="0x01 绝对路径写webshell"></a>0x01 绝对路径写webshell</h3><p>绝对路径写webshell的方法适用于以下场景:</p>
+<h3 id="绝对路径写webshell"><a href="#绝对路径写webshell" class="headerlink" title="绝对路径写webshell"></a>绝对路径写webshell</h3><p>绝对路径写webshell的方法适用于以下场景:</p>
 <ol>
 <li>开启了web服务</li>
 <li>Redis具有对web路径的写权限</li>
@@ -372,7 +370,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#0x00-环境配置"><span class="nav-number">1.</span> <span class="nav-text">0x00 环境配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#0x01-绝对路径写webshell"><span class="nav-number">2.</span> <span class="nav-text">0x01 绝对路径写webshell</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#0x02-写ssh公钥免密登录"><span class="nav-number">3.</span> <span class="nav-text">0x02 写ssh公钥免密登录</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#生成key-pair"><span class="nav-number">3.1.</span> <span class="nav-text">生成key pair</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#写入ssh-key"><span class="nav-number">3.2.</span> <span class="nav-text">写入ssh key</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#0x03-写crontab计划反弹shell"><span class="nav-number">4.</span> <span class="nav-text">0x03 写crontab计划反弹shell</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#0x04-主从复制"><span class="nav-number">5.</span> <span class="nav-text">0x04 主从复制</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#3-使得目标成为slave"><span class="nav-number">5.1.</span> <span class="nav-text">3. 使得目标成为slave</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-设置接受到内容保存的文件名"><span class="nav-number">5.2.</span> <span class="nav-text">2. 设置接受到内容保存的文件名</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-接受来自主节点的数据"><span class="nav-number">5.3.</span> <span class="nav-text">3. 接受来自主节点的数据</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-加载模块"><span class="nav-number">5.4.</span> <span class="nav-text">4. 加载模块</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#防御"><span class="nav-number"></span> <span class="nav-text">防御</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number"></span> <span class="nav-text">参考</span></a></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#环境配置"><span class="nav-number">1.</span> <span class="nav-text">环境配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#绝对路径写webshell"><span class="nav-number">2.</span> <span class="nav-text">绝对路径写webshell</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#0x02-写ssh公钥免密登录"><span class="nav-number">3.</span> <span class="nav-text">0x02 写ssh公钥免密登录</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#生成key-pair"><span class="nav-number">3.1.</span> <span class="nav-text">生成key pair</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#写入ssh-key"><span class="nav-number">3.2.</span> <span class="nav-text">写入ssh key</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#0x03-写crontab计划反弹shell"><span class="nav-number">4.</span> <span class="nav-text">0x03 写crontab计划反弹shell</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#0x04-主从复制"><span class="nav-number">5.</span> <span class="nav-text">0x04 主从复制</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#3-使得目标成为slave"><span class="nav-number">5.1.</span> <span class="nav-text">3. 使得目标成为slave</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-设置接受到内容保存的文件名"><span class="nav-number">5.2.</span> <span class="nav-text">2. 设置接受到内容保存的文件名</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-接受来自主节点的数据"><span class="nav-number">5.3.</span> <span class="nav-text">3. 接受来自主节点的数据</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-加载模块"><span class="nav-number">5.4.</span> <span class="nav-text">4. 加载模块</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#防御"><span class="nav-number"></span> <span class="nav-text">防御</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number"></span> <span class="nav-text">参考</span></a></div>
       </div>
       <!--/noindex-->
 

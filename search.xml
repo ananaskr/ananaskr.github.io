@@ -14,12 +14,12 @@
 <p>Redis常用命令有以下几个:</p>
 <figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">info                    查看信息  </span><br><span class="line">flushall                删除数据库所有内容  </span><br><span class="line">flushdb                 刷新数据库  </span><br><span class="line">keys *                  查看所有键  </span><br><span class="line">set key value           设置变量  </span><br><span class="line">config set dir dirpath  设置路径  </span><br><span class="line">config set dbfilename   设置文件名  </span><br><span class="line">save                    保存</span><br></pre></td></tr></table></figure>
 
-<h3 id="0x00-环境配置"><a href="#0x00-环境配置" class="headerlink" title="0x00 环境配置"></a>0x00 环境配置</h3><ul>
+<h3 id="环境配置"><a href="#环境配置" class="headerlink" title="环境配置"></a>环境配置</h3><ul>
 <li>centos7.0 + Redis5.0</li>
 <li>Python3.6.0</li>
 </ul>
 <p>由于具有SSRF的php代码放置在docker启动的web服务器上，Redis在另一个镜像中，将Redis绑定在<code>0.0.0.0</code>。因此，在宿主机访问<code>curl -v dict://127.0.0.1:6379/info</code>可以成功，但对于docker里的web服务器，<code>docker.for.mac.host.internal</code>为能访问宿主机的地址。</p>
-<h3 id="0x01-绝对路径写webshell"><a href="#0x01-绝对路径写webshell" class="headerlink" title="0x01 绝对路径写webshell"></a>0x01 绝对路径写webshell</h3><p>绝对路径写webshell的方法适用于以下场景:</p>
+<h3 id="绝对路径写webshell"><a href="#绝对路径写webshell" class="headerlink" title="绝对路径写webshell"></a>绝对路径写webshell</h3><p>绝对路径写webshell的方法适用于以下场景:</p>
 <ol>
 <li>开启了web服务</li>
 <li>Redis具有对web路径的写权限</li>
