@@ -23,23 +23,23 @@
   <meta name="description" content="在上一篇文章中，分析了使用Commons Collections用来进行RCE的原理。那么在实际情况中，需要找到一个符合一下条件的类，并且在服务端有反序列化的入口，就可以RCE了。  该类重写了readObject方法 该类的readObject方法中操作了TransformedMap，比如调用setValue&#x2F;put&#x2F;putAll  搜索了一下调用transform的位置，最有可能被利用的就是L">
 <meta property="og:type" content="article">
 <meta property="og:title" content="ysoserial分析之CommonsCollections1">
-<meta property="og:url" content="http://yoursite.com/2020/04/20/ysoserial-analyze/index.html">
+<meta property="og:url" content="http://yoursite.com/2020/04/20/ysoserial-analyze-1/index.html">
 <meta property="og:site_name" content="Ananaskr&#39;s Blog">
 <meta property="og:description" content="在上一篇文章中，分析了使用Commons Collections用来进行RCE的原理。那么在实际情况中，需要找到一个符合一下条件的类，并且在服务端有反序列化的入口，就可以RCE了。  该类重写了readObject方法 该类的readObject方法中操作了TransformedMap，比如调用setValue&#x2F;put&#x2F;putAll  搜索了一下调用transform的位置，最有可能被利用的就是L">
 <meta property="og:locale" content="en_US">
-<meta property="og:image" content="http://yoursite.com/2020/04/20/ysoserial-analyze/1-1.png">
-<meta property="og:image" content="http://yoursite.com/2020/04/20/ysoserial-analyze/1-2.png">
-<meta property="og:image" content="http://yoursite.com/2020/04/20/ysoserial-analyze/1-3.png">
-<meta property="og:image" content="http://yoursite.com/2020/04/20/ysoserial-analyze/1-4.png">
-<meta property="og:image" content="http://yoursite.com/2020/04/20/ysoserial-analyze/1-5.png">
-<meta property="og:image" content="http://yoursite.com/2020/04/20/ysoserial-analyze/1-6.png">
+<meta property="og:image" content="http://yoursite.com/2020/04/20/ysoserial-analyze-1/1-1.png">
+<meta property="og:image" content="http://yoursite.com/2020/04/20/ysoserial-analyze-1/1-2.png">
+<meta property="og:image" content="http://yoursite.com/2020/04/20/ysoserial-analyze-1/1-3.png">
+<meta property="og:image" content="http://yoursite.com/2020/04/20/ysoserial-analyze-1/1-4.png">
+<meta property="og:image" content="http://yoursite.com/2020/04/20/ysoserial-analyze-1/1-5.png">
+<meta property="og:image" content="http://yoursite.com/2020/04/20/ysoserial-analyze-1/1-6.png">
 <meta property="article:published_time" content="2020-04-20T07:33:28.000Z">
 <meta property="article:modified_time" content="2020-04-22T10:06:19.860Z">
 <meta property="article:author" content="ananaskr">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://yoursite.com/2020/04/20/ysoserial-analyze/1-1.png">
+<meta name="twitter:image" content="http://yoursite.com/2020/04/20/ysoserial-analyze-1/1-1.png">
 
-<link rel="canonical" href="http://yoursite.com/2020/04/20/ysoserial-analyze/">
+<link rel="canonical" href="http://yoursite.com/2020/04/20/ysoserial-analyze-1/">
 
 
 <script id="page-configurations">
@@ -157,7 +157,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/04/20/ysoserial-analyze/">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/04/20/ysoserial-analyze-1/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -268,8 +268,8 @@
       <i class="fa fa-chevron-left"></i> Apache Commons Collections分析
     </a></div>
       <div class="post-nav-item">
-    <a href="/2020/04/23/ysoserial-analyze-3/" rel="next" title="ysoerial分析之CommonsCollections3">
-      ysoerial分析之CommonsCollections3 <i class="fa fa-chevron-right"></i>
+    <a href="/2020/04/23/ysoserial-analyze-3/" rel="next" title="ysoserial分析之CommonsCollections3">
+      ysoserial分析之CommonsCollections3 <i class="fa fa-chevron-right"></i>
     </a></div>
     </div>
       </footer>
@@ -343,7 +343,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">7</span>
+          <span class="site-state-item-count">8</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
