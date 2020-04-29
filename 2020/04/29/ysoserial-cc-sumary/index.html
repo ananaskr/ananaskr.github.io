@@ -28,7 +28,7 @@
 <meta property="og:description" content="花了一周的时间对现有的CommonsCollections利用链分析了一遍，这篇文章是总结一下各利用链的特点、适用场景以及我自己对于Java反序列化链的一点思考。">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2020-04-29T01:13:30.000Z">
-<meta property="article:modified_time" content="2020-04-29T01:50:02.688Z">
+<meta property="article:modified_time" content="2020-04-29T14:35:15.208Z">
 <meta property="article:author" content="ananaskr">
 <meta name="twitter:card" content="summary">
 
@@ -117,6 +117,16 @@
     <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
 
   </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/About/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
         <li class="menu-item menu-item-archives">
 
     <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
@@ -174,7 +184,7 @@
               <span class="post-meta-item-text">Posted on</span>
               
 
-              <time title="Created: 2020-04-29 09:13:30 / Modified: 09:50:02" itemprop="dateCreated datePublished" datetime="2020-04-29T09:13:30+08:00">2020-04-29</time>
+              <time title="Created: 2020-04-29 09:13:30 / Modified: 22:35:15" itemprop="dateCreated datePublished" datetime="2020-04-29T09:13:30+08:00">2020-04-29</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -200,8 +210,86 @@
         <p>花了一周的时间对现有的CommonsCollections利用链分析了一遍，这篇文章是总结一下各利用链的特点、适用场景以及我自己对于Java反序列化链的一点思考。</p>
 <a id="more"></a>
 
-<h1 id="各利用链利用点"><a href="#各利用链利用点" class="headerlink" title="各利用链利用点"></a>各利用链利用点</h1><p>从前面的分析中，对于每个利用链，我们可以从外层触发点、中间承接点、以及Transformer构造来分析。</p>
-<h2 id="CommonsCollections1"><a href="#CommonsCollections1" class="headerlink" title="CommonsCollections1"></a>CommonsCollections1</h2>
+<h1 id="各利用链利用点"><a href="#各利用链利用点" class="headerlink" title="各利用链利用点"></a>各利用链利用点</h1><p>从前面的分析中，对于每个利用链，我们可以从外层触发点、中间承接点、以及命令执行点来分析。</p>
+<p>外层触发点有</p>
+<ul>
+<li>AnnotationInvocationHandler<ul>
+<li>CommonsCollections1</li>
+</ul>
+</li>
+<li>BadAttributeValueExpException<ul>
+<li>CommonsCollections5</li>
+</ul>
+</li>
+<li>HashSet<ul>
+<li>CommonsCollections</li>
+</ul>
+</li>
+<li>Hashtable<ul>
+<li>CommonsCollections</li>
+</ul>
+</li>
+<li>PriorityQueue<ul>
+<li>CommonsCollections2</li>
+</ul>
+</li>
+</ul>
+<p>中间承接点</p>
+<ul>
+<li>LazyMap.get<ul>
+<li>CommonsCollections1</li>
+</ul>
+</li>
+<li>DefaultedMap.get</li>
+<li>TiedMapEntry.getValue</li>
+<li>Proxy.invoke<ul>
+<li>CommonsCollections1</li>
+</ul>
+</li>
+<li>TransformingCompare<ul>
+<li>CommonsCollections2</li>
+</ul>
+</li>
+</ul>
+<p>命令执行点</p>
+<ul>
+<li><p>InvokerTransformer提供了通过反射创建实例对象</p>
+</li>
+<li></li>
+<li><p>ChainedTransformer: ConstantTransformer+InvokerTransformer</p>
+<ul>
+<li>CommonsCollections1</li>
+</ul>
+</li>
+<li><p>InstantiateTransformer:</p>
+</li>
+<li><p>TemplateImpl</p>
+</li>
+</ul>
+<h1 id="根据commons-collections版本"><a href="#根据commons-collections版本" class="headerlink" title="根据commons-collections版本"></a>根据commons-collections版本</h1><h2 id="commonscollections3-1"><a href="#commonscollections3-1" class="headerlink" title="commonscollections3.1"></a>commonscollections3.1</h2><ul>
+<li>CommonsCollections1</li>
+<li>CommonsCollections3</li>
+<li>CommonsCollections5</li>
+<li>CommonsCollections6</li>
+<li>CommonsCollections7</li>
+<li>CommonsCollections10</li>
+</ul>
+<h2 id="commonscollections3-2-1"><a href="#commonscollections3-2-1" class="headerlink" title="commonscollections3.2.1"></a>commonscollections3.2.1</h2><ul>
+<li>CommonsCollections1</li>
+<li>CommonsCollections3</li>
+<li>CommonsCollections5</li>
+<li>CommonsCollections6</li>
+<li>CommonsCollections7</li>
+<li>CommonsCollections9</li>
+<li>CommonsCollections10</li>
+</ul>
+<h2 id="commonscollections4-0"><a href="#commonscollections4-0" class="headerlink" title="commonscollections4.0"></a>commonscollections4.0</h2><ul>
+<li>CommonsCollections2</li>
+<li>CommonsCollections4</li>
+<li>CommonsCollections8</li>
+</ul>
+<h1 id="根据jdk版本"><a href="#根据jdk版本" class="headerlink" title="根据jdk版本"></a>根据jdk版本</h1><h1 id="思考"><a href="#思考" class="headerlink" title="思考"></a>思考</h1><p>其实分析完上述的payload之后，很容易发现，即使是10个利用链，但其实最终执行命令的方式只有少数几种。</p>
+
     </div>
 
     
@@ -281,7 +369,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#各利用链利用点"><span class="nav-number">1.</span> <span class="nav-text">各利用链利用点</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#CommonsCollections1"><span class="nav-number">1.1.</span> <span class="nav-text">CommonsCollections1</span></a></li></ol></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#各利用链利用点"><span class="nav-number">1.</span> <span class="nav-text">各利用链利用点</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#根据commons-collections版本"><span class="nav-number">2.</span> <span class="nav-text">根据commons-collections版本</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#commonscollections3-1"><span class="nav-number">2.1.</span> <span class="nav-text">commonscollections3.1</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#commonscollections3-2-1"><span class="nav-number">2.2.</span> <span class="nav-text">commonscollections3.2.1</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#commonscollections4-0"><span class="nav-number">2.3.</span> <span class="nav-text">commonscollections4.0</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#根据jdk版本"><span class="nav-number">3.</span> <span class="nav-text">根据jdk版本</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#思考"><span class="nav-number">4.</span> <span class="nav-text">思考</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 

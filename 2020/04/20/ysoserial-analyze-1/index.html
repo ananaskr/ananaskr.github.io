@@ -39,7 +39,7 @@
 <meta property="og:image" content="http://yoursite.com/2020/04/20/ysoserial-analyze-1/5.png">
 <meta property="og:image" content="http://yoursite.com/2020/04/20/ysoserial-analyze-1/1-6.png">
 <meta property="article:published_time" content="2020-04-20T07:33:28.000Z">
-<meta property="article:modified_time" content="2020-04-29T04:24:16.960Z">
+<meta property="article:modified_time" content="2020-04-29T09:35:14.619Z">
 <meta property="article:author" content="ananaskr">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http://yoursite.com/2020/04/20/ysoserial-analyze-1/1.png">
@@ -129,6 +129,16 @@
     <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
 
   </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/About/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
         <li class="menu-item menu-item-archives">
 
     <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
@@ -192,7 +202,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-04-29 12:24:16" itemprop="dateModified" datetime="2020-04-29T12:24:16+08:00">2020-04-29</time>
+                <time title="Modified: 2020-04-29 17:35:14" itemprop="dateModified" datetime="2020-04-29T17:35:14+08:00">2020-04-29</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -226,13 +236,16 @@
 <p>搜索了一下调用<code>transform</code>的位置，最有可能被利用的就是LazyMap.get、TransformedMap.checkSetValue，其中checkSetValue会在Entry.setValue函数被调用的时候调用。定位到TransformedMap的父类<code>AbstractInputCheckedMapDecorator</code>中的<code>MapEntry</code>类的<code>setValue</code>方法:</p>
 <p><img src="1.png" alt=""></p>
 <p>可以看到调用了checkSetValue方法。因此需要在被重载的readObject函数中发现相关可控Map数据的操作(LazyMap.get和Entry.setValue)。对应的对于CommonsCollections1有了2种利用链。</p>
-<h1 id="01-Transformed-checkSetValue"><a href="#01-Transformed-checkSetValue" class="headerlink" title="01 Transformed.checkSetValue"></a>01 Transformed.checkSetValue</h1><p>先来看第一种，利用<code>TransformedMap.checkSetValue</code>。整个的利用链如下所示:</p>
+<h1 id="01-TransformedMap-checkSetValue"><a href="#01-TransformedMap-checkSetValue" class="headerlink" title="01 TransformedMap.checkSetValue"></a>01 TransformedMap.checkSetValue</h1><p>先来看第一种，利用<code>TransformedMap.checkSetValue</code>。整个的利用链如下所示:</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">-&gt;AnnotationInvocationHandler.readObject()</span><br><span class="line">  -&gt;TransformedMap.entrySet().iterator().next.setValue()</span><br><span class="line">    -&gt;TransformedMap.checkSetValue()</span><br><span class="line">      -&gt;TransformedMap.transform()</span><br><span class="line">		  -&gt;ChainedTransformer.transform()</span><br><span class="line">		    -&gt;ConstantTransformer.transform()</span><br><span class="line">			   -&gt;InvokerTransformer.transform()</span><br><span class="line">				  -&gt;Method.invoke()</span><br><span class="line">				    -&gt;Class.getMethod()</span><br><span class="line">			   -&gt;InvokerTransformer.transform()</span><br><span class="line">				  -&gt;Method.invoke()</span><br><span class="line">				    -&gt;Runtime.getRuntime()</span><br><span class="line">			   -&gt;InvokerTransformer.transform()</span><br><span class="line">				  -&gt;Method.invoke()</span><br><span class="line">				    -&gt;Runtime.exec()</span><br></pre></td></tr></table></figure>
 
 <p>利用条件:  </p>
 <ul>
-<li>&lt;= jdk7 </li>
+<li>&lt;= JRE 8u72</li>
+<li>commonscollections:3.1, 3.2, 3.2.1</li>
 </ul>
+<p>参考:<a href="http://www.thegreycorner.com/2016/05/commoncollections-deserialization.html" target="_blank" rel="noopener">CommonsCollections deserialization attack payloads from ysoserial failing</a></p>
+<p>commonscollections:3.2.2中对不安全的Java类的反序列化增加了开关，默认为关闭状态。比如InvokerTransformer。</p>
 <h2 id="利用链分析"><a href="#利用链分析" class="headerlink" title="利用链分析"></a>利用链分析</h2><p>CommonsCollections1反序列化调用链最外层利用的是<code>AnnotationInvocationHandler</code>类(sub.reflect.annotation.AnnotationInvocationHandler)。它实现了<code>java.lang.reflect.InvocationHandler</code>(Java动态代理)接口和<code>java.io.Serializable</code>接口。</p>
 <p>首先定位到<code>AnnotationInvocationHandler</code>类的readObject函数。可以看到在readObject函数中361行调用了setValue方法且是在Entry中调用的，Entry var5又来自<code>this.memberValues.entrySet().iterator()</code>。</p>
 <p><img src="1-1.png" alt=""></p>
@@ -262,7 +275,7 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">-&gt;AnnotationInvocationHandler.readObject()</span><br><span class="line">  -&gt;this.memberValues.entrySet().iterator()</span><br><span class="line">	 -&gt;LazyMap.get()</span><br><span class="line">		-&gt;this.factory.transform(key)</span><br><span class="line">		  -&gt;ChainedTransformer.transform()</span><br><span class="line">			 -&gt;ConstantTransformer.transform()</span><br><span class="line">			 -&gt;InvokerTransformer.transform()</span><br><span class="line">				-&gt;Method.invoke()</span><br><span class="line">				  -&gt;Class.getMethod()</span><br><span class="line">			 -&gt;InvokerTransformer.transform()</span><br><span class="line">				-&gt;Method.invoke()</span><br><span class="line">				  -&gt;Runtime.getRuntime()</span><br><span class="line">			 -&gt;InvokerTransformer.transform()</span><br><span class="line">				-&gt;Method.invoke()</span><br><span class="line">				  -&gt;Runtime.exec()</span><br></pre></td></tr></table></figure>
 
 
-<h2 id="利用链分析payload构造"><a href="#利用链分析payload构造" class="headerlink" title="利用链分析payload构造"></a>利用链分析payload构造</h2><p>既然利用的是<code>AnnotationInvocationHandler.invoke</code>函数，那么就来看看这个函数</p>
+<h2 id="利用链分析-1"><a href="#利用链分析-1" class="headerlink" title="利用链分析"></a>利用链分析</h2><p>既然利用的是<code>AnnotationInvocationHandler.invoke</code>函数，那么就来看看这个函数</p>
 <p><img src="1-5.png" alt=""></p>
 <p>可以看到78行<code>this.memberValues.get(var4)</code>，当memberValues为LazyMap即可调用transform方法。LazyMap.get函数如下所示:</p>
 <p><img src="4.png" alt=""></p>
@@ -369,7 +382,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#01-Transformed-checkSetValue"><span class="nav-number">1.</span> <span class="nav-text">01 Transformed.checkSetValue</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#利用链分析"><span class="nav-number">1.1.</span> <span class="nav-text">利用链分析</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#payload构造"><span class="nav-number">1.2.</span> <span class="nav-text">payload构造</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#完整的攻击demo"><span class="nav-number">1.2.1.</span> <span class="nav-text">完整的攻击demo</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#02-LazyMap-get"><span class="nav-number">2.</span> <span class="nav-text">02 LazyMap.get</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#利用链分析payload构造"><span class="nav-number">2.1.</span> <span class="nav-text">利用链分析payload构造</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#payload构造-1"><span class="nav-number">2.2.</span> <span class="nav-text">payload构造</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#完整的攻击demo-1"><span class="nav-number">2.2.1.</span> <span class="nav-text">完整的攻击demo</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">3.</span> <span class="nav-text">参考</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#01-TransformedMap-checkSetValue"><span class="nav-number">1.</span> <span class="nav-text">01 TransformedMap.checkSetValue</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#利用链分析"><span class="nav-number">1.1.</span> <span class="nav-text">利用链分析</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#payload构造"><span class="nav-number">1.2.</span> <span class="nav-text">payload构造</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#完整的攻击demo"><span class="nav-number">1.2.1.</span> <span class="nav-text">完整的攻击demo</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#02-LazyMap-get"><span class="nav-number">2.</span> <span class="nav-text">02 LazyMap.get</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#利用链分析-1"><span class="nav-number">2.1.</span> <span class="nav-text">利用链分析</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#payload构造-1"><span class="nav-number">2.2.</span> <span class="nav-text">payload构造</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#完整的攻击demo-1"><span class="nav-number">2.2.1.</span> <span class="nav-text">完整的攻击demo</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">3.</span> <span class="nav-text">参考</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
