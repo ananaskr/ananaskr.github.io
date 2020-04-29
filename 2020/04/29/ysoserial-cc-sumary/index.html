@@ -20,15 +20,19 @@
     var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta property="og:type" content="website">
-<meta property="og:title" content="Ananaskr&#39;s Blog">
-<meta property="og:url" content="http://yoursite.com/archives/2020/index.html">
+  <meta name="description" content="花了一周的时间对现有的CommonsCollections利用链分析了一遍，这篇文章是总结一下各利用链的特点、适用场景以及我自己对于Java反序列化链的一点思考。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ysoserial之CommonsCollections系列总结">
+<meta property="og:url" content="http://yoursite.com/2020/04/29/ysoserial-cc-sumary/index.html">
 <meta property="og:site_name" content="Ananaskr&#39;s Blog">
+<meta property="og:description" content="花了一周的时间对现有的CommonsCollections利用链分析了一遍，这篇文章是总结一下各利用链的特点、适用场景以及我自己对于Java反序列化链的一点思考。">
 <meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2020-04-29T01:13:30.000Z">
+<meta property="article:modified_time" content="2020-04-29T01:50:02.688Z">
 <meta property="article:author" content="ananaskr">
 <meta name="twitter:card" content="summary">
 
-<link rel="canonical" href="http://yoursite.com/archives/2020/">
+<link rel="canonical" href="http://yoursite.com/2020/04/29/ysoserial-cc-sumary/">
 
 
 <script id="page-configurations">
@@ -36,12 +40,12 @@
   CONFIG.page = {
     sidebar: "",
     isHome : false,
-    isPost : false,
+    isPost : true,
     lang   : 'en'
   };
 </script>
 
-  <title>Archive | Ananaskr's Blog</title>
+  <title>ysoserial之CommonsCollections系列总结 | Ananaskr's Blog</title>
   
 
 
@@ -139,234 +143,93 @@
         <div class="content-wrap">
           
 
-          <div class="content archive">
+          <div class="content post posts-expand">
             
 
+    
   
   
-  
-  <div class="post-block">
-    <div class="posts-collapse">
-      <div class="collection-title">
-        <span class="collection-header">Um..! 14 posts in total. Keep on posting.</span>
-      </div>
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/04/29/ysoserial-cc-sumary/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="ananaskr">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ananaskr's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          ysoserial之CommonsCollections系列总结
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-04-29 09:13:30 / Modified: 09:50:02" itemprop="dateCreated datePublished" datetime="2020-04-29T09:13:30+08:00">2020-04-29</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/JAVA%E5%AE%89%E5%85%A8/" itemprop="url" rel="index"><span itemprop="name">JAVA安全</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
 
       
-    <div class="collection-year">
-      <span class="collection-header">2020</span>
+        <p>花了一周的时间对现有的CommonsCollections利用链分析了一遍，这篇文章是总结一下各利用链的特点、适用场景以及我自己对于Java反序列化链的一点思考。</p>
+<a id="more"></a>
+
+<h1 id="各利用链利用点"><a href="#各利用链利用点" class="headerlink" title="各利用链利用点"></a>各利用链利用点</h1><p>从前面的分析中，对于每个利用链，我们可以从外层触发点、中间承接点、以及Transformer构造来分析。</p>
+<h2 id="CommonsCollections1"><a href="#CommonsCollections1" class="headerlink" title="CommonsCollections1"></a>CommonsCollections1</h2>
     </div>
 
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
+    
+    
+    
 
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2020-04-29T12:10:13+08:00"
-              content="2020-04-29">
-          04-29
-        </time>
-      </div>
+      <footer class="post-footer">
 
-      <div class="post-title">
-          <a class="post-title-link" href="/2020/04/29/java-basic/" itemprop="url">
-            <span itemprop="name">JAVA反序列化有关基础知识</span>
-          </a>
-      </div>
-
-    </header>
-  </article>
-
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2020-04-29T09:13:30+08:00"
-              content="2020-04-29">
-          04-29
-        </time>
-      </div>
-
-      <div class="post-title">
-          <a class="post-title-link" href="/2020/04/29/ysoserial-cc-sumary/" itemprop="url">
-            <span itemprop="name">ysoserial之CommonsCollections系列总结</span>
-          </a>
-      </div>
-
-    </header>
-  </article>
-
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2020-04-28T22:20:40+08:00"
-              content="2020-04-28">
-          04-28
-        </time>
-      </div>
-
-      <div class="post-title">
-          <a class="post-title-link" href="/2020/04/28/ysoserial-analyze-10/" itemprop="url">
-            <span itemprop="name">ysoserial-analyze-10</span>
-          </a>
-      </div>
-
-    </header>
-  </article>
-
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2020-04-28T20:20:23+08:00"
-              content="2020-04-28">
-          04-28
-        </time>
-      </div>
-
-      <div class="post-title">
-          <a class="post-title-link" href="/2020/04/28/ysoserial-analyze-9/" itemprop="url">
-            <span itemprop="name">ysoserial分析之CommonsCollections9</span>
-          </a>
-      </div>
-
-    </header>
-  </article>
-
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2020-04-28T11:30:23+08:00"
-              content="2020-04-28">
-          04-28
-        </time>
-      </div>
-
-      <div class="post-title">
-          <a class="post-title-link" href="/2020/04/28/ysoserial-analyze-8/" itemprop="url">
-            <span itemprop="name">ysoserial分析之CommonsCollections8</span>
-          </a>
-      </div>
-
-    </header>
-  </article>
-
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2020-04-27T16:39:40+08:00"
-              content="2020-04-27">
-          04-27
-        </time>
-      </div>
-
-      <div class="post-title">
-          <a class="post-title-link" href="/2020/04/27/ysoserial-analyze-7/" itemprop="url">
-            <span itemprop="name">ysoserial分析之CommonsCollections7</span>
-          </a>
-      </div>
-
-    </header>
-  </article>
-
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2020-04-27T09:40:55+08:00"
-              content="2020-04-27">
-          04-27
-        </time>
-      </div>
-
-      <div class="post-title">
-          <a class="post-title-link" href="/2020/04/27/ysoserial-analyze-6/" itemprop="url">
-            <span itemprop="name">ysoserial分析之CommonsCollections6</span>
-          </a>
-      </div>
-
-    </header>
-  </article>
-
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2020-04-26T16:44:00+08:00"
-              content="2020-04-26">
-          04-26
-        </time>
-      </div>
-
-      <div class="post-title">
-          <a class="post-title-link" href="/2020/04/26/ysoserial-analyze-5/" itemprop="url">
-            <span itemprop="name">ysoserial分析之CommonsCollections5</span>
-          </a>
-      </div>
-
-    </header>
-  </article>
-
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2020-04-26T15:39:45+08:00"
-              content="2020-04-26">
-          04-26
-        </time>
-      </div>
-
-      <div class="post-title">
-          <a class="post-title-link" href="/2020/04/26/ysoserial-analyze-4/" itemprop="url">
-            <span itemprop="name">ysoserial分析之CommonsCollections4</span>
-          </a>
-      </div>
-
-    </header>
-  </article>
-
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2020-04-24T09:36:12+08:00"
-              content="2020-04-24">
-          04-24
-        </time>
-      </div>
-
-      <div class="post-title">
-          <a class="post-title-link" href="/2020/04/24/ysoserial-analyze-2/" itemprop="url">
-            <span itemprop="name">ysoserial分析之CommonsCollections2</span>
-          </a>
-      </div>
-
-    </header>
-  </article>
+        
 
 
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/04/28/ysoserial-analyze-10/" rel="prev" title="ysoserial-analyze-10">
+      <i class="fa fa-chevron-left"></i> ysoserial-analyze-10
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/04/29/java-basic/" rel="next" title="JAVA反序列化有关基础知识">
+      JAVA反序列化有关基础知识 <i class="fa fa-chevron-right"></i>
+    </a></div>
     </div>
-  </div>
+      </footer>
+    
+  </article>
   
   
   
-
-  
-  <nav class="pagination">
-    <span class="page-number current">1</span><a class="page-number" href="/archives/2020/page/2/">2</a><a class="extend next" rel="next" href="/archives/2020/page/2/"><i class="fa fa-angle-right" aria-label="Next page"></i></a>
-  </nav>
 
 
 
@@ -418,6 +281,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#各利用链利用点"><span class="nav-number">1.</span> <span class="nav-text">各利用链利用点</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#CommonsCollections1"><span class="nav-number">1.1.</span> <span class="nav-text">CommonsCollections1</span></a></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
