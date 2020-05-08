@@ -20,23 +20,25 @@
     var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta name="description" content="在CBC模式中，每个明文块先与前一个密文块进行异或后，再进行加密。在这种方法中，每个密文块都依赖于它前面的所有明文块。同时为了保证保证即使对相同明文多次加密，也可以得到不同的密文，在第一个块中使用IV(初始化向量)。当获取到一组明文与其对应的IV，密文时，即可发起CBC字节翻转攻击。">
+  <meta name="description" content="title: Padding Oracle的解密以及加密攻击date: 2020-05-08 22:33:27tags:categories: 密码攻击  前面介绍了CBC翻转攻击，从中也了解到了解密过程。而与解密过程中相关的还有一个Padding Oracle攻击。Padding Oracle攻击是2010年在欧洲举行的黑帽大会上由Juliano Rizzo和Thai Duong提出的。">
 <meta property="og:type" content="article">
-<meta property="og:title" content="CBC字节翻转攻击">
-<meta property="og:url" content="http://yoursite.com/2020/05/08/cbc-reverse/index.html">
+<meta property="og:title" content="padding-oracle">
+<meta property="og:url" content="http://yoursite.com/2020/05/08/padding-oracle/index.html">
 <meta property="og:site_name" content="Ananaskr&#39;s Blog">
-<meta property="og:description" content="在CBC模式中，每个明文块先与前一个密文块进行异或后，再进行加密。在这种方法中，每个密文块都依赖于它前面的所有明文块。同时为了保证保证即使对相同明文多次加密，也可以得到不同的密文，在第一个块中使用IV(初始化向量)。当获取到一组明文与其对应的IV，密文时，即可发起CBC字节翻转攻击。">
+<meta property="og:description" content="title: Padding Oracle的解密以及加密攻击date: 2020-05-08 22:33:27tags:categories: 密码攻击  前面介绍了CBC翻转攻击，从中也了解到了解密过程。而与解密过程中相关的还有一个Padding Oracle攻击。Padding Oracle攻击是2010年在欧洲举行的黑帽大会上由Juliano Rizzo和Thai Duong提出的。">
 <meta property="og:locale" content="en_US">
-<meta property="og:image" content="http://yoursite.com/2020/05/08/cbc-reverse/1.png">
-<meta property="og:image" content="http://yoursite.com/2020/05/08/cbc-reverse/2.png">
-<meta property="og:image" content="http://yoursite.com/2020/05/08/cbc-reverse/3.png">
-<meta property="article:published_time" content="2020-05-08T07:40:22.000Z">
-<meta property="article:modified_time" content="2020-05-08T07:44:46.446Z">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/padding-oracle/1.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/padding-oracle/2.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/padding-oracle/3.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/padding-oracle/4.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/08/padding-oracle/5.png">
+<meta property="article:published_time" content="2020-05-08T14:33:27.710Z">
+<meta property="article:modified_time" content="2020-05-08T14:37:31.931Z">
 <meta property="article:author" content="ananaskr">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://yoursite.com/2020/05/08/cbc-reverse/1.png">
+<meta name="twitter:image" content="http://yoursite.com/2020/05/08/padding-oracle/1.png">
 
-<link rel="canonical" href="http://yoursite.com/2020/05/08/cbc-reverse/">
+<link rel="canonical" href="http://yoursite.com/2020/05/08/padding-oracle/">
 
 
 <script id="page-configurations">
@@ -49,7 +51,7 @@
   };
 </script>
 
-  <title>CBC字节翻转攻击 | Ananaskr's Blog</title>
+  <title>padding-oracle | Ananaskr's Blog</title>
   
 
 
@@ -164,7 +166,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/05/08/cbc-reverse/">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/05/08/padding-oracle/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -177,7 +179,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          CBC字节翻转攻击
+          padding-oracle
         </h1>
 
         <div class="post-meta">
@@ -188,16 +190,7 @@
               <span class="post-meta-item-text">Posted on</span>
               
 
-              <time title="Created: 2020-05-08 15:40:22 / Modified: 15:44:46" itemprop="dateCreated datePublished" datetime="2020-05-08T15:40:22+08:00">2020-05-08</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">In</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E5%AF%86%E7%A0%81%E6%94%BB%E5%87%BB/" itemprop="url" rel="index"><span itemprop="name">密码攻击</span></a>
-                </span>
+              <time title="Created: 2020-05-08 22:33:27 / Modified: 22:37:31" itemprop="dateCreated datePublished" datetime="2020-05-08T22:33:27+08:00">2020-05-08</time>
             </span>
 
           
@@ -211,52 +204,52 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <p>在CBC模式中，每个明文块先与前一个密文块进行异或后，再进行加密。在这种方法中，每个密文块都依赖于它前面的所有明文块。同时为了保证保证即使对相同明文多次加密，也可以得到不同的密文，在第一个块中使用<font color=#008000>IV(初始化向量)</font>。当获取到一组明文与其对应的IV，密文时，即可发起CBC字节翻转攻击。</p>
+        <hr>
+<p>title: Padding Oracle的解密以及加密攻击<br>date: 2020-05-08 22:33:27<br>tags:<br>categories: 密码攻击</p>
+<hr>
+<p>前面介绍了<a href="https://ananaskr.github.io/2020/05/08/cbc-reverse/" target="_blank" rel="noopener">CBC翻转攻击</a>，从中也了解到了解密过程。而与解密过程中相关的还有一个<font color=#008000>Padding Oracle攻击</font>。Padding Oracle攻击是2010年在欧洲举行的黑帽大会上由Juliano Rizzo和Thai Duong提出的。</p>
 <a id="more"></a>
 
-<h1 id="加密过程"><a href="#加密过程" class="headerlink" title="加密过程"></a>加密过程</h1><p><strong>加密过程如下所示</strong>:</p>
+<h1 id="Padding-Oracle获取明文"><a href="#Padding-Oracle获取明文" class="headerlink" title="Padding Oracle获取明文"></a>Padding Oracle获取明文</h1><h2 id="前提条件"><a href="#前提条件" class="headerlink" title="前提条件"></a>前提条件</h2><ul>
+<li>知道密文和IV</li>
+<li>攻击者能够触发密文的解密过程，且能够知道密文的解密结果。(应用程序对解密正确与否会给出不同的响应)</li>
+</ul>
+<h2 id="利用点-加密过程中的明文填充"><a href="#利用点-加密过程中的明文填充" class="headerlink" title="利用点-加密过程中的明文填充"></a>利用点-加密过程中的明文填充</h2><p>AES具有<font color=#008000>分组加密</font>的特性。对于明文分块后不足分块大小的。就要进行<font color=#008000>明文填充</font>。其中有种填充方式为<font color=#008000>PKCS5Padding</font>。此种填充方式会在明文块末尾补足相应数量的字节，且每个字节的值等于缺少的字符数量。如下图所示:</p>
 <p><img src="1.png" alt=""></p>
-<p>文字版的加密过程：</p>
-<ol>
-<li>首先将明文分组(常见于以16字节一组)，位数不足进行填充。</li>
-<li>生成一个随机的初始化向量(IV)和一个密钥。</li>
-<li>将IV和第一组明文异或。</li>
-<li>用密钥对异或的结果使用密钥key进行加密，得到密文C1。</li>
-<li>使用C1与第二组明文进行异或，然后使用key加密，得到密文C2。</li>
-<li>重复4-5,直到最后一组明文。</li>
-<li>将IV和加密后的密文拼接在一起，得到最终的密文。</li>
-</ol>
-<h1 id="解密过程"><a href="#解密过程" class="headerlink" title="解密过程"></a>解密过程</h1><p><strong>解密过程如下所示</strong>:</p>
+<h2 id="攻击原理"><a href="#攻击原理" class="headerlink" title="攻击原理"></a>攻击原理</h2><p>如图所示的解密过程:</p>
 <p><img src="2.png" alt=""></p>
-<p>文字版的解密过程：</p>
+<p>当攻击者拿到了IV和密文后。可以从图中得知，Intermediary Value即中间值是由明文和IV异或得到的，同时它也就是密文通过密钥解密得到的值。由上面的解密过程中可以得知<code>P[1] = decrept(C[1]) XOR IV</code>。那么得到了中间值，就可以知道明文了。如何获得中间值呢？</p>
+<p>从CBC翻转攻击可以知道，IV是可以构造的。通过构造IV，使得解密后的明文最后一个填充字符为0x01，再将构造的IV与001进行异或，就得到了中间值的最后一个字节。我们知道，通过构造不同的IV，可以得到不同的明文，但是其中的中间值是不变的。因此，这个过程可以变成:</p>
 <ol>
-<li>从密文中提取出IV，然后将密文分组。</li>
-<li>使用密钥key对第一组密文进行解密，然后和IV进行异或得到第一组明文。</li>
-<li>使用key对第二组密文进行解密，然后和第一组密文进行异或得到第二组明文。</li>
-<li>重复3，直到最后一组密文。</li>
+<li>设置构造IV的值为0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00，将它直接进行解出明文可能出现错误的填充值。然后不断调整最后一个字节，使得其解出的明文最后一个字节的0x01。</li>
+<li>这时候构造IV的最后一个字节的值 XOR 0x01就得到了中间值的最后一个字节值。此时将其异或上原始IV的最后一个字节，就获得了明文的最后一个字节。</li>
+<li>然后进行明文倒数第二个字节的获得。首先构造的IV需使得明文的最后两个字节为0x02,0x02。倒数第一个字节的IV，此时可以通过中间值最后一个字节 XOR 0x02获得。倒数第二个字节的IV需要像1中那样爆破。</li>
+<li>重复以上步骤，直至获取到最后一个明文字节。</li>
 </ol>
-<h1 id="CBC翻转攻击"><a href="#CBC翻转攻击" class="headerlink" title="CBC翻转攻击"></a>CBC翻转攻击</h1><p><strong>CBC翻转攻击原理</strong>:</p>
-<p>而CBC翻转攻击与解密过程有关。直观来看，IV会影响到第一组明文的值，而每一组明文的值都会被前一组密文所影响。若第一块密文中的某个字节被改变，则解密出来的第二组明文对应的字节也会被改变。可以从下图看出这整个过程</p>
+<h1 id="Padding-Oracle构造密文"><a href="#Padding-Oracle构造密文" class="headerlink" title="Padding Oracle构造密文"></a>Padding Oracle构造密文</h1><p>除了获取明文外，它还可以获得任意明文的加密密文。直观来看，在上一步中已经获取到所有的中间值。首先将明文进行填充，然后与中间值异或就可以得到IV值。然后将第二个分组的明文异或第二个分组的中间值，即得到了第一个分组的密文。那么到这里就会发现最后一个分组的密文无从得知。</p>
+<p>有人提出了获得任何明文的密文的方法。从最后两个密文块开始，随机生成最后的密文块。然后每次根据最后一个明文，获取到前一个密文块的密文。依次类推，最后获得密文，过程如图所示:</p>
 <p><img src="3.png" alt=""></p>
-<p>可以得知，某组密文的改变会影响到其对应的明文块的<font color=#008000>完全改变</font>以及下一个明文块中<font color=#008000>对应位置的改变</font>。</p>
-<p>此攻击造成的影响:</p>
+<p><img src="4.png" alt=""></p>
+<p><img src="5.png" alt=""></p>
+<blockquote>
+<p>图片来自p0’s的博客</p>
+</blockquote>
+<p>文字版的过程：</p>
 <ol>
-<li>绕过过滤器</li>
-<li>改变用户权限提升至管理员</li>
-<li>…</li>
+<li>产生一个随机分组块Cr。</li>
+<li>对于每一个明文块，从最后一个明文块开始<ul>
+<li>创建两个块大小的密文C’，它由空块(0000…00)以及最新生成的密文块Cn-1组成。首轮由空块和Cr组成。</li>
+<li>改变空块的最后一个字节，直到不出现padding error。(此时空块的最后一个字节与后一个块的中间值异或的值为0x01)。还是依照上面的方法获取到后一个块的中间值。</li>
+<li>获取到后一个块的中间值以后，就可以利用中间值和明文，构造出前一个块的密文。(P[n] = decrept(C[n]) XOR C[n-1] =&gt; C[n-1] = decrept(C[n]) XOR P[n])。</li>
+<li>然后重复整个过程，直到最后第一个明文块的密文获取完毕。</li>
+</ul>
+</li>
+<li>再将所有的密文+Cr连接起来就获取到最终的密文了。</li>
 </ol>
-<p><strong>CBC翻转攻击过程</strong></p>
-<p>具体的如何改变明文呢？假设要改变第二组明文的值，那么就需要改变对应的第一组密文的值。这里就要利用到异或的原理，若<code>A = B XOR C</code>，那么<font color=#008000><code>A XOR B XOR C = 0</code></font>。所以，<code>0 XOR ANY = ANY</code>。假设ANY为最终我们想要改变的明文字节值。 有如下的计算方式:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">P[1] &#x3D; decrept(C[1]) XOR IV</span><br><span class="line">P[2] &#x3D; decrept(C[2]) XOR C[1]</span><br><span class="line"></span><br><span class="line">ANY &#x3D; P[2] XOR decrept(C[2]) XOR C[1] XOR ANY</span><br><span class="line"></span><br><span class="line">ANY &#x3D; decrept(C[2]) XOR (P[2] XOR C[1] XOR ANY)</span><br><span class="line">C&#39;[1] &#x3D; P[2] XOR C[1] XOR ANY</span><br></pre></td></tr></table></figure>
-
-<p>由上述可知，改变的密文字节值的计算方式为<font color=#008000><code>P[2] XOR C[1] XOR ANY</code></font>。python中使用如下方式进行计算</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chr(ord(C[<span class="number">1</span>])^ord(P[<span class="number">2</span>])^ord(ANY))</span><br></pre></td></tr></table></figure>
-
-<p>对应的明文确实如期地改变了，但由于密文C[1]的变化，使得明文P[1]的结果也面目全非。而明文P[1]的结果与IV相关，IV为我们可控。因此按照同样的方法改变IV的值，最终就得到了更改后的密文和IV。</p>
-<p>对此感兴趣的同学可以<a href="https://p0sec.net/index.php/archives/99/" target="_blank" rel="noopener">p0’s</a>师傅出得一道题来看看。</p>
 <h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
-<li><a href="https://maplege.github.io/2018/11/19/CBC-reverse/" target="_blank" rel="noopener">CBC字节反转攻击原理</a></li>
-<li><a href="https://p0sec.net/index.php/archives/99/" target="_blank" rel="noopener">CBC字节翻转攻击</a></li>
+<li><a href="https://www.jianshu.com/p/1851f778e579" target="_blank" rel="noopener">Padding Oracle</a></li>
+<li><a href="https://blog.skullsecurity.org/2016/going-the-other-way-with-padding-oracles-encrypting-arbitrary-data" target="_blank" rel="noopener">Going the other way with padding oracles: Encrypting arbitrary data!</a></li>
+<li><a href="https://maplege.github.io/2018/11/10/padding-oracle-attack/" target="_blank" rel="noopener">PaddingOracleAttack原理记录</a></li>
 </ul>
 
     </div>
@@ -273,13 +266,10 @@
         
     <div class="post-nav">
       <div class="post-nav-item">
-    <a href="/2020/04/30/java-calendar-2019/" rel="prev" title="Ripstech Java Security 2019 Calendar复现系列">
-      <i class="fa fa-chevron-left"></i> Ripstech Java Security 2019 Calendar复现系列
+    <a href="/2020/05/08/shrio-550-attack/" rel="prev" title="shiro-550反序列化漏洞分析复现">
+      <i class="fa fa-chevron-left"></i> shiro-550反序列化漏洞分析复现
     </a></div>
-      <div class="post-nav-item">
-    <a href="/2020/05/08/shrio-550-attack/" rel="next" title="shiro-550反序列化漏洞分析复现">
-      shiro-550反序列化漏洞分析复现 <i class="fa fa-chevron-right"></i>
-    </a></div>
+      <div class="post-nav-item"></div>
     </div>
       </footer>
     
@@ -338,7 +328,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#加密过程"><span class="nav-number">1.</span> <span class="nav-text">加密过程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#解密过程"><span class="nav-number">2.</span> <span class="nav-text">解密过程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#CBC翻转攻击"><span class="nav-number">3.</span> <span class="nav-text">CBC翻转攻击</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">参考</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Padding-Oracle获取明文"><span class="nav-number">1.</span> <span class="nav-text">Padding Oracle获取明文</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#前提条件"><span class="nav-number">1.1.</span> <span class="nav-text">前提条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#利用点-加密过程中的明文填充"><span class="nav-number">1.2.</span> <span class="nav-text">利用点-加密过程中的明文填充</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#攻击原理"><span class="nav-number">1.3.</span> <span class="nav-text">攻击原理</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Padding-Oracle构造密文"><span class="nav-number">2.</span> <span class="nav-text">Padding Oracle构造密文</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">3.</span> <span class="nav-text">参考</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
