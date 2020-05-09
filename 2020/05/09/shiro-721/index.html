@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="shiro在经历了1.2.4硬编码密钥导致的反序列化漏洞之后，又被爆出新的RCE漏洞，还是在AES这个地方，编号为shiro-550。这篇文章复现并分析了该漏洞。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="shiro-721 Padding Oracle漏洞分析复现">
+<meta property="og:url" content="http://yoursite.com/2020/05/09/shiro-721/index.html">
+<meta property="og:site_name" content="Ananaskr&#39;s Blog">
+<meta property="og:description" content="shiro在经历了1.2.4硬编码密钥导致的反序列化漏洞之后，又被爆出新的RCE漏洞，还是在AES这个地方，编号为shiro-550。这篇文章复现并分析了该漏洞。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://yoursite.com/2020/05/09/shiro-721/2.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/09/shiro-721/1.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/09/shiro-721/3.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/09/shiro-721/4.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/09/shiro-721/5.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/09/shiro-721/6.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/09/shiro-721/7.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/09/shiro-721/8.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/09/shiro-721/9.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/09/shiro-721/10.png">
+<meta property="article:published_time" content="2020-05-09T13:23:18.000Z">
+<meta property="article:modified_time" content="2020-05-09T13:27:31.544Z">
+<meta property="article:author" content="ananaskr">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2020/05/09/shiro-721/2.png">
+
+<link rel="canonical" href="http://yoursite.com/2020/05/09/shiro-721/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>shiro-721 Padding Oracle漏洞分析复现 | Ananaskr's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Ananaskr's Blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/About/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/05/09/shiro-721/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="ananaskr">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ananaskr's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          shiro-721 Padding Oracle漏洞分析复现
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-05-09 21:23:18 / Modified: 21:27:31" itemprop="dateCreated datePublished" datetime="2020-05-09T21:23:18+08:00">2020-05-09</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0/" itemprop="url" rel="index"><span itemprop="name">漏洞复现</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>shiro在经历了1.2.4硬编码密钥导致的反序列化漏洞之后，又被爆出新的RCE漏洞，还是在AES这个地方，编号为shiro-550。这篇文章复现并分析了该漏洞。</p>
+<a id="more"></a>
+
+<h1 id="漏洞信息"><a href="#漏洞信息" class="headerlink" title="漏洞信息"></a>漏洞信息</h1><h2 id="影响版本"><a href="#影响版本" class="headerlink" title="影响版本"></a>影响版本</h2><ul>
+<li>shiro &lt;= 1.4.1</li>
+</ul>
+<h2 id="条件"><a href="#条件" class="headerlink" title="条件"></a>条件</h2><ul>
+<li>具有合法cookie值</li>
+<li>能够对padding正确与否做出不同的响应</li>
+</ul>
+<h2 id="组件"><a href="#组件" class="headerlink" title="组件"></a>组件</h2><ul>
+<li>rememberMe</li>
+</ul>
+<h2 id="漏洞原理"><a href="#漏洞原理" class="headerlink" title="漏洞原理"></a>漏洞原理</h2><p>Shrio所使用的cookie里的rememberMe字段采用了AES-128-CBC的加密模式，这使得该字段可以被Padding oracle攻击利用。攻击者可以使用一个合法有效的rememberMe cookie作为前缀来实施Padding Oracle，然后制造一个特定的rememberMe来执行Java反序列化攻击。  </p>
+<p>复现的步骤如下:  </p>
+<ul>
+<li>成功登录网站并获取到rememberMe Cookie</li>
+<li>使用这个合法Cookie作为前缀来进行Padding Oracle攻击</li>
+<li>加密ysoserial反序列化payload来制作特定的rememberMe cookie</li>
+<li>使用新的rememberMe cookie发起请求。</li>
+</ul>
+<h1 id="漏洞点分析"><a href="#漏洞点分析" class="headerlink" title="漏洞点分析"></a>漏洞点分析</h1><p>大多数的Padding Oracle攻击都是用来获取明文的，后来提出了利用Padding Oracle加密任意明文的方法，其原理可从<a href="https://ananaskr.github.io/2020/05/08/padding-oracle/" target="_blank" rel="noopener">前面</a>文章中获取。要想利用此漏洞，有一个很关键的条件，目标系统需要对AES解密时padding正确与否，返回明确的信息，有点类似布尔盲注。</p>
+<p>这次漏洞点和<a href="https://ananaskr.github.io/2020/05/08/shiro-550-attack/" target="_blank" rel="noopener">shiro-550</a>一样，还是出在了AES这个地方。让我们来跟进一下，是否满足AES解密padding正确与否时返回不同的信息。选择shiro的1.4.1版本。</p>
+<p>首先确定一下AES解密失败padding的返回值。还是定位到<code>org.apache.shiro.mgt.AbstractRememberMeManager#getRememberedPrincipals</code>方法，从这里一直到解密crypt函数，所经过的调用链如下图所示:</p>
+<p><img src="2.png" alt=""></p>
+<p>crypt函数中的处理如下所示：</p>
+<p><img src="1.png" alt=""></p>
+<p>如果解密cipher.dpFinal失败就会抛出异常，这个异常往上最终会被getRememberedPrincipals中捕获并进行处理。如下图所示:</p>
+<p><img src="3.png" alt=""></p>
+<p>会进入onRememberedPrincipalFailure函数进行处理，跟进它。</p>
+<p><img src="4.png" alt=""></p>
+<p>在此函数中获取到request和response，然后跟进forgetIdentity函数，</p>
+<p><img src="5.png" alt=""></p>
+<p>在forgetIdentity函数中将当前cookie值从request、response中删除。</p>
+<p><img src="6.png" alt=""></p>
+<p>跟进removeFrom函数可以看到，将cookie的rememeberMe字段值设置为deleteMe。</p>
+<p><img src="7.png" alt=""></p>
+<p>从上述分析中可以得知，当padding错误时，返回的cookie值是deleteMe。</p>
+<p>然而到这里就结束了吗？并没有，如果走一遍流程就会发现，当反序列化发生错误时，最终也是调用到了removeFrom函数。因为convertBytesToPrincipals中也包含反序列化的操作。现在的情况就变成了:</p>
+<ul>
+<li>padding正确、反序列化正确 =&gt; rememberMe</li>
+<li>padding正确、反序列化错误 =&gt; deleteMe</li>
+<li>padding错误、反序列化正确 =&gt; deleteMe</li>
+<li>padding错误、反序列化错误 =&gt; deleteMe</li>
+</ul>
+<p>为了消除反序列化错误对其的影响，每次请求的数据必须是能够正确反序列化的。本身padding oracle攻击并不需要一个合法有效的密文，但是在shiro场景下，为了能够正确反序列化，需要一个<font color=#008000>合法有效的cookie</font>。</p>
+<p>在这里用到了一个java反序列化中的小trick，java中的ObjectOutputStream是一个stream，它会按照格式以队列的方式读下去，若后面拼接无关内容，是不会影响反序列化的。因此，在后面添加新的IV和密文，既能反序列化成功，又能验证padding是否正确。</p>
+<blockquote>
+<p>shiro接口在验证登录时有authc和user两种权限，authc是认证过，user是登录过。若开启了rememberMe功能，user可以通过，而authc不能通过。因此rememberMe只有在user权限的接口才有用。可以参考<a href="https://xz.aliyun.com/t/7207#toc-3" target="_blank" rel="noopener">Apache Shiro源码浅析之从远古洞到最新PaddingOracle CBC</a>。</p>
+</blockquote>
+<p>接下来的就是编写exp，然后进行padding oracle。</p>
+<h1 id="漏洞利用"><a href="#漏洞利用" class="headerlink" title="漏洞利用"></a>漏洞利用</h1><p>进行漏洞利用时，环境选择shiro 1.4.1版本。</p>
+<h2 id="获取明文"><a href="#获取明文" class="headerlink" title="获取明文"></a>获取明文</h2><p>首先获取要构造的明文。一段反序列化后能够执行命令的字节码。前面的文章介绍了wh1t3p1g师傅使用的一种方式，这次介绍另一种利用链构造方式，利用到了<font color=#008000>commons-beanutils</font>。同样地为了保持不受数组的影响，采用的命令执行点仍然是TemplatesImpl对象。只不过不再使用TransformingComparator而是<font color=#008000>BeanComparator</font>。这就是ysoserial中的<font color=#008000>CommonsBeanUtils1</font>。关于此利用链的分析可以从<a href="https://ananaskr.github.io/2020/05/09/ysoseial-commonsbeanutils1/" target="_blank" rel="noopener">ysoseial之CommonsBeanUtils1分析</a>中获取。</p>
+<p>利用ysoseial首先生成所需要的明文</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -jar ysoserial.jar CommonsBeanutils1 &#x2F;Applications&#x2F;Calculator.app&#x2F;Contents&#x2F;MacOS&#x2F;Calculator &gt; payload.bin</span><br></pre></td></tr></table></figure>
+
+<h2 id="获取密文"><a href="#获取密文" class="headerlink" title="获取密文"></a>获取密文</h2><p>然后在网上找了一个脚本<a href="https://github.com/longofo/PaddingOracleAttack-Shiro-721" target="_blank" rel="noopener">PaddingOracleAttack-Shiro-721</a>进行利用。执行</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -jar PaddingOracleAttack.jar targetUrl rememberMeCookie blockSize payloadFilePath</span><br></pre></td></tr></table></figure>
+
+<p>在实际中，执行了以下命令。</p>
+<p><img src="8.png" alt=""></p>
+<p>生成的密文结果如下:</p>
+<p><img src="9.png" alt=""></p>
+<p>然后将其作为新的rememberMe Cookie值，发送请求，结果如下</p>
+<p><img src="10.png" alt=""></p>
+<blockquote>
+<p>在实际利用时，尽量选择简短的payload，这样有利于缩减爆破的时间。</p>
+</blockquote>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://issues.apache.org/jira/browse/SHIRO-721" target="_blank" rel="noopener">RememberMe Padding Oracle Vulnerability</a></li>
+<li><a href="https://xz.aliyun.com/t/7026" target="_blank" rel="noopener">Apacha-Shiro PaddingOracle 分析</a></li>
+<li><a href="https://p0sec.net/index.php/archives/126/" target="_blank" rel="noopener">Shiro Padding Oracle Attack 反序列化</a></li>
+<li><a href="https://xz.aliyun.com/t/7207#toc-3" target="_blank" rel="noopener">Apache Shiro源码浅析之从远古洞到最新PaddingOracle CBC</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/05/09/ysoseial-commonsbeanutils1/" rel="prev" title="ysoseial之CommonsBeanUtils1分析">
+      <i class="fa fa-chevron-left"></i> ysoseial之CommonsBeanUtils1分析
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#漏洞信息"><span class="nav-number">1.</span> <span class="nav-text">漏洞信息</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#影响版本"><span class="nav-number">1.1.</span> <span class="nav-text">影响版本</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#条件"><span class="nav-number">1.2.</span> <span class="nav-text">条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#组件"><span class="nav-number">1.3.</span> <span class="nav-text">组件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#漏洞原理"><span class="nav-number">1.4.</span> <span class="nav-text">漏洞原理</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#漏洞点分析"><span class="nav-number">2.</span> <span class="nav-text">漏洞点分析</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#漏洞利用"><span class="nav-number">3.</span> <span class="nav-text">漏洞利用</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#获取明文"><span class="nav-number">3.1.</span> <span class="nav-text">获取明文</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#获取密文"><span class="nav-number">3.2.</span> <span class="nav-text">获取密文</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">参考</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">ananaskr</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">20</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">ananaskr</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
