@@ -33,7 +33,7 @@
 <meta property="og:image" content="http://yoursite.com/2020/05/08/padding-oracle/4.png">
 <meta property="og:image" content="http://yoursite.com/2020/05/08/padding-oracle/5.png">
 <meta property="article:published_time" content="2020-05-08T14:33:27.000Z">
-<meta property="article:modified_time" content="2020-05-09T00:51:20.549Z">
+<meta property="article:modified_time" content="2020-05-09T01:07:48.616Z">
 <meta property="article:author" content="ananaskr">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http://yoursite.com/2020/05/08/padding-oracle/1.png">
@@ -196,7 +196,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-05-09 08:51:20" itemprop="dateModified" datetime="2020-05-09T08:51:20+08:00">2020-05-09</time>
+                <time title="Modified: 2020-05-09 09:07:48" itemprop="dateModified" datetime="2020-05-09T09:07:48+08:00">2020-05-09</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -258,6 +258,7 @@
 </li>
 <li>再将所有的密文+Cr连接起来就获取到最终的密文了。</li>
 </ol>
+<p>整个Padding Oracle的加密过程，就像是先获取到明文，然后使用CBC翻转攻击，使其成为特定的明文，从而构造任意明文的密文。</p>
 <h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
 <li><a href="https://www.jianshu.com/p/1851f778e579" target="_blank" rel="noopener">Padding Oracle</a></li>
 <li><a href="https://blog.skullsecurity.org/2016/going-the-other-way-with-padding-oracles-encrypting-arbitrary-data" target="_blank" rel="noopener">Going the other way with padding oracles: Encrypting arbitrary data!</a></li>
@@ -278,10 +279,13 @@
         
     <div class="post-nav">
       <div class="post-nav-item">
-    <a href="/2020/05/08/shrio-550-attack/" rel="prev" title="shiro-550反序列化漏洞分析复现">
+    <a href="/2020/05/08/shiro-550-attack/" rel="prev" title="shiro-550反序列化漏洞分析复现">
       <i class="fa fa-chevron-left"></i> shiro-550反序列化漏洞分析复现
     </a></div>
-      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/2020/05/09/ysoseial-commonsbeanutils1/" rel="next" title="ysoseial之CommonsBeanUtils1分析">
+      ysoseial之CommonsBeanUtils1分析 <i class="fa fa-chevron-right"></i>
+    </a></div>
     </div>
       </footer>
     
@@ -354,7 +358,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">18</span>
+          <span class="site-state-item-count">19</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>

