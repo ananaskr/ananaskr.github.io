@@ -22,7 +22,7 @@
 
   <meta name="description" content="FastJson是一个由alibaba维护的json库，应用范围很广。2017年3月15日由官方发布最早的安全公告。该公告表示FastJson在1.2.24及之前版本存在远程代码执行漏洞。紧接着于4月29日出现相关POC。这篇文章就是来分析复现这一漏洞。">
 <meta property="og:type" content="article">
-<meta property="og:title" content="FastJson远程反序列化回顾系列(一)">
+<meta property="og:title" content="FastJson反序列化回顾系列(一)">
 <meta property="og:url" content="http://yoursite.com/2020/05/10/fastjson-1/index.html">
 <meta property="og:site_name" content="Ananaskr&#39;s Blog">
 <meta property="og:description" content="FastJson是一个由alibaba维护的json库，应用范围很广。2017年3月15日由官方发布最早的安全公告。该公告表示FastJson在1.2.24及之前版本存在远程代码执行漏洞。紧接着于4月29日出现相关POC。这篇文章就是来分析复现这一漏洞。">
@@ -46,7 +46,7 @@
 <meta property="og:image" content="http://yoursite.com/2020/05/10/fastjson-1/11.png">
 <meta property="og:image" content="http://yoursite.com/2020/05/10/fastjson-1/12.png">
 <meta property="article:published_time" content="2020-05-10T15:15:50.000Z">
-<meta property="article:modified_time" content="2020-05-16T02:08:12.406Z">
+<meta property="article:modified_time" content="2020-05-16T02:35:05.766Z">
 <meta property="article:author" content="ananaskr">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http://yoursite.com/2020/05/10/fastjson-1/1.png">
@@ -64,7 +64,7 @@
   };
 </script>
 
-  <title>FastJson远程反序列化回顾系列(一) | Ananaskr's Blog</title>
+  <title>FastJson反序列化回顾系列(一) | Ananaskr's Blog</title>
   
 
 
@@ -192,7 +192,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          FastJson远程反序列化回顾系列(一)
+          FastJson反序列化回顾系列(一)
         </h1>
 
         <div class="post-meta">
@@ -209,7 +209,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-05-16 10:08:12" itemprop="dateModified" datetime="2020-05-16T10:08:12+08:00">2020-05-16</time>
+                <time title="Modified: 2020-05-16 10:35:05" itemprop="dateModified" datetime="2020-05-16T10:35:05+08:00">2020-05-16</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -301,10 +301,10 @@
 <p>然后跟进byteValue()</p>
 <p><img src="10.png" alt=""></p>
 <p>在这里进行了base64解码。</p>
-<h1 id="利用链分析之JNDI注入-JdbcRowSetImpl"><a href="#利用链分析之JNDI注入-JdbcRowSetImpl" class="headerlink" title="利用链分析之JNDI注入(JdbcRowSetImpl)"></a>利用链分析之JNDI注入(JdbcRowSetImpl)</h1><p>由于此利用方式需要用到JNDI注入，对此不了解的可以先了解一下。利用JNDI注入需要满足2个条件:</p>
+<h1 id="利用链分析之JNDI注入-JdbcRowSetImpl"><a href="#利用链分析之JNDI注入-JdbcRowSetImpl" class="headerlink" title="利用链分析之JNDI注入(JdbcRowSetImpl)"></a>利用链分析之JNDI注入(JdbcRowSetImpl)</h1><p>由于此利用方式需要用到JNDI注入，对此不了解的可以先了解一下。此次利用JNDI注入需要满足2个条件:</p>
 <ol>
 <li>存在有漏洞的代码(即lookup(uri)，且uri可控)</li>
-<li>Java版本(&lt;=jdk1.8_113)</li>
+<li>Java版本(&lt;=jdk1.8_113) (RMI利用方式)</li>
 </ol>
 <p>有趣的是，第一点条件可利用<code>com.sun.rowset.JdbcRowSetImpl</code>类完成。定位到JdbcRowSetImpl类，搜索lookup函数，直接定位到<code>connect()</code>函数。</p>
 <p><img src="3-1.png" alt=""></p>
@@ -374,7 +374,10 @@
     <a href="/2020/05/09/shiro-721/" rel="prev" title="shiro-721 Padding Oracle漏洞分析复现">
       <i class="fa fa-chevron-left"></i> shiro-721 Padding Oracle漏洞分析复现
     </a></div>
-      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/2020/05/16/fastjson-2/" rel="next" title="FastJson反序列化回顾系列(二)">
+      FastJson反序列化回顾系列(二) <i class="fa fa-chevron-right"></i>
+    </a></div>
     </div>
       </footer>
     
@@ -447,7 +450,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">21</span>
+          <span class="site-state-item-count">25</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
