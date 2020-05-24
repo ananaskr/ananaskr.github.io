@@ -31,7 +31,7 @@
 <meta property="og:image" content="http://yoursite.com/2020/05/16/fastjson-5/2.png">
 <meta property="og:image" content="http://yoursite.com/2020/05/16/fastjson-5/3.png">
 <meta property="article:published_time" content="2020-05-16T15:11:47.000Z">
-<meta property="article:modified_time" content="2020-05-17T07:33:12.739Z">
+<meta property="article:modified_time" content="2020-05-20T15:36:36.844Z">
 <meta property="article:author" content="ananaskr">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http://yoursite.com/2020/05/16/fastjson-5/1.png">
@@ -194,7 +194,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-05-17 15:33:12" itemprop="dateModified" datetime="2020-05-17T15:33:12+08:00">2020-05-17</time>
+                <time title="Modified: 2020-05-20 23:36:36" itemprop="dateModified" datetime="2020-05-20T23:36:36+08:00">2020-05-20</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -219,7 +219,7 @@
       
         <p>1.2.44版本中对<code>L</code>和<code>[</code>开头的情况进行了防御，使得在1.2.44版本时并没有出现任何的checkAutoType的绕过。但是却出现了对于黑名单的绕过。本篇文章对此进行深入的分析。</p>
 <a id="more"></a>
-
+<p>整个复现系列的payload放在了<a href="https://github.com/ananaskr/FastJson_Payload/tree/master/project/src/main/java" target="_blank" rel="noopener">github</a>上。</p>
 <h1 id="漏洞信息"><a href="#漏洞信息" class="headerlink" title="漏洞信息"></a>漏洞信息</h1><h2 id="影响版本"><a href="#影响版本" class="headerlink" title="影响版本"></a>影响版本</h2><ul>
 <li>1.2.44 &lt;= fastjson &lt;= 1.2.45</li>
 <li>fastjson &lt;=  1.2.43 (也可成立，需要添加ibatis第三方包，而在前面的版本中无需ibatis包也可RCE)</li>
@@ -342,7 +342,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">28</span>
+          <span class="site-state-item-count">30</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>

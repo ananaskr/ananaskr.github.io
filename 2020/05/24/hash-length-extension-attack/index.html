@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="哈希摘要算法，如MD5、SHA1、SHA2等都是基于Merkle-Damgard结构。当知道hash(secret+message)的值及secret长度的情况下，可以轻松推算出hash(secret + message || padding || m’)的值。因为攻击者的hash计算过程，相当于从服务器计算过程的一半紧接着进行下去。当填充后，服务器计算出的原始hash值，正好与添加扩展字符串并覆">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Hash长度扩展攻击">
+<meta property="og:url" content="http://yoursite.com/2020/05/24/hash-length-extension-attack/index.html">
+<meta property="og:site_name" content="Ananaskr&#39;s Blog">
+<meta property="og:description" content="哈希摘要算法，如MD5、SHA1、SHA2等都是基于Merkle-Damgard结构。当知道hash(secret+message)的值及secret长度的情况下，可以轻松推算出hash(secret + message || padding || m’)的值。因为攻击者的hash计算过程，相当于从服务器计算过程的一半紧接着进行下去。当填充后，服务器计算出的原始hash值，正好与添加扩展字符串并覆">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://yoursite.com/2020/05/24/hash-length-extension-attack/1.png">
+<meta property="article:published_time" content="2020-05-24T09:13:35.000Z">
+<meta property="article:modified_time" content="2020-05-24T09:14:41.187Z">
+<meta property="article:author" content="ananaskr">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2020/05/24/hash-length-extension-attack/1.png">
+
+<link rel="canonical" href="http://yoursite.com/2020/05/24/hash-length-extension-attack/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>Hash长度扩展攻击 | Ananaskr's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Ananaskr's Blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/About/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/05/24/hash-length-extension-attack/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="ananaskr">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ananaskr's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Hash长度扩展攻击
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-05-24 17:13:35 / Modified: 17:14:41" itemprop="dateCreated datePublished" datetime="2020-05-24T17:13:35+08:00">2020-05-24</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E5%AF%86%E7%A0%81%E6%94%BB%E5%87%BB/" itemprop="url" rel="index"><span itemprop="name">密码攻击</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>哈希摘要算法，如MD5、SHA1、SHA2等都是基于Merkle-Damgard结构。当知道hash(secret+message)的值及secret长度的情况下，可以轻松推算出hash(secret + message || padding || m’)的值。因为攻击者的hash计算过程，相当于从服务器计算过程的一半紧接着进行下去。当填充后，服务器计算出的原始hash值，正好与添加扩展字符串并覆盖初始链变量所计算出的一样。因此，出现此攻击。</p>
+<a id="more"></a>
+
+<h1 id="利用场景"><a href="#利用场景" class="headerlink" title="利用场景"></a>利用场景</h1><ul>
+<li>在进行验证时使用 <code>md5(secret+message) === hash</code>进行比较</li>
+</ul>
+<h1 id="MD5算法流程"><a href="#MD5算法流程" class="headerlink" title="MD5算法流程"></a>MD5算法流程</h1><p><img src="1.png" alt=""><br>根据图，md5的流程分为以下步骤:</p>
+<ol>
+<li>把消息分为n个消息块。每个消息块512bit。</li>
+<li>对最后一个消息进行填充。<ul>
+<li>Append Padding Bits(补位)</li>
+<li>Append Length(补长度)</li>
+</ul>
+</li>
+<li>每个消息块会和一个链变量做运算，把运算结果作为下一个链变量。初始链变量固定。<ul>
+<li><code>A=0x67452301</code></li>
+<li><code>B=0xefcdab89</code></li>
+<li><code>C=0x98badcfe</code></li>
+<li><code>D=0x10325476</code></li>
+</ul>
+</li>
+<li>最后一轮产生的链变量经过高低位互换后就是计算出来的md5值。</li>
+</ol>
+<h3 id="Append-Padding-Bits-填充bits"><a href="#Append-Padding-Bits-填充bits" class="headerlink" title="Append Padding Bits(填充bits)"></a>Append Padding Bits(填充bits)</h3><p>对最后一个消息块进行补位，使得其长度在对512取模后的值为448。当消息长度不满448bit时，需要在后面加上1，紧跟着多个0(二进制表示)。即16进制中的表示是在后面补上80(10000000)。</p>
+<h3 id="Append-Length-填充长度"><a href="#Append-Length-填充长度" class="headerlink" title="Append Length(填充长度)"></a>Append Length(填充长度)</h3><p>剩下的最后8个字节储存量补位之前的消息长度。</p>
+<h1 id="长度扩展攻击流程"><a href="#长度扩展攻击流程" class="headerlink" title="长度扩展攻击流程"></a>长度扩展攻击流程</h1><p>其实这个攻击问题就出在覆盖上，每一个消息块与前一个链变量进行一个运算后的结果会覆盖这个链变量的值。由于在这个攻击中获取到了hash(secret+message)的值，这个值是对(secret+message+padding)与链变量进行运算。</p>
+<p>若此时在后面附加上消息，只需要对附加消息进行padding。然后与上一轮产生的链变量进行运算后，进行高低位互换就得到了新的hash值。上一轮的链变量正好是hash(secret+message)值高低位变换后的结果。</p>
+<p>因此长度扩展攻击需要满足以下条件:</p>
+<ul>
+<li>消息message可控已知</li>
+<li>secret长度已知(可爆破)</li>
+<li>基于Merkle-Damgard构造的算法</li>
+</ul>
+<h2 id="案例1"><a href="#案例1" class="headerlink" title="案例1"></a>案例1</h2><p>结合一道题目来方便理解:</p>
+<p>index.php</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">$flag = <span class="string">"XXXXXXXXXXXXXXXXXXXXXXX"</span>;</span><br><span class="line">$secret = <span class="string">"XXXXXXXXXXXXXXX"</span>; <span class="comment">// This secret is 15 characters long for security!</span></span><br><span class="line"></span><br><span class="line">$username = $_POST[<span class="string">"username"</span>];</span><br><span class="line">$password = $_POST[<span class="string">"password"</span>];</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (!<span class="keyword">empty</span>($_COOKIE[<span class="string">"getmein"</span>])) &#123;</span><br><span class="line">    <span class="keyword">if</span> (urldecode($username) === <span class="string">"admin"</span> &amp;&amp; urldecode($password) != <span class="string">"admin"</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> ($COOKIE[<span class="string">"getmein"</span>] === md5($secret . urldecode($username . $password))) &#123;</span><br><span class="line">            <span class="keyword">echo</span> <span class="string">"Congratulations! You are a registered user.\n"</span>;</span><br><span class="line">            <span class="keyword">die</span> (<span class="string">"The flag is "</span>. $flag);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">die</span> (<span class="string">"Your cookies don't match up! STOP HACKING THIS SITE."</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">die</span> (<span class="string">"You are not an admin! LEAVE."</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">setcookie(<span class="string">"sample-hash"</span>, md5($secret . urldecode(<span class="string">"admin"</span> . <span class="string">"admin"</span>)), time() + (<span class="number">60</span> * <span class="number">60</span> * <span class="number">24</span> * <span class="number">7</span>));</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (<span class="keyword">empty</span>($_COOKIE[<span class="string">"source"</span>])) &#123;</span><br><span class="line">    setcookie(<span class="string">"source"</span>, <span class="number">0</span>, time() + (<span class="number">60</span> * <span class="number">60</span> * <span class="number">24</span> * <span class="number">7</span>));</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> ($_COOKIE[<span class="string">"source"</span>] != <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">echo</span> <span class="string">""</span>; <span class="comment">// This source code is outputted here</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这道题目中，可以得知<code>md5(secret.urldecode(&quot;admin&quot;.&quot;admin&quot;))</code>的值，且secret的值也已知。满足哈子长度扩展攻击的要求。构造如下的payload，首先将原来的padding值附加在后面作为输入。然后在末尾添加附加的message。</p>
+<p>找了如下脚本来计算最后的hash值。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> math</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">F = <span class="keyword">lambda</span> x, y, z: ((x &amp; y) | ((~x) &amp; z))</span><br><span class="line">G = <span class="keyword">lambda</span> x, y, z: ((x &amp; z) | (y &amp; (~z)))</span><br><span class="line">H = <span class="keyword">lambda</span> x, y, z: (x ^ y ^ z)</span><br><span class="line">I = <span class="keyword">lambda</span> x, y, z: (y ^ (x | (~z)))</span><br><span class="line">L = <span class="keyword">lambda</span> x, n: (((x &lt;&lt; n) | (x &gt;&gt; (<span class="number">32</span> - n))) &amp; (<span class="number">0xffffffff</span>))</span><br><span class="line">shi_1 = (<span class="number">7</span>, <span class="number">12</span>, <span class="number">17</span>, <span class="number">22</span>) * <span class="number">4</span></span><br><span class="line">shi_2 = (<span class="number">5</span>, <span class="number">9</span>, <span class="number">14</span>, <span class="number">20</span>) * <span class="number">4</span></span><br><span class="line">shi_3 = (<span class="number">4</span>, <span class="number">11</span>, <span class="number">16</span>, <span class="number">23</span>) * <span class="number">4</span></span><br><span class="line">shi_4 = (<span class="number">6</span>, <span class="number">10</span>, <span class="number">15</span>, <span class="number">21</span>) * <span class="number">4</span></span><br><span class="line">m_1 = (<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>, <span class="number">8</span>, <span class="number">9</span>, <span class="number">10</span>, <span class="number">11</span>, <span class="number">12</span>, <span class="number">13</span>, <span class="number">14</span>, <span class="number">15</span>)</span><br><span class="line">m_2 = (<span class="number">1</span>, <span class="number">6</span>, <span class="number">11</span>, <span class="number">0</span>, <span class="number">5</span>, <span class="number">10</span>, <span class="number">15</span>, <span class="number">4</span>, <span class="number">9</span>, <span class="number">14</span>, <span class="number">3</span>, <span class="number">8</span>, <span class="number">13</span>, <span class="number">2</span>, <span class="number">7</span>, <span class="number">12</span>)</span><br><span class="line">m_3 = (<span class="number">5</span>, <span class="number">8</span>, <span class="number">11</span>, <span class="number">14</span>, <span class="number">1</span>, <span class="number">4</span>, <span class="number">7</span>, <span class="number">10</span>, <span class="number">13</span>, <span class="number">0</span>, <span class="number">3</span>, <span class="number">6</span>, <span class="number">9</span>, <span class="number">12</span>, <span class="number">15</span>, <span class="number">2</span>)</span><br><span class="line">m_4 = (<span class="number">0</span>, <span class="number">7</span>, <span class="number">14</span>, <span class="number">5</span>, <span class="number">12</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">1</span>, <span class="number">8</span>, <span class="number">15</span>, <span class="number">6</span>, <span class="number">13</span>, <span class="number">4</span>, <span class="number">11</span>, <span class="number">2</span>, <span class="number">9</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">T</span><span class="params">(i)</span>:</span></span><br><span class="line">	<span class="keyword">return</span> (int(<span class="number">4294967296</span> * abs(math.sin(i)))) &amp; <span class="number">0xffffffff</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">shift</span><span class="params">(shift_list)</span>:</span></span><br><span class="line">	shift_list = [shift_list[<span class="number">3</span>], shift_list[<span class="number">0</span>], shift_list[<span class="number">1</span>], shift_list[<span class="number">2</span>]]</span><br><span class="line">	<span class="keyword">return</span> shift_list</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">fun</span><span class="params">(fun_list, f, m, shi)</span>:</span></span><br><span class="line">	count = <span class="number">0</span></span><br><span class="line">	<span class="keyword">global</span> Ti_count</span><br><span class="line">	<span class="keyword">while</span> count &lt; <span class="number">16</span>:</span><br><span class="line">		xx = int(fun_list[<span class="number">0</span>], <span class="number">16</span>) + f(int(fun_list[<span class="number">1</span>], <span class="number">16</span>), int(fun_list[<span class="number">2</span>], <span class="number">16</span>), int(fun_list[<span class="number">3</span>], <span class="number">16</span>)) + int(m[count], <span class="number">16</span>) + T(Ti_count)</span><br><span class="line">		xx &amp;= <span class="number">0xffffffff</span></span><br><span class="line">		ll = L(xx, shi[count])</span><br><span class="line">		fun_list[<span class="number">0</span>] = hex((int(fun_list[<span class="number">1</span>], <span class="number">16</span>) + ll) &amp; <span class="number">0xffffffff</span>)</span><br><span class="line">		fun_list = shift(fun_list)</span><br><span class="line">		count += <span class="number">1</span></span><br><span class="line">		Ti_count += <span class="number">1</span></span><br><span class="line">	<span class="keyword">return</span> fun_list</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">gen_m16</span><span class="params">(order, ascii_list, f_offset)</span>:</span></span><br><span class="line">	ii = <span class="number">0</span></span><br><span class="line">	m16 = [<span class="number">0</span>] * <span class="number">16</span></span><br><span class="line">	f_offset *= <span class="number">64</span></span><br><span class="line">	<span class="keyword">for</span> i <span class="keyword">in</span> order:</span><br><span class="line">		i *= <span class="number">4</span></span><br><span class="line">		m16[ii] = <span class="string">'0x'</span> + <span class="string">''</span>.join((ascii_list[i + f_offset] + ascii_list[i + <span class="number">1</span> + f_offset] + ascii_list[i + <span class="number">2</span> + f_offset] + ascii_list[i + <span class="number">3</span> + f_offset]).split(<span class="string">'0x'</span>))</span><br><span class="line">		ii += <span class="number">1</span></span><br><span class="line">	<span class="keyword">for</span> ind <span class="keyword">in</span> range(len(m16)):</span><br><span class="line">		m16[ind] = reverse_hex(m16[ind])</span><br><span class="line">	<span class="keyword">return</span> m16</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">reverse_hex</span><span class="params">(hex_str)</span>:</span></span><br><span class="line">	hex_str = hex_str[<span class="number">2</span>:]</span><br><span class="line">	<span class="keyword">if</span> len(hex_str) &lt; <span class="number">8</span>:</span><br><span class="line">		hex_str = <span class="string">'0'</span> * (<span class="number">8</span> - len(hex_str)) + hex_str</span><br><span class="line">	hex_str_list = []</span><br><span class="line">	<span class="keyword">for</span> i <span class="keyword">in</span> range(<span class="number">0</span>, len(hex_str), <span class="number">2</span>):</span><br><span class="line">		hex_str_list.append(hex_str[i:i + <span class="number">2</span>])</span><br><span class="line">	hex_str_list.reverse()</span><br><span class="line">	hex_str_result = <span class="string">'0x'</span> + <span class="string">''</span>.join(hex_str_list)</span><br><span class="line">	<span class="keyword">return</span> hex_str_result</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">show_result</span><span class="params">(f_list)</span>:</span></span><br><span class="line">	result = <span class="string">''</span></span><br><span class="line">	f_list1 = [<span class="number">0</span>] * <span class="number">4</span></span><br><span class="line">	<span class="keyword">for</span> i <span class="keyword">in</span> f_list:</span><br><span class="line">		f_list1[f_list.index(i)] = reverse_hex(i)[<span class="number">2</span>:]</span><br><span class="line">		result += f_list1[f_list.index(i)]</span><br><span class="line">	<span class="keyword">return</span> result</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">padding</span><span class="params">(input_m, msg_lenth=<span class="number">0</span>)</span>:</span></span><br><span class="line">	ascii_list = list(map(hex, map(ord, input_m)))</span><br><span class="line">	msg_lenth += len(ascii_list) * <span class="number">8</span></span><br><span class="line">	ascii_list.append(<span class="string">'0x80'</span>)</span><br><span class="line">	<span class="keyword">for</span> i <span class="keyword">in</span> range(len(ascii_list)):</span><br><span class="line">		<span class="keyword">if</span> len(ascii_list[i]) &lt; <span class="number">4</span>:</span><br><span class="line">			ascii_list[i] = <span class="string">'0x'</span> + <span class="string">'0'</span> + ascii_list[i][<span class="number">2</span>:]</span><br><span class="line">	<span class="keyword">while</span> (len(ascii_list) * <span class="number">8</span> + <span class="number">64</span>) % <span class="number">512</span> != <span class="number">0</span>:</span><br><span class="line">		ascii_list.append(<span class="string">'0x00'</span>)</span><br><span class="line">	msg_lenth_0x = hex(msg_lenth)[<span class="number">2</span>:]</span><br><span class="line">	msg_lenth_0x = <span class="string">'0x'</span> + msg_lenth_0x.rjust(<span class="number">16</span>, <span class="string">'0'</span>)</span><br><span class="line">	msg_lenth_0x_big_order = reverse_hex(msg_lenth_0x)[<span class="number">2</span>:]</span><br><span class="line">	msg_lenth_0x_list = []</span><br><span class="line">	<span class="keyword">for</span> i <span class="keyword">in</span> range(<span class="number">0</span>, len(msg_lenth_0x_big_order), <span class="number">2</span>):</span><br><span class="line">		msg_lenth_0x_list.append(<span class="string">'0x'</span> + msg_lenth_0x_big_order[i: i + <span class="number">2</span>])</span><br><span class="line">	ascii_list.extend(msg_lenth_0x_list)</span><br><span class="line">	<span class="keyword">return</span> ascii_list</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">md5</span><span class="params">(input_m)</span>:</span></span><br><span class="line">	<span class="keyword">global</span> Ti_count</span><br><span class="line">	Ti_count = <span class="number">1</span></span><br><span class="line">	abcd_list = [<span class="string">'0x67452301'</span>, <span class="string">'0xefcdab89'</span>, <span class="string">'0x98badcfe'</span>, <span class="string">'0x10325476'</span>]</span><br><span class="line">	ascii_list = padding(input_m)</span><br><span class="line">	<span class="keyword">for</span> i <span class="keyword">in</span> range(<span class="number">0</span>, len(ascii_list) // <span class="number">64</span>):</span><br><span class="line">		aa, bb, cc, dd = abcd_list</span><br><span class="line">		order_1 = gen_m16(m_1, ascii_list, i)</span><br><span class="line">		order_2 = gen_m16(m_2, ascii_list, i)</span><br><span class="line">		order_3 = gen_m16(m_3, ascii_list, i)</span><br><span class="line">		order_4 = gen_m16(m_4, ascii_list, i)</span><br><span class="line">		abcd_list = fun(abcd_list, F, order_1, shi_1)</span><br><span class="line">		abcd_list = fun(abcd_list, G, order_2, shi_2)</span><br><span class="line">		abcd_list = fun(abcd_list, H, order_3, shi_3)</span><br><span class="line">		abcd_list = fun(abcd_list, I, order_4, shi_4)</span><br><span class="line">		output_a = hex((int(abcd_list[<span class="number">0</span>], <span class="number">16</span>) + int(aa, <span class="number">16</span>)) &amp; <span class="number">0xffffffff</span>)</span><br><span class="line">		output_b = hex((int(abcd_list[<span class="number">1</span>], <span class="number">16</span>) + int(bb, <span class="number">16</span>)) &amp; <span class="number">0xffffffff</span>)</span><br><span class="line">		output_c = hex((int(abcd_list[<span class="number">2</span>], <span class="number">16</span>) + int(cc, <span class="number">16</span>)) &amp; <span class="number">0xffffffff</span>)</span><br><span class="line">		output_d = hex((int(abcd_list[<span class="number">3</span>], <span class="number">16</span>) + int(dd, <span class="number">16</span>)) &amp; <span class="number">0xffffffff</span>)</span><br><span class="line">		abcd_list = [output_a, output_b, output_c, output_d]</span><br><span class="line">		Ti_count = <span class="number">1</span></span><br><span class="line">		print(ascii_list)</span><br><span class="line">	<span class="keyword">return</span> show_result(abcd_list)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">md5_lea</span><span class="params">(suffix, res, len_m)</span>:</span></span><br><span class="line">	<span class="keyword">global</span> Ti_count</span><br><span class="line">	Ti_count = <span class="number">1</span></span><br><span class="line">	abcd_list = []</span><br><span class="line">	<span class="keyword">for</span> i <span class="keyword">in</span> range(<span class="number">0</span>, <span class="number">32</span>, <span class="number">8</span>):</span><br><span class="line">		abcd_list.append(reverse_hex(<span class="string">'0x'</span> + res[i: i + <span class="number">8</span>]))</span><br><span class="line">	ascii_list = padding(suffix, (len_m + <span class="number">72</span>) // <span class="number">64</span> * <span class="number">64</span> * <span class="number">8</span>)  <span class="comment"># len(message + padding) * 8</span></span><br><span class="line">	<span class="keyword">for</span> i <span class="keyword">in</span> range(<span class="number">0</span>, len(ascii_list) // <span class="number">64</span>):</span><br><span class="line">		aa, bb, cc, dd = abcd_list</span><br><span class="line">		order_1 = gen_m16(m_1, ascii_list, i)</span><br><span class="line">		order_2 = gen_m16(m_2, ascii_list, i)</span><br><span class="line">		order_3 = gen_m16(m_3, ascii_list, i)</span><br><span class="line">		order_4 = gen_m16(m_4, ascii_list, i)</span><br><span class="line">		abcd_list = fun(abcd_list, F, order_1, shi_1)</span><br><span class="line">		abcd_list = fun(abcd_list, G, order_2, shi_2)</span><br><span class="line">		abcd_list = fun(abcd_list, H, order_3, shi_3)</span><br><span class="line">		abcd_list = fun(abcd_list, I, order_4, shi_4)</span><br><span class="line">		output_a = hex((int(abcd_list[<span class="number">0</span>], <span class="number">16</span>) + int(aa, <span class="number">16</span>)) &amp; <span class="number">0xffffffff</span>)</span><br><span class="line">		output_b = hex((int(abcd_list[<span class="number">1</span>], <span class="number">16</span>) + int(bb, <span class="number">16</span>)) &amp; <span class="number">0xffffffff</span>)</span><br><span class="line">		output_c = hex((int(abcd_list[<span class="number">2</span>], <span class="number">16</span>) + int(cc, <span class="number">16</span>)) &amp; <span class="number">0xffffffff</span>)</span><br><span class="line">		output_d = hex((int(abcd_list[<span class="number">3</span>], <span class="number">16</span>) + int(dd, <span class="number">16</span>)) &amp; <span class="number">0xffffffff</span>)</span><br><span class="line">		abcd_list = [output_a, output_b, output_c, output_d]</span><br><span class="line">		Ti_count = <span class="number">1</span></span><br><span class="line">	<span class="comment"># print(ascii_list)</span></span><br><span class="line">	<span class="keyword">return</span> show_result(abcd_list)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">'__main__'</span>:</span><br><span class="line">	print(md5_lea(<span class="string">'kingkk'</span>,<span class="string">'571580b26c65f306376d4f64e53cb5c7'</span>,<span class="number">15</span>))</span><br></pre></td></tr></table></figure>
+
+<h2 id="案例2"><a href="#案例2" class="headerlink" title="案例2"></a>案例2</h2><p>这是另一道哈希扩展长度的题目。</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line">&lt;!doctype html&gt;</span><br><span class="line"></span><br><span class="line">&lt;html lang=<span class="string">"en"</span>&gt;</span><br><span class="line">&lt;head&gt;</span><br><span class="line">  &lt;meta charset=<span class="string">"utf-8"</span>&gt;</span><br><span class="line">  &lt;title&gt;CTF Web_SimplestHASH&lt;/title&gt;</span><br><span class="line">&lt;/head&gt;</span><br><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line">$myfile = fopen(<span class="string">"flag.txt"</span>, <span class="string">"r"</span>) <span class="keyword">or</span> <span class="keyword">die</span>(<span class="string">"Unable to open file!"</span>);</span><br><span class="line">$flag = fread($myfile,filesize(<span class="string">"flag.txt"</span>));</span><br><span class="line">fclose($myfile);</span><br><span class="line">$salt = <span class="number">0xfffff</span> &amp; (ord(md5($flag, <span class="keyword">TRUE</span>)[<span class="number">1</span>]));</span><br><span class="line">$myfile = fopen(<span class="string">"pswrecord"</span>, <span class="string">"r"</span>) <span class="keyword">or</span> <span class="keyword">die</span>(<span class="string">"Unable to open file!"</span>);</span><br><span class="line">$tmp = fread($myfile,filesize(<span class="string">"pswrecord"</span>));</span><br><span class="line">sscanf($tmp,<span class="string">"%s\t%s"</span>,$name,$password);</span><br><span class="line">$hah = md5($flag.$password.$salt);</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span>(is_string($_POST[<span class="string">"name"</span>]) &amp;&amp;  $_POST[<span class="string">"name"</span>] == $name)&#123;</span><br><span class="line">	<span class="keyword">if</span>(is_string($_POST[<span class="string">"password"</span>]) &amp;&amp; is_string($_POST[<span class="string">"hah"</span>]) &amp;&amp; strlen($_POST[<span class="string">"password"</span>]) &gt;= <span class="number">20</span> &amp;&amp; strlen($_POST[<span class="string">"hah"</span>])  == <span class="number">32</span> &amp;&amp; md5($flag.$_POST[<span class="string">"password"</span>].$salt) == $_POST[<span class="string">'hah'</span>])&#123;</span><br><span class="line">		<span class="keyword">echo</span> $flag;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line">fclose($myfile);</span><br><span class="line">$_POST[<span class="string">'name'</span>] = <span class="number">0</span>;</span><br><span class="line">$_POST[<span class="string">'hah'</span>] = <span class="number">0</span>;</span><br><span class="line">$_POST[<span class="string">"password"</span>] = <span class="number">0</span>;</span><br><span class="line">$salt = <span class="number">0</span>;</span><br><span class="line">$tmp = <span class="number">0</span>;</span><br><span class="line">$flag = <span class="number">0</span>;</span><br><span class="line"><span class="meta">?&gt;</span></span><br><span class="line">&lt;body&gt;</span><br><span class="line">  &lt;div&gt;</span><br><span class="line">	&lt;img src=<span class="string">"/welcome.png"</span> alt=<span class="string">"welcome!"</span> /&gt;</span><br><span class="line">	We used git.</span><br><span class="line">	&lt;form action=<span class="string">"index.php"</span> method=<span class="string">"post"</span>&gt;</span><br><span class="line">	Name: &lt;input type=<span class="string">"text"</span> name=<span class="string">"name"</span>&gt;</span><br><span class="line">	Password: &lt;input type=<span class="string">"password"</span> name=<span class="string">"password"</span>&gt;</span><br><span class="line">	&lt;input type=<span class="string">"password"</span> name=<span class="string">"hah"</span> value=<span class="string">"&lt;?php echo $hah?&gt;"</span> hidden&gt;</span><br><span class="line">	&lt;input type=<span class="string">"submit"</span> value=<span class="string">"Login"</span>&gt;</span><br><span class="line">  &lt;/div&gt;</span><br><span class="line">&lt;/body&gt;</span><br><span class="line">&lt;/html&gt;</span><br></pre></td></tr></table></figure>
+
+<p>这道题中，可以获取password值为123456。因此，它有如下条件:</p>
+<ul>
+<li>hash(flag.password.salt)的值确定</li>
+<li>flag的长度不知，salt为0～255之间的值</li>
+<li>password为123456</li>
+</ul>
+<p>看起来似乎差了flag的长度和salt值，实际上这可以通过爆破来求出flag的值以及salt的值。</p>
+<p>利用hashpumpy工具直接编写脚本，十分方便。</p>
+<ul>
+<li><a href="https://github.com/bwall/HashPump" target="_blank" rel="noopener">HashPump</a></li>
+<li>python <code>pip install hashpumpy</code></li>
+</ul>
+<p>脚本如下:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> hashpumpy</span><br><span class="line"><span class="keyword">import</span> requests</span><br><span class="line"><span class="keyword">from</span> urllib.parse <span class="keyword">import</span> quote</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> range(<span class="number">1</span>, <span class="number">60</span>):</span><br><span class="line">    print(i)</span><br><span class="line">    <span class="keyword">for</span> j <span class="keyword">in</span> range(<span class="number">0</span>, <span class="number">256</span>):</span><br><span class="line">        x, y = hashpumpy.hashpump(<span class="string">'e23879e9135448a6b42f7843a7aeb940'</span>, <span class="string">'123456'</span> + str(j), <span class="string">'ananaskr'</span> + str(j), i)</span><br><span class="line">        data = &#123;<span class="string">"name"</span>: <span class="string">"admin"</span>, <span class="string">"password"</span>: y[:-len(str(j))], <span class="string">"hah"</span>: x&#125;</span><br><span class="line">        req = requests.post(data=data, url=<span class="string">'http://xx.xx.xx.xx:31016'</span>)</span><br><span class="line">        <span class="keyword">if</span> len(req.text) != <span class="number">478</span>:</span><br><span class="line">            print(req.text)</span><br><span class="line">            exit()</span><br></pre></td></tr></table></figure>
+
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://seaii-blog.com/index.php/2017/05/12/56.html" target="_blank" rel="noopener">hash长度扩展攻击研究</a></li>
+<li><a href="https://xz.aliyun.com/t/2563#toc-5" target="_blank" rel="noopener">哈希长度拓展攻击(Hash Length Extension Attacks)</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/05/24/shiro-682/" rel="prev" title="CVE-2020-1957 Shiro权限绕过漏洞分析">
+      <i class="fa fa-chevron-left"></i> CVE-2020-1957 Shiro权限绕过漏洞分析
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#利用场景"><span class="nav-number">1.</span> <span class="nav-text">利用场景</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#MD5算法流程"><span class="nav-number">2.</span> <span class="nav-text">MD5算法流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Append-Padding-Bits-填充bits"><span class="nav-number">2.0.1.</span> <span class="nav-text">Append Padding Bits(填充bits)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Append-Length-填充长度"><span class="nav-number">2.0.2.</span> <span class="nav-text">Append Length(填充长度)</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#长度扩展攻击流程"><span class="nav-number">3.</span> <span class="nav-text">长度扩展攻击流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#案例1"><span class="nav-number">3.1.</span> <span class="nav-text">案例1</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#案例2"><span class="nav-number">3.2.</span> <span class="nav-text">案例2</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">参考</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">ananaskr</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">30</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">ananaskr</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

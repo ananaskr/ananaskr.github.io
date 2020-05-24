@@ -39,7 +39,7 @@
 <meta property="og:image" content="http://yoursite.com/2020/05/17/fastjson-6/10.png">
 <meta property="og:image" content="http://yoursite.com/2020/05/17/fastjson-6/11.png">
 <meta property="article:published_time" content="2020-05-17T07:35:59.000Z">
-<meta property="article:modified_time" content="2020-05-17T09:57:30.121Z">
+<meta property="article:modified_time" content="2020-05-20T15:36:45.045Z">
 <meta property="article:author" content="ananaskr">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http://yoursite.com/2020/05/17/fastjson-6/1.png">
@@ -194,10 +194,16 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">Posted on</span>
-              
 
-              <time title="Created: 2020-05-17 15:35:59 / Modified: 17:57:30" itemprop="dateCreated datePublished" datetime="2020-05-17T15:35:59+08:00">2020-05-17</time>
+              <time title="Created: 2020-05-17 15:35:59" itemprop="dateCreated datePublished" datetime="2020-05-17T15:35:59+08:00">2020-05-17</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-05-20 23:36:45" itemprop="dateModified" datetime="2020-05-20T23:36:45+08:00">2020-05-20</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -221,7 +227,7 @@
       
         <p>1.2.46版本中将<code>org.apache.ibatis.datasource.jndi.JndiDataSourceFactory</code>添加进黑名单，使得利用失败。此时出现了不开启<code>autotype</code>的情况下成功的绕过checkAutoType，且通杀1.2.47以前的所有版本。</p>
 <a id="more"></a>
-
+<p>整个复现系列的payload放在了<a href="https://github.com/ananaskr/FastJson_Payload/tree/master/project/src/main/java" target="_blank" rel="noopener">github</a>上。</p>
 <h1 id="漏洞信息"><a href="#漏洞信息" class="headerlink" title="漏洞信息"></a>漏洞信息</h1><h2 id="影响版本"><a href="#影响版本" class="headerlink" title="影响版本"></a>影响版本</h2><ul>
 <li>fastjson &lt;= 1.2.47</li>
 </ul>
@@ -354,7 +360,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">28</span>
+          <span class="site-state-item-count">30</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>

@@ -20,17 +20,17 @@
     var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta name="description" content="上一个回顾中指出了利用L和;来进行绕过。而这次的漏洞是由于上次漏洞的补丁打得太过简单导致可以通过双写LL;;来绕过。这一篇文章讲述的就是这一方式。 漏洞信息影响版本 fastjson &#x3D; 1.2.42  利用条件 打开autotype  漏洞分析从上次的补丁可以得知以下两点:  将黑名单变成了hashcode，不好得知具体的类 将checkAutoType增加了对于L;这种情况的处理  定位到ch">
+  <meta name="description" content="上一个回顾中指出了利用L和;来进行绕过。而这次的漏洞是由于上次漏洞的补丁打得太过简单导致可以通过双写LL;;来绕过。这一篇文章讲述的就是这一方式。">
 <meta property="og:type" content="article">
 <meta property="og:title" content="FastJson反序列化回顾系列(三)">
 <meta property="og:url" content="http://yoursite.com/2020/05/16/fastjson-3/index.html">
 <meta property="og:site_name" content="Ananaskr&#39;s Blog">
-<meta property="og:description" content="上一个回顾中指出了利用L和;来进行绕过。而这次的漏洞是由于上次漏洞的补丁打得太过简单导致可以通过双写LL;;来绕过。这一篇文章讲述的就是这一方式。 漏洞信息影响版本 fastjson &#x3D; 1.2.42  利用条件 打开autotype  漏洞分析从上次的补丁可以得知以下两点:  将黑名单变成了hashcode，不好得知具体的类 将checkAutoType增加了对于L;这种情况的处理  定位到ch">
+<meta property="og:description" content="上一个回顾中指出了利用L和;来进行绕过。而这次的漏洞是由于上次漏洞的补丁打得太过简单导致可以通过双写LL;;来绕过。这一篇文章讲述的就是这一方式。">
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="http://yoursite.com/2020/05/16/fastjson-3/1.png">
 <meta property="og:image" content="http://yoursite.com/2020/05/16/fastjson-3/3.png">
 <meta property="article:published_time" content="2020-05-16T06:50:33.000Z">
-<meta property="article:modified_time" content="2020-05-17T03:50:15.430Z">
+<meta property="article:modified_time" content="2020-05-20T15:36:20.577Z">
 <meta property="article:author" content="ananaskr">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http://yoursite.com/2020/05/16/fastjson-3/1.png">
@@ -193,7 +193,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-05-17 11:50:15" itemprop="dateModified" datetime="2020-05-17T11:50:15+08:00">2020-05-17</time>
+                <time title="Modified: 2020-05-20 23:36:20" itemprop="dateModified" datetime="2020-05-20T23:36:20+08:00">2020-05-20</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -217,6 +217,8 @@
 
       
         <p>上一个回顾中指出了利用<code>L</code>和<code>;</code>来进行绕过。而这次的漏洞是由于上次漏洞的补丁打得太过简单导致可以通过双写<code>LL;;</code>来绕过。这一篇文章讲述的就是这一方式。</p>
+<a id="more"></a>
+<p>整个复现系列的payload放在了<a href="https://github.com/ananaskr/FastJson_Payload/tree/master/project/src/main/java" target="_blank" rel="noopener">github</a>上。</p>
 <h1 id="漏洞信息"><a href="#漏洞信息" class="headerlink" title="漏洞信息"></a>漏洞信息</h1><h2 id="影响版本"><a href="#影响版本" class="headerlink" title="影响版本"></a>影响版本</h2><ul>
 <li>fastjson = 1.2.42</li>
 </ul>
@@ -340,7 +342,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">28</span>
+          <span class="site-state-item-count">30</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>

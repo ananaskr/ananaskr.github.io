@@ -20,25 +20,28 @@
     var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta name="description" content="前面介绍了CBC翻转攻击，从中也了解到了解密过程。而与解密过程中相关的还有一个Padding Oracle攻击。Padding Oracle攻击是2010年在欧洲举行的黑帽大会上由Juliano Rizzo和Thai Duong提出的。">
+  <meta name="description" content="该漏洞源自于shiro-682问题。即在spring框架下uri &#x3D; uri + ‘&#x2F;‘绕过shiro防护的问题。在shiro1.5.0版本进行修复。然而修复后的仍然可被绕过。这篇文章深入分析了Shiro这一漏洞。">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Padding Oracle的解密以及加密攻击">
-<meta property="og:url" content="http://yoursite.com/2020/05/08/padding-oracle/index.html">
+<meta property="og:title" content="CVE-2020-1957 Shiro权限绕过漏洞分析">
+<meta property="og:url" content="http://yoursite.com/2020/05/24/shiro-682/index.html">
 <meta property="og:site_name" content="Ananaskr&#39;s Blog">
-<meta property="og:description" content="前面介绍了CBC翻转攻击，从中也了解到了解密过程。而与解密过程中相关的还有一个Padding Oracle攻击。Padding Oracle攻击是2010年在欧洲举行的黑帽大会上由Juliano Rizzo和Thai Duong提出的。">
+<meta property="og:description" content="该漏洞源自于shiro-682问题。即在spring框架下uri &#x3D; uri + ‘&#x2F;‘绕过shiro防护的问题。在shiro1.5.0版本进行修复。然而修复后的仍然可被绕过。这篇文章深入分析了Shiro这一漏洞。">
 <meta property="og:locale" content="en_US">
-<meta property="og:image" content="http://yoursite.com/2020/05/08/padding-oracle/1.png">
-<meta property="og:image" content="http://yoursite.com/2020/05/08/padding-oracle/2.png">
-<meta property="og:image" content="http://yoursite.com/2020/05/08/padding-oracle/3.png">
-<meta property="og:image" content="http://yoursite.com/2020/05/08/padding-oracle/4.png">
-<meta property="og:image" content="http://yoursite.com/2020/05/08/padding-oracle/5.png">
-<meta property="article:published_time" content="2020-05-08T14:33:27.000Z">
-<meta property="article:modified_time" content="2020-05-09T01:07:48.616Z">
+<meta property="og:image" content="http://yoursite.com/2020/05/24/shiro-682/1.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/24/shiro-682/2.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/24/shiro-682/3.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/24/shiro-682/4.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/24/shiro-682/5.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/24/shiro-682/6.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/24/shiro-682/7.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/24/shiro-682/8.png">
+<meta property="article:published_time" content="2020-05-24T03:22:32.000Z">
+<meta property="article:modified_time" content="2020-05-24T09:16:31.501Z">
 <meta property="article:author" content="ananaskr">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://yoursite.com/2020/05/08/padding-oracle/1.png">
+<meta name="twitter:image" content="http://yoursite.com/2020/05/24/shiro-682/1.png">
 
-<link rel="canonical" href="http://yoursite.com/2020/05/08/padding-oracle/">
+<link rel="canonical" href="http://yoursite.com/2020/05/24/shiro-682/">
 
 
 <script id="page-configurations">
@@ -51,7 +54,7 @@
   };
 </script>
 
-  <title>Padding Oracle的解密以及加密攻击 | Ananaskr's Blog</title>
+  <title>CVE-2020-1957 Shiro权限绕过漏洞分析 | Ananaskr's Blog</title>
   
 
 
@@ -166,7 +169,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/05/08/padding-oracle/">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/05/24/shiro-682/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -179,7 +182,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          Padding Oracle的解密以及加密攻击
+          CVE-2020-1957 Shiro权限绕过漏洞分析
         </h1>
 
         <div class="post-meta">
@@ -188,23 +191,17 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">Posted on</span>
+              
 
-              <time title="Created: 2020-05-08 22:33:27" itemprop="dateCreated datePublished" datetime="2020-05-08T22:33:27+08:00">2020-05-08</time>
+              <time title="Created: 2020-05-24 11:22:32 / Modified: 17:16:31" itemprop="dateCreated datePublished" datetime="2020-05-24T11:22:32+08:00">2020-05-24</time>
             </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-05-09 09:07:48" itemprop="dateModified" datetime="2020-05-09T09:07:48+08:00">2020-05-09</time>
-              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
               </span>
               <span class="post-meta-item-text">In</span>
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E5%AF%86%E7%A0%81%E6%94%BB%E5%87%BB/" itemprop="url" rel="index"><span itemprop="name">密码攻击</span></a>
+                  <a href="/categories/%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0/" itemprop="url" rel="index"><span itemprop="name">漏洞复现</span></a>
                 </span>
             </span>
 
@@ -219,50 +216,40 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <p>前面介绍了<a href="https://ananaskr.github.io/2020/05/08/cbc-reverse/" target="_blank" rel="noopener">CBC翻转攻击</a>，从中也了解到了解密过程。而与解密过程中相关的还有一个<font color=#008000>Padding Oracle攻击</font>。Padding Oracle攻击是2010年在欧洲举行的黑帽大会上由Juliano Rizzo和Thai Duong提出的。</p>
+        <p>该漏洞源自于shiro-682问题。即在spring框架下uri = uri + ‘/‘绕过shiro防护的问题。在shiro1.5.0版本进行修复。然而修复后的仍然可被绕过。这篇文章深入分析了Shiro这一漏洞。</p>
 <a id="more"></a>
 
-<h1 id="Padding-Oracle获取明文"><a href="#Padding-Oracle获取明文" class="headerlink" title="Padding Oracle获取明文"></a>Padding Oracle获取明文</h1><h2 id="前提条件"><a href="#前提条件" class="headerlink" title="前提条件"></a>前提条件</h2><ul>
-<li>知道密文和IV</li>
-<li>攻击者能够触发密文的解密过程，且能够知道密文的解密结果。(应用程序对解密正确与否会给出不同的响应)</li>
+<h1 id="漏洞信息"><a href="#漏洞信息" class="headerlink" title="漏洞信息"></a>漏洞信息</h1><h2 id="影响版本"><a href="#影响版本" class="headerlink" title="影响版本"></a>影响版本</h2><ul>
+<li>shiro &lt;= 1.5.1</li>
 </ul>
-<h2 id="利用点-加密过程中的明文填充"><a href="#利用点-加密过程中的明文填充" class="headerlink" title="利用点-加密过程中的明文填充"></a>利用点-加密过程中的明文填充</h2><p>AES具有<font color=#008000>分组加密</font>的特性。对于明文分块后不足分块大小的。就要进行<font color=#008000>明文填充</font>。其中有种填充方式为<font color=#008000>PKCS5Padding</font>。此种填充方式会在明文块末尾补足相应数量的字节，且每个字节的值等于缺少的字符数量。如下图所示:</p>
+<p>这次从shiro-682开始介绍。</p>
+<h2 id="Shiro-682"><a href="#Shiro-682" class="headerlink" title="Shiro 682"></a>Shiro 682</h2><h3 id="影响版本-1"><a href="#影响版本-1" class="headerlink" title="影响版本"></a>影响版本</h3><ul>
+<li>shiro &lt; 1.5.0</li>
+</ul>
+<h3 id="漏洞成因"><a href="#漏洞成因" class="headerlink" title="漏洞成因"></a>漏洞成因</h3><p>在Spring web项目中，请求的URI如<code>/resource/menus</code>和<code>/resource/menus/</code>都可以访问到服务器的资源。但是Shiro中的URL路径表达式只能正确匹配到<code>/resource/menus</code>，而无法正确匹配到<code>/resource/menus/</code>，导致无法匹配进入到过滤链，从而绕过了Shiro的防护机制。</p>
+<p>定位到<code>PathMatchingFilterChainResolver#getChain</code>函数。改函数作用即根据URL路径匹配中配置的URI路径表达式来匹配输入的URI，判断是否匹配拦截器，匹配成功将会返回响应的拦截器执行链，从而进入ShiroFilter执行。</p>
 <p><img src="1.png" alt=""></p>
-<h2 id="攻击原理"><a href="#攻击原理" class="headerlink" title="攻击原理"></a>攻击原理</h2><p>如图所示的解密过程:</p>
+<p>跟进pathMatches函数，一直到<code>AntPathMatcher#doMatch</code>函数。</p>
 <p><img src="2.png" alt=""></p>
-<p>当攻击者拿到了IV和密文后。可以从图中得知，Intermediary Value即中间值是由明文和IV异或得到的，同时它也就是密文通过密钥解密得到的值。由上面的解密过程中可以得知<code>P[1] = decrept(C[1]) XOR IV</code>。那么得到了中间值，就可以知道明文了。如何获得中间值呢？</p>
-<p>从CBC翻转攻击可以知道，IV是可以构造的。通过构造IV，使得解密后的明文最后一个填充字符为0x01，再将构造的IV与001进行异或，就得到了中间值的最后一个字节。我们知道，通过构造不同的IV，可以得到不同的明文，但是其中的中间值是不变的。因此，这个过程可以变成:</p>
-<ol>
-<li>设置构造IV的值为0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00，将它直接进行解出明文可能出现错误的填充值。然后不断调整最后一个字节，使得其解出的明文最后一个字节的0x01。</li>
-<li>这时候构造IV的最后一个字节的值 XOR 0x01就得到了中间值的最后一个字节值。此时将其异或上原始IV的最后一个字节，就获得了明文的最后一个字节。</li>
-<li>然后进行明文倒数第二个字节的获得。首先构造的IV需使得明文的最后两个字节为0x02,0x02。倒数第一个字节的IV，此时可以通过中间值最后一个字节 XOR 0x02获得。倒数第二个字节的IV需要像1中那样爆破。</li>
-<li>重复以上步骤，直至获取到最后一个明文字节。</li>
-</ol>
-<h1 id="Padding-Oracle构造密文"><a href="#Padding-Oracle构造密文" class="headerlink" title="Padding Oracle构造密文"></a>Padding Oracle构造密文</h1><p>除了获取明文外，它还可以获得任意明文的加密密文。直观来看，在上一步中已经获取到所有的中间值。首先将明文进行填充，然后与中间值异或就可以得到IV值。然后将第二个分组的明文异或第二个分组的中间值，即得到了第一个分组的密文。那么到这里就会发现最后一个分组的密文无从得知。</p>
-<p>有人提出了获得任何明文的密文的方法。从最后两个密文块开始，随机生成最后的密文块。然后每次根据最后一个明文，获取到前一个密文块的密文。依次类推，最后获得密文，过程如图所示:</p>
 <p><img src="3.png" alt=""></p>
-<p><img src="4.png" alt=""></p>
-<p><img src="5.png" alt=""></p>
-<blockquote>
-<p>图片来自p0’s的博客</p>
-</blockquote>
-<p>文字版的过程：</p>
-<ol>
-<li>产生一个随机分组块Cr。</li>
-<li>对于每一个明文块，从最后一个明文块开始<ul>
-<li>创建两个块大小的密文C’，它由空块(0000…00)以及最新生成的密文块Cn-1组成。首轮由空块和Cr组成。</li>
-<li>改变空块的最后一个字节，直到不出现padding error。(此时空块的最后一个字节与后一个块的中间值异或的值为0x01)。还是依照上面的方法获取到后一个块的中间值。</li>
-<li>获取到后一个块的中间值以后，就可以利用中间值和明文，构造出前一个块的密文。(P[n] = decrept(C[n]) XOR C[n-1] =&gt; C[n-1] = decrept(C[n]) XOR P[n])。</li>
-<li>然后重复整个过程，直到最后第一个明文块的密文获取完毕。</li>
+<p>可以看到在这段逻辑中，当pattern为<code>/hello/*</code>，path为<code>/hello/1/</code>时，先从前往后进行匹配，到匹配<code>*</code>与<code>1</code>就结束了，然后接着往下走，从后往前匹配，这时候很显然匹配失败，因此不进入ShiroFilter链。</p>
+<h3 id="补丁"><a href="#补丁" class="headerlink" title="补丁"></a>补丁</h3><p><img src="4.png" alt=""><br>从该补丁可以看出，当请求的URI以<code>/</code>结尾时，先去掉<code>/</code>再进行匹配。</p>
+<h2 id="CVE-2020-1957"><a href="#CVE-2020-1957" class="headerlink" title="CVE-2020-1957"></a>CVE-2020-1957</h2><h3 id="影响版本-2"><a href="#影响版本-2" class="headerlink" title="影响版本"></a>影响版本</h3><ul>
+<li>shiro &lt;= 1.5.1</li>
 </ul>
-</li>
-<li>再将所有的密文+Cr连接起来就获取到最终的密文了。</li>
-</ol>
-<p>整个Padding Oracle的加密过程，就像是先获取到明文，然后使用CBC翻转攻击，使其成为特定的明文，从而构造任意明文的密文。</p>
+<h3 id="漏洞成因-1"><a href="#漏洞成因-1" class="headerlink" title="漏洞成因"></a>漏洞成因</h3><p>前面在shiro 1.5.0版本中已经修复了在后面加上<code>/</code>的绕过方式。而此次的绕过方式还是在<code>PathMatchingFilterChainResolver#getChain</code>函数中。</p>
+<p><img src="5.png" alt=""></p>
+<p>跟进getPathWithinApplication函数中。</p>
+<p><img src="6.png" alt=""></p>
+<p>调用getRequestUri()函数，进而调用decodeAndcleanUriString对uri进行清理。跟进它</p>
+<p><img src="7.png" alt=""></p>
+<p>在这里它会判断URI中是否含有<code>;</code>，若含有则，截取<code>;</code>之前的值作为URL。因此，对于<code>/xxx;/hello/1</code>，Shiro截取的结果为<code>/xxx</code>，从而匹配不成功。但是在spring中却直接获取到了后面的URI，从而绕过鉴权。</p>
+<h3 id="补丁-1"><a href="#补丁-1" class="headerlink" title="补丁"></a>补丁</h3><p><img src="8.png" alt=""></p>
+<p>在1.5.2版本中，将获取URI的方式从<code>request.getRequestURI</code>直接获取的方式改成获取request的<code>ContextPath</code>，<code>ServletPath</code>，<code>PathInfo</code>，然后再重新拼接而成。<br>对于<code>/xxx;/hello/1</code>，<code>ContextPath</code>，<code>ServletPath</code>，<code>PathInfo</code>分别为空，<code>/hello/1</code>，<code>/1</code>。拼接而成<code>//hello/1/1</code>。从而无法绕过了。</p>
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>此漏洞的成因主要是由于Shiro与Spring(Servlet)的拦截器对于URI模式匹配的差异，从而导致绕过。此外，还有undertow中的Filter与Controller对于URL解析不一致，从而可以通过/..;/绕过鉴权。</p>
 <h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
-<li><a href="https://www.jianshu.com/p/1851f778e579" target="_blank" rel="noopener">Padding Oracle</a></li>
-<li><a href="https://blog.skullsecurity.org/2016/going-the-other-way-with-padding-oracles-encrypting-arbitrary-data" target="_blank" rel="noopener">Going the other way with padding oracles: Encrypting arbitrary data!</a></li>
-<li><a href="https://maplege.github.io/2018/11/10/padding-oracle-attack/" target="_blank" rel="noopener">PaddingOracleAttack原理记录</a></li>
+<li><a href="https://issues.apache.org/jira/browse/SHIRO-682" target="_blank" rel="noopener">SHIRO-682 fix the potential threat when use “uri = uri + ‘/‘ “ to bypassed shiro protect</a></li>
+<li><a href="https://www.freebuf.com/vuls/231909.html" target="_blank" rel="noopener">Shiro权限绕过漏洞分析（CVE-2020-1957）</a></li>
 </ul>
 
     </div>
@@ -279,12 +266,12 @@
         
     <div class="post-nav">
       <div class="post-nav-item">
-    <a href="/2020/05/08/shiro-550-attack/" rel="prev" title="shiro-550反序列化漏洞分析复现">
-      <i class="fa fa-chevron-left"></i> shiro-550反序列化漏洞分析复现
+    <a href="/2020/05/20/fastjson-introduction/" rel="prev" title="FastJson反序列化介绍">
+      <i class="fa fa-chevron-left"></i> FastJson反序列化介绍
     </a></div>
       <div class="post-nav-item">
-    <a href="/2020/05/09/ysoserial-commonsbeanutils1/" rel="next" title="ysoseial之CommonsBeanUtils1分析">
-      ysoseial之CommonsBeanUtils1分析 <i class="fa fa-chevron-right"></i>
+    <a href="/2020/05/24/hash-length-extension-attack/" rel="next" title="Hash长度扩展攻击">
+      Hash长度扩展攻击 <i class="fa fa-chevron-right"></i>
     </a></div>
     </div>
       </footer>
@@ -344,7 +331,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Padding-Oracle获取明文"><span class="nav-number">1.</span> <span class="nav-text">Padding Oracle获取明文</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#前提条件"><span class="nav-number">1.1.</span> <span class="nav-text">前提条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#利用点-加密过程中的明文填充"><span class="nav-number">1.2.</span> <span class="nav-text">利用点-加密过程中的明文填充</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#攻击原理"><span class="nav-number">1.3.</span> <span class="nav-text">攻击原理</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Padding-Oracle构造密文"><span class="nav-number">2.</span> <span class="nav-text">Padding Oracle构造密文</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">3.</span> <span class="nav-text">参考</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#漏洞信息"><span class="nav-number">1.</span> <span class="nav-text">漏洞信息</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#影响版本"><span class="nav-number">1.1.</span> <span class="nav-text">影响版本</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Shiro-682"><span class="nav-number">1.2.</span> <span class="nav-text">Shiro 682</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#影响版本-1"><span class="nav-number">1.2.1.</span> <span class="nav-text">影响版本</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#漏洞成因"><span class="nav-number">1.2.2.</span> <span class="nav-text">漏洞成因</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#补丁"><span class="nav-number">1.2.3.</span> <span class="nav-text">补丁</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2020-1957"><span class="nav-number">1.3.</span> <span class="nav-text">CVE-2020-1957</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#影响版本-2"><span class="nav-number">1.3.1.</span> <span class="nav-text">影响版本</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#漏洞成因-1"><span class="nav-number">1.3.2.</span> <span class="nav-text">漏洞成因</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#补丁-1"><span class="nav-number">1.3.3.</span> <span class="nav-text">补丁</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#总结"><span class="nav-number">2.</span> <span class="nav-text">总结</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">3.</span> <span class="nav-text">参考</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
