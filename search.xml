@@ -1085,6 +1085,9 @@
       <categories>
         <category>JAVA安全</category>
       </categories>
+      <tags>
+        <tag>RMI</tag>
+      </tags>
   </entry>
   <entry>
     <title>shiro-550反序列化漏洞分析复现</title>
