@@ -29,7 +29,7 @@
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="http://yoursite.com/2020/05/24/hash-length-extension-attack/1.png">
 <meta property="article:published_time" content="2020-05-24T09:13:35.000Z">
-<meta property="article:modified_time" content="2020-05-24T09:14:41.187Z">
+<meta property="article:modified_time" content="2020-05-24T12:04:17.042Z">
 <meta property="article:author" content="ananaskr">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http://yoursite.com/2020/05/24/hash-length-extension-attack/1.png">
@@ -186,7 +186,7 @@
               <span class="post-meta-item-text">Posted on</span>
               
 
-              <time title="Created: 2020-05-24 17:13:35 / Modified: 17:14:41" itemprop="dateCreated datePublished" datetime="2020-05-24T17:13:35+08:00">2020-05-24</time>
+              <time title="Created: 2020-05-24 17:13:35 / Modified: 20:04:17" itemprop="dateCreated datePublished" datetime="2020-05-24T17:13:35+08:00">2020-05-24</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -232,8 +232,8 @@
 </li>
 <li>最后一轮产生的链变量经过高低位互换后就是计算出来的md5值。</li>
 </ol>
-<h3 id="Append-Padding-Bits-填充bits"><a href="#Append-Padding-Bits-填充bits" class="headerlink" title="Append Padding Bits(填充bits)"></a>Append Padding Bits(填充bits)</h3><p>对最后一个消息块进行补位，使得其长度在对512取模后的值为448。当消息长度不满448bit时，需要在后面加上1，紧跟着多个0(二进制表示)。即16进制中的表示是在后面补上80(10000000)。</p>
-<h3 id="Append-Length-填充长度"><a href="#Append-Length-填充长度" class="headerlink" title="Append Length(填充长度)"></a>Append Length(填充长度)</h3><p>剩下的最后8个字节储存量补位之前的消息长度。</p>
+<h2 id="Append-Padding-Bits-填充bits"><a href="#Append-Padding-Bits-填充bits" class="headerlink" title="Append Padding Bits(填充bits)"></a>Append Padding Bits(填充bits)</h2><p>对最后一个消息块进行补位，使得其长度在对512取模后的值为448。当消息长度不满448bit时，需要在后面加上1，紧跟着多个0(二进制表示)。即16进制中的表示是在后面补上80(10000000)。</p>
+<h2 id="Append-Length-填充长度"><a href="#Append-Length-填充长度" class="headerlink" title="Append Length(填充长度)"></a>Append Length(填充长度)</h2><p>剩下的最后8个字节储存量补位之前的消息长度。</p>
 <h1 id="长度扩展攻击流程"><a href="#长度扩展攻击流程" class="headerlink" title="长度扩展攻击流程"></a>长度扩展攻击流程</h1><p>其实这个攻击问题就出在覆盖上，每一个消息块与前一个链变量进行一个运算后的结果会覆盖这个链变量的值。由于在这个攻击中获取到了hash(secret+message)的值，这个值是对(secret+message+padding)与链变量进行运算。</p>
 <p>若此时在后面附加上消息，只需要对附加消息进行padding。然后与上一轮产生的链变量进行运算后，进行高低位互换就得到了新的hash值。上一轮的链变量正好是hash(secret+message)值高低位变换后的结果。</p>
 <p>因此长度扩展攻击需要满足以下条件:</p>
@@ -290,7 +290,10 @@
     <a href="/2020/05/24/shiro-682/" rel="prev" title="CVE-2020-1957 Shiro权限绕过漏洞分析">
       <i class="fa fa-chevron-left"></i> CVE-2020-1957 Shiro权限绕过漏洞分析
     </a></div>
-      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/2020/05/29/rmi-security/" rel="next" title="Java RMI攻击方式分析总结">
+      Java RMI攻击方式分析总结 <i class="fa fa-chevron-right"></i>
+    </a></div>
     </div>
       </footer>
     
@@ -349,7 +352,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#利用场景"><span class="nav-number">1.</span> <span class="nav-text">利用场景</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#MD5算法流程"><span class="nav-number">2.</span> <span class="nav-text">MD5算法流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Append-Padding-Bits-填充bits"><span class="nav-number">2.0.1.</span> <span class="nav-text">Append Padding Bits(填充bits)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Append-Length-填充长度"><span class="nav-number">2.0.2.</span> <span class="nav-text">Append Length(填充长度)</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#长度扩展攻击流程"><span class="nav-number">3.</span> <span class="nav-text">长度扩展攻击流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#案例1"><span class="nav-number">3.1.</span> <span class="nav-text">案例1</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#案例2"><span class="nav-number">3.2.</span> <span class="nav-text">案例2</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">参考</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#利用场景"><span class="nav-number">1.</span> <span class="nav-text">利用场景</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#MD5算法流程"><span class="nav-number">2.</span> <span class="nav-text">MD5算法流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Append-Padding-Bits-填充bits"><span class="nav-number">2.1.</span> <span class="nav-text">Append Padding Bits(填充bits)</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Append-Length-填充长度"><span class="nav-number">2.2.</span> <span class="nav-text">Append Length(填充长度)</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#长度扩展攻击流程"><span class="nav-number">3.</span> <span class="nav-text">长度扩展攻击流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#案例1"><span class="nav-number">3.1.</span> <span class="nav-text">案例1</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#案例2"><span class="nav-number">3.2.</span> <span class="nav-text">案例2</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">参考</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -363,7 +366,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">30</span>
+          <span class="site-state-item-count">31</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>

