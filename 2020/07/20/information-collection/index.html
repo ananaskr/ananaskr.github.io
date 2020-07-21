@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="在对一个目标进行渗透测试前，最重要的是对其进行信息收集，信息收集的完成度某种程度上决定了后续渗透的成功与否。这篇文章主要是总结一下自己在信息收集过程中用到的一些工具和思路，给自己做个笔记。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="渗透测试之信息收集">
+<meta property="og:url" content="http://yoursite.com/2020/07/20/information-collection/index.html">
+<meta property="og:site_name" content="Ananaskr&#39;s Blog">
+<meta property="og:description" content="在对一个目标进行渗透测试前，最重要的是对其进行信息收集，信息收集的完成度某种程度上决定了后续渗透的成功与否。这篇文章主要是总结一下自己在信息收集过程中用到的一些工具和思路，给自己做个笔记。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://yoursite.com/2020/07/20/information-collection/1.png">
+<meta property="og:image" content="http://yoursite.com/2020/07/20/information-collection/2.png">
+<meta property="og:image" content="http://yoursite.com/2020/07/20/information-collection/3.png">
+<meta property="og:image" content="http://yoursite.com/2020/07/20/information-collection/4.png">
+<meta property="og:image" content="http://yoursite.com/2020/07/20/information-collection/5.png">
+<meta property="og:image" content="http://yoursite.com/2020/07/20/information-collection/6.png">
+<meta property="og:image" content="http://yoursite.com/2020/07/20/information-collection/7.png">
+<meta property="og:image" content="http://yoursite.com/2020/07/20/information-collection/8.png">
+<meta property="og:image" content="http://yoursite.com/2020/07/20/information-collection/9.png">
+<meta property="article:published_time" content="2020-07-20T09:13:29.000Z">
+<meta property="article:modified_time" content="2020-07-21T03:30:24.909Z">
+<meta property="article:author" content="ananaskr">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2020/07/20/information-collection/1.png">
+
+<link rel="canonical" href="http://yoursite.com/2020/07/20/information-collection/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>渗透测试之信息收集 | Ananaskr's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Ananaskr's Blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/About/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/07/20/information-collection/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="ananaskr">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ananaskr's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          渗透测试之信息收集
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-07-20 17:13:29" itemprop="dateCreated datePublished" datetime="2020-07-20T17:13:29+08:00">2020-07-20</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-07-21 11:30:24" itemprop="dateModified" datetime="2020-07-21T11:30:24+08:00">2020-07-21</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/" itemprop="url" rel="index"><span itemprop="name">渗透测试</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>在对一个目标进行渗透测试前，最重要的是对其进行信息收集，信息收集的完成度某种程度上决定了后续渗透的成功与否。这篇文章主要是总结一下自己在信息收集过程中用到的一些工具和思路，给自己做个笔记。</p>
+<a id="more"></a>
+
+<h1 id="信息收集的流程"><a href="#信息收集的流程" class="headerlink" title="信息收集的流程"></a>信息收集的流程</h1><p>当我们拿到一个目标时，一般是域名信息，根据这个目标，信息收集会做以下的事情，这个流程只是我自己所理解的:</p>
+<ul>
+<li>子域名收集。</li>
+<li>IP信息收集。</li>
+<li>服务/端口收集。</li>
+<li>端口的指纹收集（包括防火墙(waf)识别）</li>
+<li>网站目录结构收集。(敏感信息泄露、路由扫描)</li>
+<li>Github源代码收集。</li>
+<li>漏洞扫描收集(可选)。</li>
+</ul>
+<h1 id="1-子域名收集"><a href="#1-子域名收集" class="headerlink" title="1.子域名收集"></a>1.子域名收集</h1><p>针对于一个域名子域名有哪些收集方式呢？先介绍子域名收集工具，一般都会使用子域名工具来收集。</p>
+<ul>
+<li><a href="https://github.com/shmilylty/OneForAll" target="_blank" rel="noopener">oneforall</a></li>
+</ul>
+<h2 id="oneforall"><a href="#oneforall" class="headerlink" title="oneforall"></a>oneforall</h2><p><img src="1.png" alt=""><br>从它的文档中可以看出它涵盖了很多收集子域名的方式。让我们来简单了解各个模块收集子域名的原理。</p>
+<h3 id="证书透明度"><a href="#证书透明度" class="headerlink" title="证书透明度"></a>证书透明度</h3><p>证书透明度(Certificate Transparency, CT)是一个试验性的IETF开源标准和开源框架，证书颁发机构CA必须将每个SSL或TLS证书发布到公共日志中。SSL和TLS证书通常包含域名、子域名和电子邮件地址。如下入所示</p>
+<p><img src="2.png" alt=""></p>
+<blockquote>
+<p>证书透明CT日志中找到的域/子域可能已经不存在。</p>
+</blockquote>
+<ul>
+<li>分享几个在线证书透明日志搜索:<ul>
+<li><a href="https://crt.sh/" target="_blank" rel="noopener">https://crt.sh/</a></li>
+<li><a href="https://censys.io/" target="_blank" rel="noopener">https://censys.io/</a></li>
+<li><a href="https://developers.facebook.com/tools/ct/" target="_blank" rel="noopener">https://developers.facebook.com/tools/ct/</a></li>
+<li><a href="https://google.com/transparencyreport/https/ct/" target="_blank" rel="noopener">https://google.com/transparencyreport/https/ct/</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="搜索引擎"><a href="#搜索引擎" class="headerlink" title="搜索引擎"></a>搜索引擎</h3><p>搜索引擎主要是利用各大搜索引擎通过google hacking的手段去收集子域名。<code>site:domain</code></p>
+<p><img src="3.png" alt=""></p>
+<ul>
+<li>Bing搜索引擎</li>
+<li>Google搜索引擎</li>
+<li>Baidu搜索引擎</li>
+</ul>
+<h3 id="字典爆破"><a href="#字典爆破" class="headerlink" title="字典爆破"></a>字典爆破</h3><p>准备一个常用子域名字典，然后模拟请求dns服务器，观察子域名是否有成功被解析。它的一个问题是若域名设置了泛解析，那么几乎所有的子域名都能够被解析，造成很多无用子域名数据。</p>
+<ul>
+<li>DNSPod<a href="https://github.com/DNSPod/oh-my-free-data/blob/master/src/dnspod-top2000-sub-domains.txt" target="_blank" rel="noopener">dnspod-top2000-sub-domains.txt</a></li>
+</ul>
+<blockquote>
+<p>解决方案是将爆破后的子域名+IP结果一起存入结果，检查同一IP对应的子域名，若数量过多(设置阈值)，则判定为无用子域名。构造随机的特殊字符串，若也能解析成功，则说明使用了泛解析。</p>
+</blockquote>
+<h3 id="DNS数据集"><a href="#DNS数据集" class="headerlink" title="DNS数据集"></a>DNS数据集</h3><p>又称DNS聚合器，聚合了大量DNS数据集。可通过它们来搜索给定域的子域。</p>
+<ul>
+<li>VirusTotal<ul>
+<li>运行自己的被动DNS复制服务，通过存储用户提交的URL解析结果来建立的<a href="https://www.virustotal.com/gui/home" target="_blank" rel="noopener">https://www.virustotal.com/gui/home</a>。<br><img src="4.png" alt=""></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>DNSdumpster<ul>
+<li>可以挖掘出指定域潜藏的大量子域。<a href="https://dnsdumpster.com/" target="_blank" rel="noopener">https://dnsdumpster.com/</a><br><img src="5.png" alt="">    </li>
+</ul>
+</li>
+</ul>
+<h3 id="常规检查"><a href="#常规检查" class="headerlink" title="常规检查"></a>常规检查</h3><p>常规检查主要是通过http头、域传送漏洞等，主要包括以下内容:</p>
+<ul>
+<li>HTTP头。(CSP)    </li>
+<li>文件泄露。(robots、sitemap、crossdomain.xml)</li>
+<li>域传送漏洞。</li>
+</ul>
+<h3 id="空间搜索引擎"><a href="#空间搜索引擎" class="headerlink" title="空间搜索引擎"></a>空间搜索引擎</h3><p>利用网上一些网络空间搜索引擎来收集子域名。</p>
+<ul>
+<li><a href="http://www.zoomeye.org/" target="_blank" rel="noopener">zoomeye</a></li>
+<li><a href="https://www.shodan.io/" target="_blank" rel="noopener">shodan</a></li>
+<li><a href="https://censys.io/" target="_blank" rel="noopener">censys</a></li>
+<li><a href="https://fofa.so/" target="_blank" rel="noopener">fofa</a></li>
+<li><a href="https://community.riskiq.com/login" target="_blank" rel="noopener">RiskIQ</a></li>
+</ul>
+<h1 id="2-IP信息收集"><a href="#2-IP信息收集" class="headerlink" title="2.IP信息收集"></a>2.IP信息收集</h1><p>IP信息收集这块，我把它主要分为2部分。一部分是直接的IP搜集和真实IP的搜集，还有一部分是针对于C段IP信息的收集。</p>
+<h2 id="直接的IP收集"><a href="#直接的IP收集" class="headerlink" title="直接的IP收集"></a>直接的IP收集</h2><p>直接的IP收集，在前面的子域名收集中，也会连带着将这部分内容输出。在目标存在CDN的情况下，这种方式搜索到的IP大概率是CDN的IP而不是真实IP，这对于后续利用来说十分有限。但还是介绍几个寻找IP的工具。</p>
+<ul>
+<li>nslookup<br><img src="6.png" alt=""></li>
+<li>dig<br><img src="7.png" alt=""></li>
+</ul>
+<h2 id="真实IP收集"><a href="#真实IP收集" class="headerlink" title="真实IP收集"></a>真实IP收集</h2><p>为什么要真实的IP，只有拿到了真实的IP，才能进行下一步对真实服务器的端口开放情况进行扫描。如何获取真实的IP呢？</p>
+<h3 id="利用子域名"><a href="#利用子域名" class="headerlink" title="利用子域名"></a>利用子域名</h3><p>一般来说对主营业务，访问压力大的域名才会使用CDN，而子域名有可能部署在同一台服务器或者同一个C段，就有可能从中找到真实的IP地址。</p>
+<h3 id="历史DNS记录"><a href="#历史DNS记录" class="headerlink" title="历史DNS记录"></a>历史DNS记录</h3><p>通过平台以前收集到的ip与域名绑定的历史记录进行寻找，可能存在以前并未使用CDN的情况。介绍几个历史DNS查询平台。</p>
+<ul>
+<li><a href="https://dnsdb.io/zh-cn/" target="_blank" rel="noopener">dnsdb</a></li>
+<li><a href="https://x.threatbook.cn/" target="_blank" rel="noopener">threatbook</a></li>
+</ul>
+<h3 id="邮件-RSS订阅"><a href="#邮件-RSS订阅" class="headerlink" title="邮件/RSS订阅"></a>邮件/RSS订阅</h3><p>通过邮件订阅/RSS订阅让目标站主动联系，查看其邮箱服务器的IP，有可能与web服务在一个服务器上。</p>
+<h3 id="国外访问"><a href="#国外访问" class="headerlink" title="国外访问"></a>国外访问</h3><p>国内的CDN往往只对国内的用户，通过国外访问，可能会得到真实的ip地址。介绍一个国外代理网站。</p>
+<ul>
+<li><a href="https://asm.ca.com/en/ping.php" target="_blank" rel="noopener">ping</a></li>
+</ul>
+<h3 id="HTTPS证书"><a href="#HTTPS证书" class="headerlink" title="HTTPS证书"></a>HTTPS证书</h3><p>利用censys搜索网站的ssl证书及hash，然后在<a href="https://crt.sh" target="_blank" rel="noopener">crt</a>上查找目标网站SSL证书的hash，然后再用censys搜索该hash即可得到真实的ip地址。</p>
+<h3 id="网站漏洞"><a href="#网站漏洞" class="headerlink" title="网站漏洞"></a>网站漏洞</h3><p>利用phpinfo、SSRF、XSS等漏洞让目标主动联系。</p>
+<h2 id="C段IP信息收集"><a href="#C段IP信息收集" class="headerlink" title="C段IP信息收集"></a>C段IP信息收集</h2><p>这个在实际的渗透测试可能并不是那么必须的，对目标拿到的IP信息比较少，且在已有的目标中没有什么漏洞时，将思路转为子网中的其他服务器。收集的方式很多，fofa等工具，也可以使用nmap这一强大的渗透利器。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nmap -sS -O -P0 -oG - 192.168.231.0&#x2F;24 | awk &#39;&#x2F;open&#x2F;&#123;print $2&#125;&#39;</span><br></pre></td></tr></table></figure>
+
+<h1 id="3-服务收集"><a href="#3-服务收集" class="headerlink" title="3.服务收集"></a>3.服务收集</h1><p>服务收集的目的主要是为了查看目标开放的端口服务，然后根据各种端口服务的一些指纹信息再进行进一步的利用。</p>
+<p>一般来说，都会使用网络空间搜索引擎(如fofa、shodan之类的)进行查询直接获得结果。本着学习的目的，在这里介绍一下<a href="https://github.com/nmap/nmap" target="_blank" rel="noopener">Nmap</a>这个强大的工具。</p>
+<h2 id="Nmap"><a href="#Nmap" class="headerlink" title="Nmap"></a>Nmap</h2><p>Nmap有很多种扫描端口的方式，根据不同的场景和限制选择不同的方式。</p>
+<p>最简单的方式是不加任何参数。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">nmap 192.168.1.23</span><br><span class="line">nmap 192.168.1.1&#x2F;24  &#x2F;&#x2F;扫描整个子网的端口</span><br><span class="line">nmap 192.168.1.23 192.168.34.243</span><br><span class="line">nmap 192.168.1.1&#x2F;24 -exclude 192.168.1.1</span><br></pre></td></tr></table></figure>
+
+<p>加上<code>-p</code>参数，对指定端口进行扫描。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">nmap -p 80 192.168.1.23</span><br><span class="line">nmap -p 80,22,21 192.168.1.23</span><br><span class="line">nmap -p 1-65536 192.168.1.23</span><br></pre></td></tr></table></figure>
+
+<p>加入<code>-sV</code>参数，在进行端口扫描时检测服务端软件的版本信息(即指纹信息)。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nmap -sV 192.168.1.23 -p 80</span><br></pre></td></tr></table></figure>
+
+<p>加入<code>-O</code>参数，端口扫描时识别目标主机的操作系统。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nmap -O 192.168.1.23</span><br></pre></td></tr></table></figure>
+
+<p>加入<code>-Pn</code>参数，当目标主机屏蔽了ping请求，Nmap会认为该主机没有开机，选择禁用Nmap的主机检测功能，Nmap就会进行全套的检测工作。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nmap -Pn 192.168.1.23</span><br></pre></td></tr></table></figure>
+
+<p>加入<code>-A</code>参数，表示综合扫描，包括OS识别、版本探测和traceroute综合扫描。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nmap -A 192.168.1.23</span><br></pre></td></tr></table></figure>
+
+<p>加入<code>-sP</code>参数，代表Ping扫描。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nmap -sP 192.168.1.23-100</span><br></pre></td></tr></table></figure>
+
+<p>加入<code>-sC</code>参数，根据端口识别的服务，调用默认脚本</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nmap -sC 192.168.1.23 -p 8080</span><br></pre></td></tr></table></figure>
+
+<h3 id="TCP扫描选项"><a href="#TCP扫描选项" class="headerlink" title="TCP扫描选项"></a>TCP扫描选项</h3><ul>
+<li>-sT (TCP连接扫描)</li>
+<li>-sS (SYN扫描) 隐蔽</li>
+<li>-sN (NULL扫描)</li>
+<li>-sF (FIN扫描) 隐蔽、漏扫</li>
+<li>-sX (XMAS扫描)</li>
+<li>-sW (TCP窗口扫描)</li>
+<li>-sl (指定僵尸主机发送扫描数据包)</li>
+</ul>
+<h3 id="UDP扫描选项"><a href="#UDP扫描选项" class="headerlink" title="UDP扫描选项"></a>UDP扫描选项</h3><ul>
+<li>-sU</li>
+</ul>
+<h3 id="使用脚本"><a href="#使用脚本" class="headerlink" title="使用脚本"></a>使用脚本</h3><p>在它的官网中按照类别将脚本进行分类。如下图所示:<br><img src="8.png" alt=""></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nmap --script&#x3D;address-info www.baidu.com</span><br></pre></td></tr></table></figure>
+
+
+<p>除了端口扫描外，还具备以下其他功能:</p>
+<ul>
+<li>主机探测</li>
+<li>服务/版本探测</li>
+<li>操作系统检测</li>
+<li>网络路由跟踪</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nmap -traceroute www.baidu.com</span><br></pre></td></tr></table></figure>
+
+<h1 id="4-端口指纹收集"><a href="#4-端口指纹收集" class="headerlink" title="4.端口指纹收集"></a>4.端口指纹收集</h1><p>这一阶段的任务主要是根据上述的扫描结果，对开放端口的服务、目标主机以及防火墙等信息进行收集识别，便于后续的漏洞利用。在这里分为应用服务指纹识别和防火墙(WAF)指纹识别。</p>
+<h2 id="应用指纹收集"><a href="#应用指纹收集" class="headerlink" title="应用指纹收集"></a>应用指纹收集</h2><p>应用指纹信息在使用端口扫描时，能够收集到一些服务的信息。那么这些服务尤其是网站服务是需要进一步地进行CMS指纹识别等应用信息的收集。按照惯例推荐CMS指纹识别工具。</p>
+<ul>
+<li><p><a href="http://whatweb.bugscaner.com/look/" target="_blank" rel="noopener">whatweb</a><br><img src="9.png" alt=""></p>
+</li>
+<li><p><a href="http://www.yunsee.cn/finger.html" target="_blank" rel="noopener"></a><br>需要登录后查看。</p>
+</li>
+</ul>
+<h2 id="WAF指纹收集"><a href="#WAF指纹收集" class="headerlink" title="WAF指纹收集"></a>WAF指纹收集</h2><p>WAF指纹收集的收集并不容易，根据响应包的信息，或者是构造特殊的请求，然后查看响应结果。由于本人目前对于企业的一些WAF不太熟悉，这一部分暂缓。</p>
+<h1 id="5-网站目录收集"><a href="#5-网站目录收集" class="headerlink" title="5.网站目录收集"></a>5.网站目录收集</h1><p>这一步主要是针对于目标是网站应用时需要做的一步。通过目录信息收集，有可能会找出泄漏的网站源码、配置文件等，但更多的是找出了更多的API接口。在这里同样介绍工具，原理很简单就是根据字典来不断拼接路径，发送请求，然后判断该路径是否存在。</p>
+<ul>
+<li><a href="https://github.com/maurosoria/dirsearch" target="_blank" rel="noopener">dirsearch</a></li>
+</ul>
+<blockquote>
+<p>dirsearch是一个包含丰富字典的目录扫描工具，它的字典大约有6000多个，在限制扫描的网站目标中要慎用。同时它也提供使用者选择自己字典的功能。</p>
+</blockquote>
+<h1 id="6-Github源码收集"><a href="#6-Github源码收集" class="headerlink" title="6.Github源码收集"></a>6.Github源码收集</h1><p>在收集了网站的一些特征后，比如用到了一个名为xxx.js的文件，可以利用该特征去github上搜索，有可能搜到开发者上传的源码。</p>
+<h1 id="7-漏洞扫描-可选"><a href="#7-漏洞扫描-可选" class="headerlink" title="7.漏洞扫描(可选)"></a>7.漏洞扫描(可选)</h1><p>在真实的渗透环境中，大部分的时候都是手工寻找漏洞，在目标网站对于扫描器不敏感的情况下，也可以使用诸如Nessus、AWVS的工具进行一个漏扫。</p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://anyeduke.gitbooks.io/the-art-of-subdomain-enumeration_zh_cn/content/0x01bei-dong-zi-yu-ming-mei-ju/3shi-yong-dns-ju-he.html" target="_blank" rel="noopener">The art of subdomain enumeration</a></li>
+<li><a href="https://xz.aliyun.com/t/6617" target="_blank" rel="noopener">深入了解子域名挖掘tricks</a></li>
+<li><a href="https://crayon-xin.github.io/2018/08/12/nmap%E8%B6%85%E8%AF%A6%E7%BB%86%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/" target="_blank" rel="noopener">nmap超详细使用指南</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/07/20/http-smuggling/" rel="prev" title="HTTP Smuggling攻击">
+      <i class="fa fa-chevron-left"></i> HTTP Smuggling攻击
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#信息收集的流程"><span class="nav-number">1.</span> <span class="nav-text">信息收集的流程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#1-子域名收集"><span class="nav-number">2.</span> <span class="nav-text">1.子域名收集</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#oneforall"><span class="nav-number">2.1.</span> <span class="nav-text">oneforall</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#证书透明度"><span class="nav-number">2.1.1.</span> <span class="nav-text">证书透明度</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#搜索引擎"><span class="nav-number">2.1.2.</span> <span class="nav-text">搜索引擎</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#字典爆破"><span class="nav-number">2.1.3.</span> <span class="nav-text">字典爆破</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#DNS数据集"><span class="nav-number">2.1.4.</span> <span class="nav-text">DNS数据集</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#常规检查"><span class="nav-number">2.1.5.</span> <span class="nav-text">常规检查</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#空间搜索引擎"><span class="nav-number">2.1.6.</span> <span class="nav-text">空间搜索引擎</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#2-IP信息收集"><span class="nav-number">3.</span> <span class="nav-text">2.IP信息收集</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#直接的IP收集"><span class="nav-number">3.1.</span> <span class="nav-text">直接的IP收集</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#真实IP收集"><span class="nav-number">3.2.</span> <span class="nav-text">真实IP收集</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#利用子域名"><span class="nav-number">3.2.1.</span> <span class="nav-text">利用子域名</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#历史DNS记录"><span class="nav-number">3.2.2.</span> <span class="nav-text">历史DNS记录</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#邮件-RSS订阅"><span class="nav-number">3.2.3.</span> <span class="nav-text">邮件&#x2F;RSS订阅</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#国外访问"><span class="nav-number">3.2.4.</span> <span class="nav-text">国外访问</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#HTTPS证书"><span class="nav-number">3.2.5.</span> <span class="nav-text">HTTPS证书</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#网站漏洞"><span class="nav-number">3.2.6.</span> <span class="nav-text">网站漏洞</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#C段IP信息收集"><span class="nav-number">3.3.</span> <span class="nav-text">C段IP信息收集</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#3-服务收集"><span class="nav-number">4.</span> <span class="nav-text">3.服务收集</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Nmap"><span class="nav-number">4.1.</span> <span class="nav-text">Nmap</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#TCP扫描选项"><span class="nav-number">4.1.1.</span> <span class="nav-text">TCP扫描选项</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#UDP扫描选项"><span class="nav-number">4.1.2.</span> <span class="nav-text">UDP扫描选项</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#使用脚本"><span class="nav-number">4.1.3.</span> <span class="nav-text">使用脚本</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#4-端口指纹收集"><span class="nav-number">5.</span> <span class="nav-text">4.端口指纹收集</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#应用指纹收集"><span class="nav-number">5.1.</span> <span class="nav-text">应用指纹收集</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#WAF指纹收集"><span class="nav-number">5.2.</span> <span class="nav-text">WAF指纹收集</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#5-网站目录收集"><span class="nav-number">6.</span> <span class="nav-text">5.网站目录收集</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#6-Github源码收集"><span class="nav-number">7.</span> <span class="nav-text">6.Github源码收集</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#7-漏洞扫描-可选"><span class="nav-number">8.</span> <span class="nav-text">7.漏洞扫描(可选)</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">9.</span> <span class="nav-text">参考</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">ananaskr</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">39</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">9</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">ananaskr</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="XS-Leak攻击本质上是一个浏览器侧信道攻击，可被用来推断并收集用户信息。它的原理类似Meltdown漏洞实现的一个名为”Flush &amp; Reload”攻击，有兴趣的可以看看。它利用了命中缓存与未命中缓存之间的时间响应来获取信息。攻击的核心是检测一个查询询问是否有结果。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="xs-leak攻击-HTTP缓存跨站点泄漏">
+<meta property="og:url" content="http://yoursite.com/2020/07/18/xs-leak/index.html">
+<meta property="og:site_name" content="Ananaskr&#39;s Blog">
+<meta property="og:description" content="XS-Leak攻击本质上是一个浏览器侧信道攻击，可被用来推断并收集用户信息。它的原理类似Meltdown漏洞实现的一个名为”Flush &amp; Reload”攻击，有兴趣的可以看看。它利用了命中缓存与未命中缓存之间的时间响应来获取信息。攻击的核心是检测一个查询询问是否有结果。">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2020-07-18T06:52:33.000Z">
+<meta property="article:modified_time" content="2020-07-20T02:29:54.385Z">
+<meta property="article:author" content="ananaskr">
+<meta property="article:tag" content="xs-leak">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/07/18/xs-leak/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>xs-leak攻击-HTTP缓存跨站点泄漏 | Ananaskr's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Ananaskr's Blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/About/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/07/18/xs-leak/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="ananaskr">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ananaskr's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          xs-leak攻击-HTTP缓存跨站点泄漏
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-07-18 14:52:33" itemprop="dateCreated datePublished" datetime="2020-07-18T14:52:33+08:00">2020-07-18</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-07-20 10:29:54" itemprop="dateModified" datetime="2020-07-20T10:29:54+08:00">2020-07-20</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>XS-Leak攻击本质上是一个浏览器侧信道攻击，可被用来推断并收集用户信息。它的原理类似Meltdown漏洞实现的一个名为”Flush &amp; Reload”攻击，有兴趣的可以看看。它利用了命中缓存与未命中缓存之间的时间响应来获取信息。攻击的核心是检测一个查询询问是否有结果。</p>
+<a id="more"></a>
+
+<h1 id="利用步骤"><a href="#利用步骤" class="headerlink" title="利用步骤"></a>利用步骤</h1><p>XS-Leak攻击实施起来分为3个步骤:</p>
+<ul>
+<li>删除目标浏览器中特定的缓存</li>
+<li>打开目标浏览器查询相关内容</li>
+<li>检查浏览器是否缓存了相关内容</li>
+</ul>
+<p>使用例子稍微地解释一下，假设用户A对某一特定资源拥有访问权限，而普通用户对某一资源没有访问权限。对于攻击者来说，他可以清空浏览器中对于某一特定资源的访问权限，然后诱使用户A请求该特定资源，最后继续诱使A请求该特定资源，判断第二次请求该资源时的响应时间，若该时间短，则说明第一次请求时缓存了特定资源，否则，则没有。通过这个，攻击者就可以判断出用户A是否对某一特定资源具有访问权限。  </p>
+<p>在上面的整个过程中，攻击者需要满足以下能力:</p>
+<ul>
+<li>能够删除用户浏览器中的特定缓存。</li>
+<li>能够使得用户发起对特定资源的请求。</li>
+<li>能够获取请求响应的时间。</li>
+</ul>
+<p><strong>删除缓存</strong><br>删除缓存的方式有这几种方式:1)发送post请求;2)使用fetch API “reload”以在服务器上返回错误的方式(设计超长的HTTP referer)2)设计过长的url，使得服务器报错清空之前的缓存。</p>
+<p><strong>发起请求</strong><br>使得受害者访问攻击者设计的网站，攻击者的网站中会使得受害者访问特定资源。在一定情况下，攻击者会缓存要检查的网页资源。  </p>
+<p><strong>获取请求响应时间</strong><br>由于攻击者会将资源缓存下来，因此，当受害者再此访问攻击者的网站，其中的资源会因为已经呗缓存在客户端从而可以访问。</p>
+<h1 id="利用场景"><a href="#利用场景" class="headerlink" title="利用场景"></a>利用场景</h1><p>前面说到此攻击可以知道受害者是否对某一特定资源具有访问权限，知道这点以后能得出什么样的信息呢？  </p>
+<ul>
+<li>社交网络中获取受害者社交网络的用户名，以确定受害者在社交网络中的身份。</li>
+</ul>
+<h1 id="工具"><a href="#工具" class="headerlink" title="工具"></a>工具</h1><ul>
+<li><a href="https://github.com/xsleaks/xsleaks" target="_blank" rel="noopener">xsleaks</a></li>
+</ul>
+<p>在这个工具中，可以看到它有实现了一个demo。</p>
+<h1 id="防御"><a href="#防御" class="headerlink" title="防御"></a>防御</h1><ul>
+<li>禁用HTTP缓存(不太可能)</li>
+<li>在所有内容上加上CSRF tokens</li>
+<li>使用Same Site=strict cookie对用户进行身份验证。</li>
+</ul>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://github.com/xsleaks/xsleaks/wiki/Links" target="_blank" rel="noopener">xsleaks</a></li>
+<li><a href="https://blog.csdn.net/Sunny_Ducky/article/details/106636236" target="_blank" rel="noopener">【翻译】XS-Leaks攻击简介</a></li>
+<li><a href="https://www.anquanke.com/post/id/176049" target="_blank" rel="noopener">XSLeaks 攻击分析 —— HTTP缓存跨站点泄漏</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/xs-leak/" rel="tag"># xs-leak</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/07/08/reverse-shell/" rel="prev" title="反弹shell的那些事儿">
+      <i class="fa fa-chevron-left"></i> 反弹shell的那些事儿
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/07/18/wcd/" rel="next" title="Web缓存欺骗(WCD)与Web缓存投毒(WCP)">
+      Web缓存欺骗(WCD)与Web缓存投毒(WCP) <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#利用步骤"><span class="nav-number">1.</span> <span class="nav-text">利用步骤</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#利用场景"><span class="nav-number">2.</span> <span class="nav-text">利用场景</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#工具"><span class="nav-number">3.</span> <span class="nav-text">工具</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#防御"><span class="nav-number">4.</span> <span class="nav-text">防御</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">5.</span> <span class="nav-text">参考</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">ananaskr</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">39</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">9</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">ananaskr</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
