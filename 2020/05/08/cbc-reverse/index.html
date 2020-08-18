@@ -31,7 +31,7 @@
 <meta property="og:image" content="http://yoursite.com/2020/05/08/cbc-reverse/2.png">
 <meta property="og:image" content="http://yoursite.com/2020/05/08/cbc-reverse/3.png">
 <meta property="article:published_time" content="2020-05-08T07:40:22.000Z">
-<meta property="article:modified_time" content="2020-05-08T07:44:46.446Z">
+<meta property="article:modified_time" content="2020-07-21T10:27:16.445Z">
 <meta property="article:author" content="ananaskr">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http://yoursite.com/2020/05/08/cbc-reverse/1.png">
@@ -191,10 +191,16 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">Posted on</span>
-              
 
-              <time title="Created: 2020-05-08 15:40:22 / Modified: 15:44:46" itemprop="dateCreated datePublished" datetime="2020-05-08T15:40:22+08:00">2020-05-08</time>
+              <time title="Created: 2020-05-08 15:40:22" itemprop="dateCreated datePublished" datetime="2020-05-08T15:40:22+08:00">2020-05-08</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-07-21 18:27:16" itemprop="dateModified" datetime="2020-07-21T18:27:16+08:00">2020-07-21</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -219,7 +225,7 @@
         <p>在CBC模式中，每个明文块先与前一个密文块进行异或后，再进行加密。在这种方法中，每个密文块都依赖于它前面的所有明文块。同时为了保证保证即使对相同明文多次加密，也可以得到不同的密文，在第一个块中使用<font color=#008000>IV(初始化向量)</font>。当获取到一组明文与其对应的IV，密文时，即可发起CBC字节翻转攻击。</p>
 <a id="more"></a>
 
-<h1 id="加密过程"><a href="#加密过程" class="headerlink" title="加密过程"></a>加密过程</h1><p><strong>加密过程如下所示</strong>:</p>
+<h1 id="0x01-介绍加解密过程"><a href="#0x01-介绍加解密过程" class="headerlink" title="0x01 介绍加解密过程"></a>0x01 介绍加解密过程</h1><h2 id="加密过程"><a href="#加密过程" class="headerlink" title="加密过程"></a>加密过程</h2><p><strong>加密过程如下所示</strong>:</p>
 <p><img src="1.png" alt=""></p>
 <p>文字版的加密过程：</p>
 <ol>
@@ -231,7 +237,7 @@
 <li>重复4-5,直到最后一组明文。</li>
 <li>将IV和加密后的密文拼接在一起，得到最终的密文。</li>
 </ol>
-<h1 id="解密过程"><a href="#解密过程" class="headerlink" title="解密过程"></a>解密过程</h1><p><strong>解密过程如下所示</strong>:</p>
+<h2 id="解密过程"><a href="#解密过程" class="headerlink" title="解密过程"></a>解密过程</h2><p><strong>解密过程如下所示</strong>:</p>
 <p><img src="2.png" alt=""></p>
 <p>文字版的解密过程：</p>
 <ol>
@@ -240,16 +246,22 @@
 <li>使用key对第二组密文进行解密，然后和第一组密文进行异或得到第二组明文。</li>
 <li>重复3，直到最后一组密文。</li>
 </ol>
-<h1 id="CBC翻转攻击"><a href="#CBC翻转攻击" class="headerlink" title="CBC翻转攻击"></a>CBC翻转攻击</h1><p><strong>CBC翻转攻击原理</strong>:</p>
+<h1 id="0x02-CBC翻转攻击"><a href="#0x02-CBC翻转攻击" class="headerlink" title="0x02 CBC翻转攻击"></a>0x02 CBC翻转攻击</h1><p>在开始介绍其原理前，先来明确一下此攻击所需的前提条件。</p>
+<p><strong>前提条件</strong>  </p>
+<ol>
+<li>知道IV和明文  </li>
+<li>应用程序对每次解密出来的明文结果有回显/或者可获取解密明文的结果。 </li>
+</ol>
+<p><strong>攻击影响</strong>  </p>
+<ol>
+<li>绕过过滤器  </li>
+<li>改变用户权限提升至管理员  </li>
+<li>…  </li>
+</ol>
+<p><strong>CBC翻转攻击原理</strong>:</p>
 <p>而CBC翻转攻击与解密过程有关。直观来看，IV会影响到第一组明文的值，而每一组明文的值都会被前一组密文所影响。若第一块密文中的某个字节被改变，则解密出来的第二组明文对应的字节也会被改变。可以从下图看出这整个过程</p>
 <p><img src="3.png" alt=""></p>
 <p>可以得知，某组密文的改变会影响到其对应的明文块的<font color=#008000>完全改变</font>以及下一个明文块中<font color=#008000>对应位置的改变</font>。</p>
-<p>此攻击造成的影响:</p>
-<ol>
-<li>绕过过滤器</li>
-<li>改变用户权限提升至管理员</li>
-<li>…</li>
-</ol>
 <p><strong>CBC翻转攻击过程</strong></p>
 <p>具体的如何改变明文呢？假设要改变第二组明文的值，那么就需要改变对应的第一组密文的值。这里就要利用到异或的原理，若<code>A = B XOR C</code>，那么<font color=#008000><code>A XOR B XOR C = 0</code></font>。所以，<code>0 XOR ANY = ANY</code>。假设ANY为最终我们想要改变的明文字节值。 有如下的计算方式:</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">P[1] &#x3D; decrept(C[1]) XOR IV</span><br><span class="line">P[2] &#x3D; decrept(C[2]) XOR C[1]</span><br><span class="line"></span><br><span class="line">ANY &#x3D; P[2] XOR decrept(C[2]) XOR C[1] XOR ANY</span><br><span class="line"></span><br><span class="line">ANY &#x3D; decrept(C[2]) XOR (P[2] XOR C[1] XOR ANY)</span><br><span class="line">C&#39;[1] &#x3D; P[2] XOR C[1] XOR ANY</span><br></pre></td></tr></table></figure>
@@ -343,7 +355,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#加密过程"><span class="nav-number">1.</span> <span class="nav-text">加密过程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#解密过程"><span class="nav-number">2.</span> <span class="nav-text">解密过程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#CBC翻转攻击"><span class="nav-number">3.</span> <span class="nav-text">CBC翻转攻击</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">参考</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#0x01-介绍加解密过程"><span class="nav-number">1.</span> <span class="nav-text">0x01 介绍加解密过程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#加密过程"><span class="nav-number">1.1.</span> <span class="nav-text">加密过程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#解密过程"><span class="nav-number">1.2.</span> <span class="nav-text">解密过程</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#0x02-CBC翻转攻击"><span class="nav-number">2.</span> <span class="nav-text">0x02 CBC翻转攻击</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">3.</span> <span class="nav-text">参考</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -357,20 +369,20 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">39</span>
+          <span class="site-state-item-count">42</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-count">7</span>
         <span class="site-state-item-name">categories</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">9</span>
+        <span class="site-state-item-count">12</span>
         <span class="site-state-item-name">tags</span></a>
       </div>
   </nav>

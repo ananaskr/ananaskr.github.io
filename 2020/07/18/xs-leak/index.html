@@ -20,18 +20,24 @@
     var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta name="description" content="XS-Leak攻击本质上是一个浏览器侧信道攻击，可被用来推断并收集用户信息。它的原理类似Meltdown漏洞实现的一个名为”Flush &amp; Reload”攻击，有兴趣的可以看看。它利用了命中缓存与未命中缓存之间的时间响应来获取信息。攻击的核心是检测一个查询询问是否有结果。">
+  <meta name="description" content="XS-Leak攻击本质上是一个浏览器侧信道攻击，可被用来推断并收集用户信息。很早这种利用方式就出现了。11年前，即2009年，Chris Evans利用恶意网站，构造不同的关键词搜索访问者电子邮件收件箱的内容。根据返回的时间判断该关键字是否存在，时间长则说明存在该关键词，反之依然。它存在的问题是影响时间的因素很多，准确度难以保证。在6年后，Nethanel Gelernter和Amir Herzb">
 <meta property="og:type" content="article">
-<meta property="og:title" content="xs-leak攻击-HTTP缓存跨站点泄漏">
+<meta property="og:title" content="xs-leak(Cross Site Leak)攻击">
 <meta property="og:url" content="http://yoursite.com/2020/07/18/xs-leak/index.html">
 <meta property="og:site_name" content="Ananaskr&#39;s Blog">
-<meta property="og:description" content="XS-Leak攻击本质上是一个浏览器侧信道攻击，可被用来推断并收集用户信息。它的原理类似Meltdown漏洞实现的一个名为”Flush &amp; Reload”攻击，有兴趣的可以看看。它利用了命中缓存与未命中缓存之间的时间响应来获取信息。攻击的核心是检测一个查询询问是否有结果。">
+<meta property="og:description" content="XS-Leak攻击本质上是一个浏览器侧信道攻击，可被用来推断并收集用户信息。很早这种利用方式就出现了。11年前，即2009年，Chris Evans利用恶意网站，构造不同的关键词搜索访问者电子邮件收件箱的内容。根据返回的时间判断该关键字是否存在，时间长则说明存在该关键词，反之依然。它存在的问题是影响时间的因素很多，准确度难以保证。在6年后，Nethanel Gelernter和Amir Herzb">
 <meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://yoursite.com/2020/07/18/xs-leak/5.png">
+<meta property="og:image" content="http://yoursite.com/2020/07/18/xs-leak/4.png">
+<meta property="og:image" content="http://yoursite.com/2020/07/18/xs-leak/1.png">
+<meta property="og:image" content="http://yoursite.com/2020/07/18/xs-leak/3.png">
+<meta property="og:image" content="http://yoursite.com/2020/07/18/xs-leak/6.png">
 <meta property="article:published_time" content="2020-07-18T06:52:33.000Z">
-<meta property="article:modified_time" content="2020-07-20T02:29:54.385Z">
+<meta property="article:modified_time" content="2020-07-24T01:03:50.365Z">
 <meta property="article:author" content="ananaskr">
 <meta property="article:tag" content="xs-leak">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2020/07/18/xs-leak/5.png">
 
 <link rel="canonical" href="http://yoursite.com/2020/07/18/xs-leak/">
 
@@ -46,7 +52,7 @@
   };
 </script>
 
-  <title>xs-leak攻击-HTTP缓存跨站点泄漏 | Ananaskr's Blog</title>
+  <title>xs-leak(Cross Site Leak)攻击 | Ananaskr's Blog</title>
   
 
 
@@ -179,7 +185,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          xs-leak攻击-HTTP缓存跨站点泄漏
+          xs-leak(Cross Site Leak)攻击
         </h1>
 
         <div class="post-meta">
@@ -196,7 +202,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-07-20 10:29:54" itemprop="dateModified" datetime="2020-07-20T10:29:54+08:00">2020-07-20</time>
+                <time title="Modified: 2020-07-24 09:03:50" itemprop="dateModified" datetime="2020-07-24T09:03:50+08:00">2020-07-24</time>
               </span>
 
           
@@ -210,42 +216,106 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <p>XS-Leak攻击本质上是一个浏览器侧信道攻击，可被用来推断并收集用户信息。它的原理类似Meltdown漏洞实现的一个名为”Flush &amp; Reload”攻击，有兴趣的可以看看。它利用了命中缓存与未命中缓存之间的时间响应来获取信息。攻击的核心是检测一个查询询问是否有结果。</p>
+        <p>XS-Leak攻击本质上是一个浏览器侧信道攻击，可被用来推断并收集用户信息。很早这种利用方式就出现了。11年前，即2009年，Chris Evans利用恶意网站，构造不同的关键词搜索访问者电子邮件收件箱的内容。根据返回的时间判断该关键字是否存在，时间长则说明存在该关键词，反之依然。它存在的问题是影响时间的因素很多，准确度难以保证。在6年后，Nethanel Gelernter和Amir Herzberg将其命名为XSSearch，利用统计学的方法使结果更加可靠。而现在又出现的是利用缓存技术来判断查询的结果，它被叫做<font color=#008000>HTTP缓存跨站点泄漏</font>。</p>
 <a id="more"></a>
 
-<h1 id="利用步骤"><a href="#利用步骤" class="headerlink" title="利用步骤"></a>利用步骤</h1><p>XS-Leak攻击实施起来分为3个步骤:</p>
+<h1 id="0x01-基于时间的判断方式"><a href="#0x01-基于时间的判断方式" class="headerlink" title="0x01 基于时间的判断方式"></a>0x01 基于时间的判断方式</h1><p>基于时间的xs-leak在测量时间差时，在请求资源的前后分别记录下时间。然后时间差作为判断的依据。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">let before &#x3D; performance.now()</span><br><span class="line">await fetch(&quot;&#x2F;&#x2F;mail.com&#x2F;search?q&#x3D;foo&quot;)</span><br><span class="line">let request_time &#x3D; performance.now() - before</span><br></pre></td></tr></table></figure>
+
+
+
+<h1 id="0x02-XSSearch方式"><a href="#0x02-XSSearch方式" class="headerlink" title="0x02 XSSearch方式"></a>0x02 XSSearch方式</h1><h2 id="1-Chrome-Xss-Auditor"><a href="#1-Chrome-Xss-Auditor" class="headerlink" title="1.Chrome Xss Auditor"></a>1.Chrome Xss Auditor</h2><p>这里利用了一个特性，即在chrome中通过iframe打开一个页面，当被正确加载时修改window.hash不会出发iframe的onload事件；但是当页面加载错误时，修改iframe的hash会再一次触发onload事件。  </p>
+<p>得出了以下逻辑:<br>页面加载成功: 与页面内容不匹配<br>页面加载失败: 与页面内容匹配  </p>
+<p>匹配出页面中含有的内容</p>
+<blockquote>
+<p>chrome中的XSS auditor本身的逻辑比较简单，判断是否输入敏感payload，输入内容是否在页面中含有。</p>
+</blockquote>
+<h2 id="2-CSS"><a href="#2-CSS" class="headerlink" title="2.CSS"></a>2.CSS</h2><p>CSS的这种利用方式也可以用在绕过CSP上。主要用到的是<font color=#008000>CSS选择器</font>，通过CSS选择器可以对指定的属性加载不同的样式。通过这种方式就能够爆破出属性值。一般可以用来获取CSRF Token、CSP nonce值等。</p>
+<p><img src="5.png" alt=""></p>
+<p>当input标签的value值以1开头时，向<a href="http://vps/1发送请求，以2开头，向http://vps/2发送请求。根据VPS收到的请求就能获取value值。" target="_blank" rel="noopener">http://vps/1发送请求，以2开头，向http://vps/2发送请求。根据VPS收到的请求就能获取value值。</a></p>
+<blockquote>
+<p>案例: SECCON2018中有道题目就是利用这样的方式获取csrf token。</p>
+</blockquote>
+<h2 id="3-window-frames-length"><a href="#3-window-frames-length" class="headerlink" title="3.window.frames.length"></a>3.window.frames.length</h2><p>window.frames.length表示一个页面包含的frames的数量。</p>
+<p>案例: Facebook CTF 2019: Secret_note_keeper.<br>这道题目中的web应用的目的是存储、查看、搜索notes。用户可以登录、创建、查看、搜索自己的notes，并提交bug报告。一个notes包含一个title和body，用户通过提供字符串来在body中搜索notes。如果所搜匹配到，则会将结果展示在iFrame中。<br>提交bug报告是提交一个link，然后后台的bot会自动点击。这就可以利用后台的身份，让后台去搜索自己的notes，利用xs-leak获取flag信息。  </p>
+<p>构造一个特殊页面(页面内容如下)，放在自己的VPS上，然后将地址提交给后台。</p>
+<p><img src="4.png" alt=""></p>
+<p>这段payload也很好理解，通过爆破的方式一位一位地开始搜索以<code>fb{</code>开头的字符串，当匹配成功时结果会放在iframe中，通过判断frames的数量即可判断是否匹配成功，还要记得将结果发送回去。</p>
+<h2 id="4-history-length"><a href="#4-history-length" class="headerlink" title="4.history.length"></a>4.history.length</h2><p>它的原理和window.frames.length一样，通过判断资源加载前后的history.length有没有增加来判断是否成功加载资源。整个的代码可以写成这样。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">let a &#x3D; history.length;</span><br><span class="line">ifr &#x3D; document.createElement(&#39;iframe&#39;);</span><br><span class="line">ifr.src &#x3D; &quot;http:&#x2F;&#x2F;xxxx&#x2F;&quot;;</span><br><span class="line">document.body.appendChild(ifr);</span><br><span class="line">let b &#x3D; history.length - a;</span><br><span class="line"></span><br><span class="line">if (b)&#123;</span><br><span class="line">	console.log(&quot;Resource had been loaded&quot;);</span><br><span class="line">&#125;else&#123;</span><br><span class="line">	console.log(&quot;Resouce is not loaded&quot;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+<h1 id="0x03-HTTP缓存跨站点泄漏方式"><a href="#0x03-HTTP缓存跨站点泄漏方式" class="headerlink" title="0x03 HTTP缓存跨站点泄漏方式"></a>0x03 HTTP缓存跨站点泄漏方式</h1><p>HTTP缓存跨站点泄漏攻击实施起来分为3个步骤:</p>
 <ul>
 <li>删除目标浏览器中特定的缓存</li>
 <li>打开目标浏览器查询相关内容</li>
 <li>检查浏览器是否缓存了相关内容</li>
 </ul>
-<p>使用例子稍微地解释一下，假设用户A对某一特定资源拥有访问权限，而普通用户对某一资源没有访问权限。对于攻击者来说，他可以清空浏览器中对于某一特定资源的访问权限，然后诱使用户A请求该特定资源，最后继续诱使A请求该特定资源，判断第二次请求该资源时的响应时间，若该时间短，则说明第一次请求时缓存了特定资源，否则，则没有。通过这个，攻击者就可以判断出用户A是否对某一特定资源具有访问权限。  </p>
 <p>在上面的整个过程中，攻击者需要满足以下能力:</p>
 <ul>
 <li>能够删除用户浏览器中的特定缓存。</li>
 <li>能够使得用户发起对特定资源的请求。</li>
-<li>能够获取请求响应的时间。</li>
+<li>检查浏览器是否缓存了特定资源</li>
 </ul>
-<p><strong>删除缓存</strong><br>删除缓存的方式有这几种方式:1)发送post请求;2)使用fetch API “reload”以在服务器上返回错误的方式(设计超长的HTTP referer)2)设计过长的url，使得服务器报错清空之前的缓存。</p>
-<p><strong>发起请求</strong><br>使得受害者访问攻击者设计的网站，攻击者的网站中会使得受害者访问特定资源。在一定情况下，攻击者会缓存要检查的网页资源。  </p>
-<p><strong>获取请求响应时间</strong><br>由于攻击者会将资源缓存下来，因此，当受害者再此访问攻击者的网站，其中的资源会因为已经呗缓存在客户端从而可以访问。</p>
-<h1 id="利用场景"><a href="#利用场景" class="headerlink" title="利用场景"></a>利用场景</h1><p>前面说到此攻击可以知道受害者是否对某一特定资源具有访问权限，知道这点以后能得出什么样的信息呢？  </p>
+<p><strong>删除缓存</strong><br>删除缓存的方式有这几种方式:</p>
 <ul>
+<li>发送post请求<ul>
+<li>发送post请求清空缓存的原理是，当该静态资源以post请求当时被请求时，缓存会认为它不是个静态资源，不应该被缓存，因而清空。</li>
+</ul>
+</li>
+<li>使用fetch “reload”以在服务器上返回错误的方式<ul>
+<li>发送fetch请求时将cache设置为reload，当发生错误时(例如设计超长的HTTP referer)会使得reload的cache为空，从而清空。</li>
+</ul>
+</li>
+<li>设计过长的url，使得服务器报错清空之前的缓存。<ul>
+<li>当请求静态资源时在后面添加上无用参数，使得达到长度限制，使得服务器报错，浏览器接收到服务器报错后，会清空该静态资源。</li>
+</ul>
+</li>
+</ul>
+<p><strong>发起请求</strong><br>要让受害者以特定的方式发送请求，在xs-leak的场景中是使得受害者访问攻击者精心设计的网站，这会使得受害者访问特定资源，发送特定的请求。</p>
+<p><strong>检查浏览器是否缓存资源</strong><br>不同的场景有不同的利用方式，在后面会结合案例来说明这种方式。</p>
+<h2 id="1-cache-with-referrer"><a href="#1-cache-with-referrer" class="headerlink" title="1.cache with referrer"></a>1.cache with referrer</h2><p>使用referrer的缓存判断，整个demo代码可从github上获取。这种判断不是根据时间响应来判断，来看看它的工作原理吧。</p>
+<p><img src="1.png" alt=""></p>
+<p>第一段是利用fetch请求的方式，设置过长的referrer来清空缓存。第二段的内容是打开iframe页面，加载img.jpg资源。然后第三段同样设置了过长的referrer，保证了img.jpg的加载只能从缓存中加载。在加载img.jpg时首先会从缓存中寻找，若没有则请求服务器，但此时由于请求的referrer过长报错，导致服务器不会回应正常的资源。</p>
+<blockquote>
+<p>同时注释中提到了使用<code>cache:force-cache</code>来提高准确率，这是防止缓存过期影响判断。该字段表示fetch请求不顾一切的依赖缓存, 即使缓存过期了, 它依然从缓存中读取. 除非没有任何缓存, 那么它将发送一个正常的request。</p>
+</blockquote>
+<h1 id="0x04其他"><a href="#0x04其他" class="headerlink" title="0x04其他"></a>0x04其他</h1><p>在xsleaks的github上还有其他的一些利用，由于并未想出来它有什么影响，暂且归为其他。</p>
+<ul>
+<li>检测content-type类型(仅在火狐中有效，因为<code>typeMustMatch</code>仅在火狐中支持)。</li>
+</ul>
+<p><img src="3.png" alt=""></p>
+<p>根据MDN的解释，HTMLObjectElement.typeMustMatch表示只有链接的资源必须与type相匹配该资源才会被使用。很显然，在这整个过程中，资源会被加载一次。通过这个来判断被请求的资源的content-type。(虽然不知道获取该信息有啥用)</p>
+<ul>
+<li>检测资源是否可以被iframe嵌入。(仅在Chrome有效）</li>
+</ul>
+<p><img src="6.png" alt=""></p>
+<p>通过判断资源是否被嵌入来得出该资源能否被嵌入的结果。</p>
+<ul>
+<li>通过是否有下载提示窗口来判断哪些url端点是可以下载文件。</li>
+<li>检测跨域服务端重定向</li>
+</ul>
+<h1 id="危害"><a href="#危害" class="headerlink" title="危害"></a>危害</h1><ul>
 <li>社交网络中获取受害者社交网络的用户名，以确定受害者在社交网络中的身份。</li>
+<li>获取用户的toke、身份证号码之类的敏感信息。</li>
 </ul>
-<h1 id="工具"><a href="#工具" class="headerlink" title="工具"></a>工具</h1><ul>
-<li><a href="https://github.com/xsleaks/xsleaks" target="_blank" rel="noopener">xsleaks</a></li>
-</ul>
-<p>在这个工具中，可以看到它有实现了一个demo。</p>
 <h1 id="防御"><a href="#防御" class="headerlink" title="防御"></a>防御</h1><ul>
 <li>禁用HTTP缓存(不太可能)</li>
 <li>在所有内容上加上CSRF tokens</li>
 <li>使用Same Site=strict cookie对用户进行身份验证。</li>
+<li>正确配置X-Frame-Options头部，仅允许信任的站点打开站点的iframe。</li>
+<li>xs-leak攻击需要频繁地打开页面，请求资源，在一定频率时弹出验证码。</li>
 </ul>
 <h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
 <li><a href="https://github.com/xsleaks/xsleaks/wiki/Links" target="_blank" rel="noopener">xsleaks</a></li>
+<li><a href="https://github.com/xsleaks/xsleaks" target="_blank" rel="noopener">xsleaks</a></li>
 <li><a href="https://blog.csdn.net/Sunny_Ducky/article/details/106636236" target="_blank" rel="noopener">【翻译】XS-Leaks攻击简介</a></li>
 <li><a href="https://www.anquanke.com/post/id/176049" target="_blank" rel="noopener">XSLeaks 攻击分析 —— HTTP缓存跨站点泄漏</a></li>
+<li><a href="https://blog.pspaul.de/posts/facebook-ctf-2019-secret-note-keeper/" target="_blank" rel="noopener">Facebook CTF 2019: Secret Note Keeper (Web 676)</a></li>
+<li><a href="https://xz.aliyun.com/t/6698#toc-6" target="_blank" rel="noopener">Cross-Site Search</a></li>
 </ul>
 
     </div>
@@ -330,7 +400,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#利用步骤"><span class="nav-number">1.</span> <span class="nav-text">利用步骤</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#利用场景"><span class="nav-number">2.</span> <span class="nav-text">利用场景</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#工具"><span class="nav-number">3.</span> <span class="nav-text">工具</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#防御"><span class="nav-number">4.</span> <span class="nav-text">防御</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">5.</span> <span class="nav-text">参考</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#0x01-基于时间的判断方式"><span class="nav-number">1.</span> <span class="nav-text">0x01 基于时间的判断方式</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#0x02-XSSearch方式"><span class="nav-number">2.</span> <span class="nav-text">0x02 XSSearch方式</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-Chrome-Xss-Auditor"><span class="nav-number">2.1.</span> <span class="nav-text">1.Chrome Xss Auditor</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-CSS"><span class="nav-number">2.2.</span> <span class="nav-text">2.CSS</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-window-frames-length"><span class="nav-number">2.3.</span> <span class="nav-text">3.window.frames.length</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-history-length"><span class="nav-number">2.4.</span> <span class="nav-text">4.history.length</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#0x03-HTTP缓存跨站点泄漏方式"><span class="nav-number">3.</span> <span class="nav-text">0x03 HTTP缓存跨站点泄漏方式</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-cache-with-referrer"><span class="nav-number">3.1.</span> <span class="nav-text">1.cache with referrer</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#0x04其他"><span class="nav-number">4.</span> <span class="nav-text">0x04其他</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#危害"><span class="nav-number">5.</span> <span class="nav-text">危害</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#防御"><span class="nav-number">6.</span> <span class="nav-text">防御</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">7.</span> <span class="nav-text">参考</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -344,20 +414,20 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">39</span>
+          <span class="site-state-item-count">42</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-count">7</span>
         <span class="site-state-item-name">categories</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">9</span>
+        <span class="site-state-item-count">12</span>
         <span class="site-state-item-name">tags</span></a>
       </div>
   </nav>
