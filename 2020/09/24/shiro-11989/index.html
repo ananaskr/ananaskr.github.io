@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="今年出现了三个shiro权限绕过漏洞，后来出现的两个漏洞与之前分析过的CVE-2020-1957这个漏洞原理一样，都是在spring框架下，由于shiro处理uri与spring处理uri不一致导致的。这篇文章介绍了与之相关，目前已经出现的4个漏洞。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Apache Shiro权限绕过漏洞">
+<meta property="og:url" content="http://yoursite.com/2020/09/24/shiro-11989/index.html">
+<meta property="og:site_name" content="Ananaskr&#39;s Blog">
+<meta property="og:description" content="今年出现了三个shiro权限绕过漏洞，后来出现的两个漏洞与之前分析过的CVE-2020-1957这个漏洞原理一样，都是在spring框架下，由于shiro处理uri与spring处理uri不一致导致的。这篇文章介绍了与之相关，目前已经出现的4个漏洞。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/1.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/2.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/3.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/4.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/5.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/6.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/7.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/8.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/9.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/10.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/11.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/12.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/13.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/14.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/155.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/16.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/17.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/18.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/19.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/20.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/21.png">
+<meta property="og:image" content="http://yoursite.com/2020/09/24/shiro-11989/22.png">
+<meta property="article:published_time" content="2020-09-24T09:27:21.000Z">
+<meta property="article:modified_time" content="2020-10-08T03:39:15.852Z">
+<meta property="article:author" content="ananaskr">
+<meta property="article:tag" content="shiro">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2020/09/24/shiro-11989/1.png">
+
+<link rel="canonical" href="http://yoursite.com/2020/09/24/shiro-11989/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>Apache Shiro权限绕过漏洞 | Ananaskr's Blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Ananaskr's Blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/About/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/09/24/shiro-11989/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="ananaskr">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ananaskr's Blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Apache Shiro权限绕过漏洞
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-09-24 17:27:21" itemprop="dateCreated datePublished" datetime="2020-09-24T17:27:21+08:00">2020-09-24</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-10-08 11:39:15" itemprop="dateModified" datetime="2020-10-08T11:39:15+08:00">2020-10-08</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/JAVA/" itemprop="url" rel="index"><span itemprop="name">JAVA</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>今年出现了三个shiro权限绕过漏洞，后来出现的两个漏洞与之前分析过的CVE-2020-1957这个漏洞原理一样，都是在spring框架下，由于shiro处理uri与spring处理uri不一致导致的。这篇文章介绍了与之相关，目前已经出现的4个漏洞。</p>
+<a id="more"></a>
+
+<h1 id="漏洞描述"><a href="#漏洞描述" class="headerlink" title="漏洞描述"></a>漏洞描述</h1><p>在spring框架使用shiro进行鉴权时，由于处理uri的逻辑不一致，导致权限绕过。</p>
+<h1 id="影响版本"><a href="#影响版本" class="headerlink" title="影响版本"></a>影响版本</h1><ul>
+<li>shiro-682      shiro &lt; 1.5.0</li>
+<li>CVE-2020-1957  shiro &lt;= 1.5.1</li>
+<li>CVE-2020-11989  shiro &lt; 1.5.3</li>
+<li>CVE-2020-13922  shiro &lt; 1.6.0</li>
+</ul>
+<blockquote>
+<p>在shiro 1.6.0以下版本中存在可以绕过鉴权的可能。</p>
+</blockquote>
+<h1 id="分析复现"><a href="#分析复现" class="headerlink" title="分析复现"></a>分析复现</h1><p>复现环境参考:<a href="https://github.com/l3yx/springboot-shiro" target="_blank" rel="noopener">https://github.com/l3yx/springboot-shiro</a></p>
+<p>在shiroConfig中设置的ant风格URL匹配为<code>/*</code>而不是<code>/**</code>:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Bean</span></span><br><span class="line">   <span class="function">ShiroFilterFactoryBean <span class="title">shiroFilterFactoryBean</span><span class="params">()</span> </span>&#123;</span><br><span class="line">       ShiroFilterFactoryBean bean = <span class="keyword">new</span> ShiroFilterFactoryBean();</span><br><span class="line">       bean.setSecurityManager(securityManager());</span><br><span class="line">       bean.setLoginUrl(<span class="string">"/login"</span>);</span><br><span class="line">       bean.setSuccessUrl(<span class="string">"/index"</span>);</span><br><span class="line">       bean.setUnauthorizedUrl(<span class="string">"/unauthorizedurl"</span>);</span><br><span class="line">       Map&lt;String,String&gt; map = <span class="keyword">new</span> LinkedHashMap&lt;&gt;();</span><br><span class="line">       map.put(<span class="string">"/doLogin"</span>,<span class="string">"anon"</span>);</span><br><span class="line">       map.put(<span class="string">"/admin/*"</span>,<span class="string">"authc"</span>);</span><br><span class="line">       bean.setFilterChainDefinitionMap(map);</span><br><span class="line">       <span class="keyword">return</span> bean;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="shiro-682"><a href="#shiro-682" class="headerlink" title="shiro-682"></a>shiro-682</h2><p>前面有对shiro-682进行过详细分析，由于shiro对于URL路径表达式只能正确匹配到<code>/resource/menus</code>，而无法匹配到<code>/resource/menus/</code>，同时对于spring来说，<code>/resource/menus</code>和<code>/resource/menus/</code>是一样的，导致了权限绕过。传送门<a href="https://ananaskr.github.io/2020/05/24/shiro-682/" target="_blank" rel="noopener">CVE-2020-1957 Shiro权限绕过漏洞分析</a>。</p>
+<p>payload形式为<code>/index/admin/</code></p>
+<p><strong>修复方式:</strong><br>在1.5.0版本中，在获取到URL后，将最后一个<code>/</code>去掉再进行URL匹配。<br><img src="1.png" alt=""></p>
+<h2 id="CVE-2020-2957"><a href="#CVE-2020-2957" class="headerlink" title="CVE-2020-2957"></a>CVE-2020-2957</h2><p>在shiro-682进行了修复之后，依然是在shiro处理URL的地方，shiro会判断URI中是否有<code>;</code>，若有，则截取<code>;</code>之前的值作为URL；但是spring中却是截取<code>;</code>之后的URI，从而绕过了鉴权。传送门<a href="https://ananaskr.github.io/2020/05/24/shiro-682/" target="_blank" rel="noopener">CVE-2020-1957 Shiro权限绕过漏洞分析</a>。</p>
+<p>payload的形式为<code>/xxx;/index/admin</code></p>
+<p><strong>修复方式</strong><br>在1.5.2版本中，将request.getRequestUri直接获取URI的方式更改为获取request.ContextPath，request.ServletPath，request.PathInfo，再将这三者进行拼接。看看这三者的区别:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">getContextPath()      &#x2F;&#x2F;获取该项目的根路径</span><br><span class="line">getServletPath()      &#x2F;&#x2F;获取与url-pattern中匹配的路径，如&#x2F;hello&#x2F;* &#x3D;&gt; &#x2F;hello</span><br><span class="line">getPathInfo()         &#x2F;&#x2F;获取url-pattern中*匹配的地方</span><br><span class="line"></span><br><span class="line">getRequestURI()       &#x2F;&#x2F;获取根路径到地址结尾</span><br><span class="line">getRequestURL()       &#x2F;&#x2F;获取请求的地址链接</span><br></pre></td></tr></table></figure>
+
+
+<p>ServletPath获取到的是<code>;</code>以后的URI，针对于<code>/xxx;/index/admin</code>的情况，获取到的uri值为<code>//index/admin</code>，因此无法使用<code>;</code>进行绕过。<br><img src="2.png" alt=""></p>
+<h2 id="CVE-2020-11989"><a href="#CVE-2020-11989" class="headerlink" title="CVE-2020-11989"></a>CVE-2020-11989</h2><p>前面对CVE-2020-2957进行了漏洞修复之后，还是存在绕过的方式。</p>
+<h3 id="漏洞复现"><a href="#漏洞复现" class="headerlink" title="漏洞复现"></a>漏洞复现</h3><p>环境中实现的效果是当访问<code>/admin/page</code>下的路径时，若未登录，则会跳转到登录页面。如下所示<br><img src="3.png" alt=""><br>当采用如下的路径时<code>/;/admin/page</code>，会绕过认证。<br><img src="4.png" alt=""></p>
+<blockquote>
+<p>别人提出了采用url双编码的方式也能绕过，双重编码的url在进入应用程序时，会进行解码一次，但是在我实验时并未进行一次解码。</p>
+</blockquote>
+<h3 id="漏洞分析"><a href="#漏洞分析" class="headerlink" title="漏洞分析"></a>漏洞分析</h3><p>首先看一下Shiro对于URL的获取以及处理。定位在<code>org.apache.shiro.web.filter.mgt.PathMatchingFilterChainResolver#getChain</code>。<br><img src="5.png" alt=""></p>
+<p>跟进getPathWithinApplication()方法。<br><img src="6.png" alt=""></p>
+<p>继续跟进WebUtils.getPathWithinApplication()方法。<br><img src="7.png" alt=""></p>
+<p>首先获取当前contextPath，由于在根目录下，这里为空。然后调用getRequestUri()方法获取requestUri。跟进getRequestUri()。<br><img src="8.png" alt=""></p>
+<p>首先调用了request.getAttribute(“javax.servlet.include.request_uri”)，这里返回的结果为null，进入request.getRequestURI()。<br><img src="9.png" alt=""></p>
+<p>request.getRequestURI()获取到的还是正常的输入的path，那么问题就是出现在了normalize(decodeAndCleanUriString(request, uri))上。跟进decodeAndCleanUriString()方法。<br><img src="10.png" alt=""></p>
+<p>在这里，当出现<code>;</code>时，只取<code>;</code>前面部分作为uri进行认证鉴权。</p>
+<p>鉴权完成之后，该request请求就会进入spring中，spring处理url函数定位在    <font color=#008000>org.springframework.web.util.UrlPathHelper#getPathWithinServletMapping</font>。<br><img src="11.png" alt=""></p>
+<p>跟进getRequestUri()方法。<br><img src="12.png" alt=""></p>
+<p>继续进入decodeAndCleanUriString()方法。<br><img src="13.png" alt=""></p>
+<p>看这里的函数名，第一个是removeSemicolonContent()，作用是移除<code>;</code>。跟进<br><img src="14.png" alt=""></p>
+<p>这里移除了;。整个路径变成了//admin/page。接着跟进getSanitizedPath()方法。<br><img src="155.png" alt=""><br>这里正好将//变为一个/。最后的路径为/admin/page。正好能够访问到资源。</p>
+<h3 id="漏洞修复"><a href="#漏洞修复" class="headerlink" title="漏洞修复"></a>漏洞修复</h3><p>在1.5.3版本中，getPathWithinApplication()中获取uri改为了由ServletPath + PathInfo，去掉了Context，且不再进行url解码。<br><img src="16.png" alt=""></p>
+<h2 id="CVE-2020-13922"><a href="#CVE-2020-13922" class="headerlink" title="CVE-2020-13922"></a>CVE-2020-13922</h2><p>前面对漏洞进行了修复。但是仍然出现问题，</p>
+<h3 id="漏洞复现-1"><a href="#漏洞复现-1" class="headerlink" title="漏洞复现"></a>漏洞复现</h3><p>该漏洞需要配置的controller如下所示:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@GetMapping</span>(<span class="string">"/admin/&#123;name&#125;"</span>)</span><br><span class="line"><span class="function"><span class="keyword">public</span> String <span class="title">admin</span><span class="params">(@PathVariable String name)</span></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="string">"hello admin"</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>即/admin/后面无论跟什么字符串，都是可访问到admin页面的。<br>这次的绕过就是将<code>;</code>进行编码后，就能绕过权限。<br><img src="17.png" alt=""></p>
+<h3 id="漏洞分析-1"><a href="#漏洞分析-1" class="headerlink" title="漏洞分析"></a>漏洞分析</h3><p>前面的payload为/admin/%3bpage，首先来看看它是如何绕过shiro，再来看看spring是如何将其处理为/admin/xxx的。<br>定位于org.apache.shiro.web.util.WebUtil#getPathWithinApplication()。<br><img src="18.png" alt=""></p>
+<p>首先通过getServletPath获得了解码后的/admin/;page。然后跟进removeSemicolon()方法。<br><img src="19.png" alt=""></p>
+<p>经过去除分号的处理后，变为/admin/回到org.apache.shiro.web.filter.mgt.PathMatchingFilterChainResolver#getChain()。<br><img src="20.png" alt=""><br>在这里首先会将最后一个/去掉，然后匹配模式，由于未匹配到/admin/*，因此绕过了shiro的认证鉴权。</p>
+<p>再来看看spring的处理，定位于org.springframework.web.util.UrlPathHelper#getRequestUri()。<br><img src="21.png" alt=""><br>它获取到的是未解码的uri，然后进入decodeAndCleanUriString()中。<br><img src="22.png" alt=""><br>在这里面的一个过程是，先移除分号，再进行uri解码操作。因此分号被保留了下来，最后返回的是/admin/;page，因此能够访问到hello admin页面。</p>
+<h3 id="漏洞修复-1"><a href="#漏洞修复-1" class="headerlink" title="漏洞修复"></a>漏洞修复</h3><p>在 org.apache.shiro.web.filter添加了一个InvalidRequestFilter类，该类从全局上对 ; \ 以及非ASCII字符进行过滤。</p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://xlab.tencent.com/cn/2020/06/30/xlab-20-002/" target="_blank" rel="noopener">Apache Shiro 身份验证绕过漏洞(CVE-2020-11989)</a></li>
+<li><a href="https://xz.aliyun.com/t/7964" target="_blank" rel="noopener">Apache Shiro 权限绕过漏洞分析(CVE-2020-11989)</a></li>
+<li><a href="https://xz.aliyun.com/t/8230" target="_blank" rel="noopener">Apache shiro安全漏洞(CVE-2020-13933)分析</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/shiro/" rel="tag"># shiro</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/09/08/ddctf/" rel="prev" title="DDCTF2020 web方向 WriteUp">
+      <i class="fa fa-chevron-left"></i> DDCTF2020 web方向 WriteUp
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/09/24/shiro-13922/" rel="next" title="shiro-13922">
+      shiro-13922 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#漏洞描述"><span class="nav-number">1.</span> <span class="nav-text">漏洞描述</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#影响版本"><span class="nav-number">2.</span> <span class="nav-text">影响版本</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#分析复现"><span class="nav-number">3.</span> <span class="nav-text">分析复现</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#shiro-682"><span class="nav-number">3.1.</span> <span class="nav-text">shiro-682</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2020-2957"><span class="nav-number">3.2.</span> <span class="nav-text">CVE-2020-2957</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2020-11989"><span class="nav-number">3.3.</span> <span class="nav-text">CVE-2020-11989</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#漏洞复现"><span class="nav-number">3.3.1.</span> <span class="nav-text">漏洞复现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#漏洞分析"><span class="nav-number">3.3.2.</span> <span class="nav-text">漏洞分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#漏洞修复"><span class="nav-number">3.3.3.</span> <span class="nav-text">漏洞修复</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CVE-2020-13922"><span class="nav-number">3.4.</span> <span class="nav-text">CVE-2020-13922</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#漏洞复现-1"><span class="nav-number">3.4.1.</span> <span class="nav-text">漏洞复现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#漏洞分析-1"><span class="nav-number">3.4.2.</span> <span class="nav-text">漏洞分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#漏洞修复-1"><span class="nav-number">3.4.3.</span> <span class="nav-text">漏洞修复</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">参考</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">ananaskr</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">47</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">8</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">ananaskr</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
